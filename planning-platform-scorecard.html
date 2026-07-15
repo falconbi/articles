@@ -9,487 +9,287 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#EEF1F5;
-    --surface:#FFFFFF;
-    --ink:#141B26;
-    --ink-soft:#5A6672;
-    --ink-faint:#8A94A1;
-    --line:#DCE1E8;
-    --line-strong:#C3CBD6;
-    --tm1:#0F62FE;
-    --tm1-soft:rgba(15,98,254,.12);
-    --pig:#6E45E8;
-    --pig-soft:rgba(110,69,232,.12);
-    --gold:#B8791A;
-    --gold-soft:rgba(184,121,26,.14);
-    --shadow:0 1px 2px rgba(20,27,38,.04),0 12px 32px rgba(20,27,38,.07);
+    --paper:#EEF1F5; --surface:#FFFFFF; --ink:#141B26; --ink-soft:#5A6672; --ink-faint:#8A94A1;
+    --line:#DCE1E8; --line-strong:#C3CBD6;
+    --tm1:#0F62FE; --tm1-soft:rgba(15,98,254,.12);
+    --pig:#6E45E8; --pig-soft:rgba(110,69,232,.12);
+    --gold:#B8791A; --gold-soft:rgba(184,121,26,.14);
+    --shadow:0 1px 2px rgba(20,27,38,.04),0 10px 26px rgba(20,27,38,.07);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
   body{
-    background:var(--paper);
-    color:var(--ink);
-    font-family:'Archivo',system-ui,sans-serif;
-    line-height:1.5;
-    -webkit-font-smoothing:antialiased;
-    padding:clamp(16px,4vw,56px) clamp(14px,4vw,24px) 64px;
+    background:var(--paper); color:var(--ink);
+    font-family:'Archivo',system-ui,sans-serif; line-height:1.4; -webkit-font-smoothing:antialiased;
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:clamp(10px,2vw,20px);
   }
-  .wrap{max-width:940px;margin:0 auto}
+  .app{width:100%; max-width:1100px}
 
-  /* ---------- header ---------- */
-  .eyebrow{
-    font-family:'JetBrains Mono',monospace;
-    font-size:11px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--ink-faint);
-    display:flex;align-items:center;gap:9px;margin-bottom:20px;
-  }
-  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);flex:none}
-  h1{
-    font-size:clamp(28px,5.4vw,46px);
-    font-weight:800;letter-spacing:-.025em;line-height:1.04;
-    max-width:16ch;
-  }
-  h1 .vs{color:var(--ink-faint);font-weight:500}
-  .thesis{
-    margin-top:16px;font-size:clamp(15px,2.2vw,17px);color:var(--ink-soft);
-    max-width:60ch;
-  }
-  .thesis b{color:var(--ink);font-weight:600}
+  .head{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:12px; flex-wrap:wrap}
+  .head h1{font-size:clamp(18px,2.7vw,26px); font-weight:800; letter-spacing:-.025em; line-height:1.05}
+  .head h1 .vs{color:var(--ink-faint); font-weight:500}
+  .head .thesis{font-size:12px; color:var(--ink-soft); max-width:46ch; margin-top:4px}
+  .head .thesis b{color:var(--ink); font-weight:600}
+  .brand{font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--ink-faint); display:flex; align-items:center; gap:7px; white-space:nowrap}
+  .brand .dot{width:5px;height:5px;border-radius:50%;background:var(--gold)}
 
-  /* ---------- verdict ---------- */
-  .verdict{
-    background:var(--surface);border:1px solid var(--line);border-radius:16px;
-    box-shadow:var(--shadow);
-    margin-top:34px;padding:clamp(18px,3vw,28px);
-  }
-  .verdict-head{
-    display:flex;justify-content:space-between;align-items:baseline;
-    gap:12px;flex-wrap:wrap;margin-bottom:22px;
-  }
-  .verdict-head .lbl{
-    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--ink-faint);
-  }
-  .verdict-head .lens-now{color:var(--ink);font-weight:700}
-  .verdict-head .scale{
-    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-faint);
-  }
+  .grid{display:grid; grid-template-columns:minmax(0,0.8fr) minmax(0,1.2fr); gap:14px}
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow)}
+  .p-pad{padding:clamp(13px,1.7vw,18px)}
 
-  .meter{margin-bottom:18px}
-  .meter:last-of-type{margin-bottom:0}
-  .meter-top{
-    display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;
-  }
-  .meter-name{display:flex;align-items:center;gap:10px;min-width:0}
-  .swatch{width:11px;height:11px;border-radius:3px;flex:none}
-  .swatch.tm1{background:var(--tm1)}
-  .swatch.pig{background:var(--pig)}
-  .meter-name .nm{font-weight:700;font-size:clamp(15px,2.4vw,18px);letter-spacing:-.01em}
-  .meter-name .sub{color:var(--ink-faint);font-size:12px;font-weight:500}
-  .meter-right{display:flex;align-items:center;gap:12px;flex:none}
-  .leads{
-    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
-    letter-spacing:.12em;text-transform:uppercase;
-    color:var(--gold);background:var(--gold-soft);
-    padding:4px 8px;border-radius:20px;
-    opacity:0;transform:translateY(-1px);transition:opacity .3s ease;
-    white-space:nowrap;
-  }
+  .vhead{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px}
+  .vhead .lbl{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint)}
+  .vhead .lens-now{color:var(--ink); font-weight:700}
+  .vhead .scale{font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--ink-faint)}
+
+  .meter{margin-bottom:11px}
+  .meter-top{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:5px}
+  .meter-name{display:flex; align-items:center; gap:8px; min-width:0}
+  .swatch{width:10px;height:10px;border-radius:3px;flex:none}
+  .swatch.tm1{background:var(--tm1)} .swatch.pig{background:var(--pig)}
+  .meter-name .nm{font-weight:700; font-size:13px; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .meter-name .sub{color:var(--ink-faint); font-size:11px; font-weight:500}
+  .meter-right{display:flex; align-items:center; gap:9px; flex:none}
+  .leads{font-family:'JetBrains Mono',monospace; font-size:8.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--gold); background:var(--gold-soft); padding:3px 6px; border-radius:20px; opacity:0; transition:opacity .3s ease; white-space:nowrap}
   .leads.on{opacity:1}
-  .score-num{
-    font-family:'JetBrains Mono',monospace;font-weight:700;
-    font-size:clamp(24px,4.6vw,34px);letter-spacing:-.01em;
-    font-variant-numeric:tabular-nums;min-width:2.6ch;text-align:right;
-  }
-  .track{height:14px;border-radius:8px;background:#EDF0F4;overflow:hidden;position:relative}
-  .fill{height:100%;border-radius:8px;width:0;transition:width .55s cubic-bezier(.22,.61,.36,1)}
+  .score-num{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:clamp(19px,2.8vw,25px);
+    letter-spacing:-.01em; font-variant-numeric:tabular-nums; min-width:2.4ch; text-align:right}
+  .track{height:10px; border-radius:6px; background:#EDF0F4; overflow:hidden}
+  .fill{height:100%; border-radius:6px; width:0; transition:width .55s cubic-bezier(.22,.61,.36,1)}
   .fill.tm1{background:linear-gradient(90deg,#0F62FE,#4C8DFF)}
   .fill.pig{background:linear-gradient(90deg,#6E45E8,#9B7CFF)}
-  .gap-note{
-    margin-top:18px;padding-top:16px;border-top:1px solid var(--line);
-    font-size:14px;color:var(--ink-soft);
-  }
-  .gap-note b{color:var(--ink);font-weight:700}
 
-  /* ---------- lens selector ---------- */
-  .lens-block{margin-top:30px}
-  .section-label{
-    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--ink-faint);margin-bottom:12px;
-  }
-  .lenses{display:flex;gap:8px;flex-wrap:wrap}
-  .lens-btn{
-    font-family:'Archivo',sans-serif;font-size:14px;font-weight:600;color:var(--ink-soft);
-    background:var(--surface);border:1px solid var(--line);border-radius:10px;
-    padding:10px 16px;cursor:pointer;transition:border-color .18s,color .18s,background .18s;
-  }
-  .lens-btn:hover{border-color:var(--line-strong);color:var(--ink)}
-  .lens-btn[aria-pressed="true"]{
-    background:var(--ink);color:#fff;border-color:var(--ink);
-  }
-  .lens-btn:focus-visible{outline:2px solid var(--tm1);outline-offset:2px}
+  .lens-label{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-faint); margin:14px 0 7px}
+  .lenses{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+  .lens-btn{font-family:'Archivo',sans-serif; font-size:12.5px; font-weight:600; color:var(--ink-soft);
+    background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:7px 10px; cursor:pointer;
+    transition:border-color .16s,color .16s,background .16s}
+  .lens-btn:hover{border-color:var(--line-strong); color:var(--ink)}
+  .lens-btn[aria-pressed="true"]{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .lens-btn:focus-visible{outline:2px solid var(--tm1); outline-offset:2px}
 
-  /* ---------- table ---------- */
-  .table{
-    margin-top:28px;background:var(--surface);border:1px solid var(--line);
-    border-radius:16px;box-shadow:var(--shadow);overflow:hidden;
-  }
-  .thead,.trow{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) 62px 62px 168px;
-    align-items:center;gap:14px;
-    padding:14px clamp(14px,2.4vw,22px);
-  }
-  .thead{
-    border-bottom:1px solid var(--line);
-    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.1em;
-    text-transform:uppercase;color:var(--ink-faint);
-  }
-  .thead .th-num{text-align:center}
-  .thead .th-w{text-align:left}
-  .thead .th-tm1{color:var(--tm1)}
-  .thead .th-pig{color:var(--pig)}
-  .trow{border-bottom:1px solid var(--line)}
-  .trow:last-child{border-bottom:0}
-  .dim-name{font-weight:600;font-size:14.5px;letter-spacing:-.005em}
-  .dim-note{color:var(--ink-faint);font-size:12px;font-weight:400;margin-top:2px;line-height:1.4}
+  .adopt-toggle{display:flex; align-items:center; gap:9px; margin-top:11px; padding:8px 10px;
+    background:var(--gold-soft); border:1px solid rgba(184,121,26,.28); border-radius:9px; cursor:pointer; user-select:none}
+  .adopt-toggle input{position:absolute; opacity:0; width:0; height:0}
+  .adopt-toggle .box{width:16px; height:16px; border-radius:4px; border:2px solid var(--gold); flex:none; position:relative; transition:background .16s}
+  .adopt-toggle input:checked + .box{background:var(--gold)}
+  .adopt-toggle input:checked + .box::after{content:""; position:absolute; left:3px; top:0; width:5px; height:9px;
+    border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg)}
+  .adopt-toggle input:focus-visible + .box{outline:2px solid var(--tm1); outline-offset:2px}
+  .adopt-toggle .txt{font-size:11px; line-height:1.3; color:var(--ink-soft)}
+  .adopt-toggle .txt b{color:var(--ink); font-weight:700}
 
-  .cell-score{
-    justify-self:center;position:relative;width:46px;height:46px;
-    display:flex;align-items:center;justify-content:center;border-radius:10px;
-    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;
-    font-variant-numeric:tabular-nums;
-  }
-  .cell-score.tm1{background:var(--tm1-soft);color:var(--tm1)}
-  .cell-score.pig{background:var(--pig-soft);color:var(--pig)}
-  .cell-score .tick{
-    position:absolute;left:5px;right:5px;bottom:5px;height:3px;border-radius:2px;
-    background:currentColor;opacity:.28;transform-origin:left;
-  }
+  .gap-note{margin-top:12px; padding-top:11px; border-top:1px solid var(--line); font-size:12px; color:var(--ink-soft); line-height:1.4}
+  .gap-note b{color:var(--ink); font-weight:700}
+  .takeaway{margin-top:9px; font-size:11.5px; color:var(--ink-soft); line-height:1.45}
+  .takeaway b{color:var(--ink); font-weight:600}
 
-  .cell-w{display:flex;flex-direction:column;gap:5px}
-  .w-slider{
-    -webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:4px;
-    background:linear-gradient(90deg,var(--gold) 0%,var(--gold) var(--pct,50%),#E3E7EC var(--pct,50%));
-    cursor:pointer;
-  }
-  .w-slider::-webkit-slider-thumb{
-    -webkit-appearance:none;width:17px;height:17px;border-radius:50%;
-    background:#fff;border:2px solid var(--gold);box-shadow:0 1px 3px rgba(20,27,38,.2);cursor:pointer;
-  }
-  .w-slider::-moz-range-thumb{
-    width:17px;height:17px;border-radius:50%;background:#fff;border:2px solid var(--gold);
-    box-shadow:0 1px 3px rgba(20,27,38,.2);cursor:pointer;
-  }
-  .w-slider:focus-visible{outline:2px solid var(--tm1);outline-offset:3px}
-  .w-read{
-    display:flex;justify-content:space-between;
-    font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink-faint);
-  }
-  .w-read .pctv{color:var(--ink);font-weight:700}
+  .thead{display:grid; grid-template-columns:minmax(0,1fr) 38px 38px 126px; align-items:center; gap:10px;
+    padding:0 4px 8px; border-bottom:1px solid var(--line); margin-bottom:3px;
+    font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint)}
+  .thead .c{text-align:center} .thead .th-tm1{color:var(--tm1)} .thead .th-pig{color:var(--pig)} .thead .th-w{text-align:left}
+  .trow{display:grid; grid-template-columns:minmax(0,1fr) 38px 38px 126px; align-items:center; gap:10px; padding:5px 4px}
+  .trow + .trow{border-top:1px solid #EEF1F5}
+  .trow.is-adopt{background:linear-gradient(90deg,var(--gold-soft),transparent); border-radius:8px}
+  .dim-name{font-weight:600; font-size:12.5px; letter-spacing:-.005em; line-height:1.18}
+  .dim-name .key{font-family:'JetBrains Mono',monospace; font-size:7.5px; font-weight:700; letter-spacing:.08em; color:var(--gold);
+    background:var(--gold-soft); padding:1px 5px; border-radius:10px; margin-left:6px; vertical-align:middle}
+  .dim-note{color:var(--ink-faint); font-size:10px; font-weight:400; margin-top:1px}
 
-  /* ---------- interpretation ---------- */
-  .read-panel{margin-top:34px}
-  .read-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
-  .read-card{
-    background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:18px;
-  }
-  .read-card .rc-lens{
-    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;
-    text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px;
-  }
-  .read-card .rc-win{font-weight:800;font-size:17px;letter-spacing:-.01em;margin-bottom:2px}
-  .read-card .rc-win.tm1{color:var(--tm1)}
-  .read-card .rc-win.pig{color:var(--pig)}
-  .read-card .rc-scores{
-    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-soft);margin-bottom:10px;
-  }
-  .read-card .rc-why{font-size:13px;color:var(--ink-soft);line-height:1.5}
+  .chip{justify-self:center; width:34px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:8px;
+    font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13.5px; font-variant-numeric:tabular-nums; position:relative}
+  .chip.tm1{background:var(--tm1-soft); color:var(--tm1)} .chip.pig{background:var(--pig-soft); color:var(--pig)}
+  .chip .tick{position:absolute; left:4px; right:4px; bottom:3px; height:2.5px; border-radius:2px; background:currentColor; opacity:.28; transform-origin:left}
 
-  .takeaway{
-    margin-top:24px;background:var(--ink);color:#fff;border-radius:16px;
-    padding:clamp(20px,3.2vw,30px);
-  }
-  .takeaway .section-label{color:rgba(255,255,255,.55)}
-  .takeaway p{font-size:clamp(15px,2.3vw,18px);line-height:1.55;max-width:64ch}
-  .takeaway p b{color:#fff;font-weight:700}
-  .takeaway .mistake{color:#F0C978;font-weight:600}
+  .cell-w{display:flex; flex-direction:column; gap:3px}
+  .w-slider{-webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:3px;
+    background:linear-gradient(90deg,var(--gold) 0%,var(--gold) var(--pct,50%),#E3E7EC var(--pct,50%)); cursor:pointer}
+  .w-slider::-webkit-slider-thumb{-webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#fff;
+    border:2px solid var(--gold); box-shadow:0 1px 3px rgba(20,27,38,.2); cursor:pointer}
+  .w-slider::-moz-range-thumb{width:14px; height:14px; border-radius:50%; background:#fff; border:2px solid var(--gold);
+    box-shadow:0 1px 3px rgba(20,27,38,.2); cursor:pointer}
+  .w-slider:focus-visible{outline:2px solid var(--tm1); outline-offset:3px}
+  .w-read{display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--ink-faint)}
+  .w-read .pctv{color:var(--ink); font-weight:700}
 
-  .caveat{
-    margin-top:26px;font-size:12.5px;color:var(--ink-faint);line-height:1.6;
-    border-top:1px solid var(--line);padding-top:18px;
-  }
-  .caveat b{color:var(--ink-soft);font-weight:600}
-  .foot{
-    margin-top:20px;font-family:'JetBrains Mono',monospace;font-size:11px;
-    letter-spacing:.08em;color:var(--ink-faint);
-    display:flex;align-items:center;gap:8px;
-  }
-  .foot .dot{width:5px;height:5px;border-radius:50%;background:var(--gold)}
+  .caveat{margin-top:11px; font-size:10px; color:var(--ink-faint); line-height:1.5; text-align:center}
+  .caveat b{color:var(--ink-soft); font-weight:600}
 
-  /* ---------- responsive ---------- */
-  @media(max-width:620px){
+  @media(max-width:780px){
+    body{align-items:flex-start}
+    .grid{grid-template-columns:1fr}
+    .lenses{grid-template-columns:1fr 1fr 1fr 1fr}
+  }
+  @media(max-width:520px){
     .thead{display:none}
-    .trow{
-      grid-template-columns:1fr 1fr;
-      grid-template-areas:"name name" "tm1 pig" "w w";
-      gap:12px 14px;padding:16px;
-    }
-    .trow .dim-cell{grid-area:name}
-    .trow .cell-tm1{grid-area:tm1;justify-self:start}
-    .trow .cell-pig{grid-area:pig;justify-self:start}
-    .trow .cell-w{grid-area:w}
-    .cell-score{width:100%;height:40px;border-radius:9px;gap:8px;flex-direction:row}
-    .cell-score::before{
-      font-family:'Archivo',sans-serif;font-weight:600;font-size:12px;letter-spacing:0;
-    }
-    .cell-score.tm1::before{content:"TM1"}
-    .cell-score.pig::before{content:"Pigment"}
-    .cell-score .tick{display:none}
-    .read-grid{grid-template-columns:1fr}
+    .trow{grid-template-columns:1fr 1fr; grid-template-areas:"name name" "tm1 pig" "w w"; gap:7px 10px; padding:10px 4px}
+    .trow .dim-cell{grid-area:name} .trow .cell-tm1{grid-area:tm1; justify-self:start} .trow .cell-pig{grid-area:pig; justify-self:start} .trow .cell-w{grid-area:w}
+    .chip{width:100%; height:32px; flex-direction:row; gap:7px}
+    .chip.tm1::before{content:"TM1"} .chip.pig::before{content:"Pigment"}
+    .chip::before{font-family:'Archivo',sans-serif; font-weight:600; font-size:11px}
+    .chip .tick{display:none}
+    .lenses{grid-template-columns:1fr 1fr}
   }
-  @media(prefers-reduced-motion:reduce){
-    .fill,.leads{transition:none}
-  }
+  @media(prefers-reduced-motion:reduce){ .fill,.leads{transition:none} }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="app">
 
-  <header>
-    <div class="eyebrow"><span class="dot"></span>falconbi · decision instrument</div>
-    <h1>IBM Planning Analytics <span class="vs">vs</span> Pigment</h1>
-    <p class="thesis">A weighted scorecard for the AI-era planning-platform choice. The scores are fixed; the <b>weights are yours to move</b>. Drag them — or switch lens — and watch the winner change. That's the whole point: <b>the weighting decides it.</b></p>
-  </header>
-
-  <!-- VERDICT -->
-  <section class="verdict" aria-label="Live verdict">
-    <div class="verdict-head">
-      <div class="lbl">Weighted verdict — <span class="lens-now" id="lensNow">Balanced</span> lens</div>
-      <div class="scale">score /10</div>
+  <div class="head">
+    <div>
+      <h1>IBM Planning Analytics <span class="vs">vs</span> Pigment</h1>
+      <p class="thesis">Scores are fixed; <b>the weights are yours to move.</b> Switch lens or drag — the winner changes. <b>The weighting decides it.</b></p>
     </div>
-
-    <div class="meter" id="meterTm1">
-      <div class="meter-top">
-        <div class="meter-name">
-          <span class="swatch tm1"></span>
-          <span class="nm">IBM Planning Analytics <span class="sub">(TM1)</span></span>
-        </div>
-        <div class="meter-right">
-          <span class="leads" id="leadTm1">Leads</span>
-          <span class="score-num" id="numTm1">6.7</span>
-        </div>
-      </div>
-      <div class="track"><div class="fill tm1" id="fillTm1"></div></div>
-    </div>
-
-    <div class="meter" id="meterPig">
-      <div class="meter-top">
-        <div class="meter-name">
-          <span class="swatch pig"></span>
-          <span class="nm">Pigment</span>
-        </div>
-        <div class="meter-right">
-          <span class="leads" id="leadPig">Leads</span>
-          <span class="score-num" id="numPig">7.4</span>
-        </div>
-      </div>
-      <div class="track"><div class="fill pig" id="fillPig"></div></div>
-    </div>
-
-    <div class="gap-note" id="gapNote"></div>
-  </section>
-
-  <!-- LENS SELECTOR -->
-  <div class="lens-block">
-    <div class="section-label">Choose a weighting lens</div>
-    <div class="lenses" role="group" aria-label="Weighting lens">
-      <button class="lens-btn" data-lens="balanced" aria-pressed="true">Balanced</button>
-      <button class="lens-btn" data-lens="builder" aria-pressed="false">Builder lens</button>
-      <button class="lens-btn" data-lens="user" aria-pressed="false">User lens</button>
-      <button class="lens-btn" data-lens="custom" aria-pressed="false">Custom</button>
-    </div>
+    <div class="brand"><span class="dot"></span>falconbi · decision instrument</div>
   </div>
 
-  <!-- TABLE -->
-  <div class="table" id="table">
-    <div class="thead">
-      <div>Dimension</div>
-      <div class="th-num th-tm1">TM1</div>
-      <div class="th-num th-pig">Pig</div>
-      <div class="th-w">Weight</div>
-    </div>
-    <!-- rows injected -->
+  <div class="grid">
+
+    <section class="panel p-pad" aria-label="Live verdict">
+      <div class="vhead">
+        <div class="lbl">Verdict — <span class="lens-now" id="lensNow">Balanced</span> lens</div>
+        <div class="scale">/10</div>
+      </div>
+
+      <div class="meter">
+        <div class="meter-top">
+          <div class="meter-name"><span class="swatch tm1"></span><span class="nm">Planning Analytics <span class="sub">(TM1)</span></span></div>
+          <div class="meter-right"><span class="leads" id="leadTm1">Leads</span><span class="score-num" id="numTm1">6.2</span></div>
+        </div>
+        <div class="track"><div class="fill tm1" id="fillTm1"></div></div>
+      </div>
+
+      <div class="meter">
+        <div class="meter-top">
+          <div class="meter-name"><span class="swatch pig"></span><span class="nm">Pigment</span></div>
+          <div class="meter-right"><span class="leads" id="leadPig">Leads</span><span class="score-num" id="numPig">7.2</span></div>
+        </div>
+        <div class="track"><div class="fill pig" id="fillPig"></div></div>
+      </div>
+
+      <div class="lens-label">Weighting lens</div>
+      <div class="lenses" role="group" aria-label="Weighting lens">
+        <button class="lens-btn" data-lens="balanced" aria-pressed="true">Balanced</button>
+        <button class="lens-btn" data-lens="builder" aria-pressed="false">Builder</button>
+        <button class="lens-btn" data-lens="user" aria-pressed="false">User</button>
+        <button class="lens-btn" data-lens="custom" aria-pressed="false">Custom</button>
+      </div>
+
+      <label class="adopt-toggle">
+        <input type="checkbox" id="multBox">
+        <span class="box"></span>
+        <span class="txt"><b>Adoption as precondition.</b> Scale the whole score by adoption — the best engine fails if no one uses it.</span>
+      </label>
+
+      <div class="gap-note" id="gapNote"></div>
+      <p class="takeaway">Weight openness, depth and the AI ceiling and TM1 takes the builder lens — on sovereignty and engine, its honest strengths. Everywhere else, adoption and UX carry Pigment.</p>
+    </section>
+
+    <section class="panel p-pad" aria-label="Scored dimensions">
+      <div class="thead">
+        <div>Dimension</div>
+        <div class="c th-tm1">TM1</div>
+        <div class="c th-pig">Pig</div>
+        <div class="th-w">Weight</div>
+      </div>
+      <div id="rows"></div>
+    </section>
+
   </div>
 
-  <!-- INTERPRETATION -->
-  <section class="read-panel">
-    <div class="section-label">How the three lenses land</div>
-    <div class="read-grid">
-      <div class="read-card">
-        <div class="rc-lens">Balanced</div>
-        <div class="rc-win pig">Pigment</div>
-        <div class="rc-scores">7.4 vs 6.7</div>
-        <div class="rc-why">With no lens applied, more of what an organisation values — UX, adoption, safety, governance maturity — falls Pigment's way.</div>
-      </div>
-      <div class="read-card">
-        <div class="rc-lens">Builder lens</div>
-        <div class="rc-win tm1">TM1</div>
-        <div class="rc-scores">7.3 vs 6.9</div>
-        <div class="rc-why">Weight the open, writable surface and external-AI ceiling heavily and IBM takes it. This is its home turf.</div>
-      </div>
-      <div class="read-card">
-        <div class="rc-lens">User lens</div>
-        <div class="rc-win pig">Pigment</div>
-        <div class="rc-scores">7.9 vs 6.1</div>
-        <div class="rc-why">Weight everyday experience and adoption and it isn't close — and adoption quietly protects governance too.</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- TAKEAWAY -->
-  <section class="takeaway">
-    <div class="section-label">Bottom line</div>
-    <p>TM1 only wins when you deliberately weight for the <b>builder's seat</b>. Under a balanced or user-centric view, Pigment edges ahead — largely because ease of use and adoption keep the work (and the data) inside the governed environment. <br><br><span class="mistake">The common mistake:</span> buying for the builder's ceiling and then losing everyday users to spreadsheets — or buying for the clean interface and hitting a wall on an ambitious build. The scores don't pick the tool. <b>Whose seat you're optimising for does.</b></p>
-  </section>
-
-  <p class="caveat"><b>Method &amp; honesty note.</b> Scores (1–10) are a considered calibration, not vendor benchmarks — reasonable people could shift any single score a point or two. The weighted total is the score-weighted average, normalised so the weights always resolve even when they don't sum to 100. The three preset lenses are illustrative; plug in your own organisation's real weights and the totals move. Treat this as a reasoning aid for a decision, not a verdict handed down.</p>
-
-  <div class="foot"><span class="dot"></span>falconbi — open methodology · vendor-agnostic</div>
+  <p class="caveat"><b>Scores are a considered calibration, not vendor benchmarks</b> — shift them and the verdict shifts. Presets are illustrative; use your own weights. A reasoning aid, not a verdict.</p>
 
 </div>
 
 <script>
 (function(){
   "use strict";
-
-  var DIMS = [
-    {key:"build", name:"Developer / builder power",   note:"Open, writable surface for building", tm1:9, pig:5},
-    {key:"ceil",  name:"External-AI ceiling",          note:"What a connected frontier AI can do", tm1:9, pig:6},
-    {key:"native",name:"Built-in AI maturity",         note:"Out-of-the-box agents, today",        tm1:6, pig:8},
-    {key:"access",name:"Access-rights enforcement",    note:"AI honours who-can-see-what",         tm1:7, pig:8},
-    {key:"safe",  name:"Safety by default",            note:"Low config burden, guardrails built in", tm1:5, pig:8},
-    {key:"ui",    name:"Everyday UI / experience",     note:"The interface people live in",        tm1:5, pig:9},
-    {key:"adopt", name:"Adoption / stickiness",        note:"Do users stay in the tool?",          tm1:5, pig:8}
+  var DIMS=[
+    {name:"Build ergonomics / iteration", note:"Rename, shared objects, fast change", tm1:5, pig:8, adopt:false},
+    {name:"Engine depth & builder ecosystem", note:"API depth, Bedrock/TM1py, mature patterns", tm1:9, pig:5, adopt:false},
+    {name:"Openness / deployment control", note:"On-prem, private cloud, own-AI in-house", tm1:9, pig:4, adopt:false},
+    {name:"External-AI ceiling", note:"What connected AI can do", tm1:9, pig:6, adopt:false},
+    {name:"Built-in AI maturity", note:"Out-of-the-box, today", tm1:6, pig:8, adopt:false},
+    {name:"Access-rights enforcement", note:"AI honours who-sees-what", tm1:7, pig:8, adopt:false},
+    {name:"Safety by default", note:"Low config burden", tm1:5, pig:8, adopt:false},
+    {name:"Everyday UI / experience", note:"Dashboards, charts, modernity", tm1:3, pig:9, adopt:false},
+    {name:"Adoption / stickiness", note:"Do users stay in the tool?", tm1:4, pig:8, adopt:true}
   ];
-
-  var PRESETS = {
-    balanced: [15,15,15,15,10,15,15],
-    builder:  [25,25,10,10, 5,10,15],
-    user:     [ 5,10,15,15,15,25,15]
+  var PRESETS={
+    balanced:[11,11,10,11,10,11, 9,11,16],
+    builder: [12,16,16,15, 6, 8, 5, 6,16],
+    user:    [ 6, 3, 3, 6,12,13,12,21,24]
   };
-  var LENS_LABEL = {balanced:"Balanced", builder:"Builder", user:"User", custom:"Custom"};
+  var LABEL={balanced:"Balanced",builder:"Builder",user:"User",custom:"Custom"};
+  var ADOPT_IDX=8;
+  var weights=PRESETS.balanced.slice();
+  var useMult=false;
+  var rowsEl=document.getElementById("rows");
+  var sliders=[];
 
-  var weights = PRESETS.balanced.slice();
-  var activeLens = "balanced";
-
-  var tableEl = document.getElementById("table");
-  var sliders = [];
-
-  // build rows
-  DIMS.forEach(function(d, i){
-    var row = document.createElement("div");
-    row.className = "trow";
-    row.innerHTML =
-      '<div class="dim-cell">'+
-        '<div class="dim-name">'+d.name+'</div>'+
-        '<div class="dim-note">'+d.note+'</div>'+
-      '</div>'+
-      '<div class="cell-score tm1 cell-tm1">'+d.tm1+'<span class="tick" style="transform:scaleX('+(d.tm1/10)+')"></span></div>'+
-      '<div class="cell-score pig cell-pig">'+d.pig+'<span class="tick" style="transform:scaleX('+(d.pig/10)+')"></span></div>'+
-      '<div class="cell-w">'+
-        '<input type="range" class="w-slider" min="0" max="30" step="1" value="'+weights[i]+'" '+
-          'aria-label="Weight for '+d.name+'">'+
-        '<div class="w-read"><span>weight '+weights[i]+'</span><span class="pctv">0%</span></div>'+
-      '</div>';
-    tableEl.appendChild(row);
-    var slider = row.querySelector(".w-slider");
-    (function(idx){
-      slider.addEventListener("input", function(){
-        weights[idx] = parseInt(slider.value,10);
-        setLens("custom", false);   // manual drag => custom, don't reset weights
-        render();
-      });
-    })(i);
-    sliders.push(slider);
+  DIMS.forEach(function(d,i){
+    var row=document.createElement("div");
+    row.className="trow"+(d.adopt?" is-adopt":"");
+    row.innerHTML=
+      '<div class="dim-cell"><div class="dim-name">'+d.name+(d.adopt?'<span class="key">key</span>':'')+'</div><div class="dim-note">'+d.note+'</div></div>'+
+      '<div class="chip tm1 cell-tm1">'+d.tm1+'<span class="tick" style="transform:scaleX('+(d.tm1/10)+')"></span></div>'+
+      '<div class="chip pig cell-pig">'+d.pig+'<span class="tick" style="transform:scaleX('+(d.pig/10)+')"></span></div>'+
+      '<div class="cell-w"><input type="range" class="w-slider" min="0" max="30" step="1" value="'+weights[i]+'" aria-label="Weight for '+d.name+'">'+
+      '<div class="w-read"><span class="wv">weight '+weights[i]+'</span><span class="pctv">0%</span></div></div>';
+    rowsEl.appendChild(row);
+    var s=row.querySelector(".w-slider");
+    (function(idx){ s.addEventListener("input",function(){ weights[idx]=parseInt(s.value,10); setLens("custom"); render(); }); })(i);
+    sliders.push(s);
   });
 
-  var lensBtns = Array.prototype.slice.call(document.querySelectorAll(".lens-btn"));
-  lensBtns.forEach(function(btn){
-    btn.addEventListener("click", function(){
-      var lens = btn.getAttribute("data-lens");
-      if(lens !== "custom" && PRESETS[lens]){
-        weights = PRESETS[lens].slice();
-        syncSliders();
-      }
-      setLens(lens, true);
-      render();
+  var btns=Array.prototype.slice.call(document.querySelectorAll(".lens-btn"));
+  btns.forEach(function(b){
+    b.addEventListener("click",function(){
+      var l=b.getAttribute("data-lens");
+      if(l!=="custom"&&PRESETS[l]){ weights=PRESETS[l].slice(); sync(); }
+      setLens(l); render();
     });
   });
+  document.getElementById("multBox").addEventListener("change",function(e){ useMult=e.target.checked; render(); });
 
-  function setLens(lens, fromButton){
-    activeLens = lens;
-    lensBtns.forEach(function(b){
-      b.setAttribute("aria-pressed", b.getAttribute("data-lens")===lens ? "true":"false");
-    });
-    document.getElementById("lensNow").textContent = LENS_LABEL[lens];
+  function setLens(l){
+    btns.forEach(function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-lens")===l?"true":"false"); });
+    document.getElementById("lensNow").textContent=LABEL[l];
   }
-
-  function syncSliders(){
-    sliders.forEach(function(s,i){ s.value = weights[i]; });
-  }
-
-  function weightedTotal(field){
-    var sum=0, wsum=0;
-    for(var i=0;i<DIMS.length;i++){
-      sum += DIMS[i][field]*weights[i];
-      wsum += weights[i];
-    }
-    if(wsum===0) return 0;
-    return sum/wsum;
-  }
+  function sync(){ sliders.forEach(function(s,i){ s.value=weights[i]; }); }
+  function weighted(f){ var s=0,w=0; for(var i=0;i<DIMS.length;i++){ s+=DIMS[i][f]*weights[i]; w+=weights[i]; } return w===0?0:s/w; }
+  function total(f){ var base=weighted(f); return useMult ? base*(DIMS[ADOPT_IDX][f]/10) : base; }
 
   function render(){
-    var totalW = weights.reduce(function(a,b){return a+b;},0);
-
-    // per-row weight readouts + slider gradient
+    var tw=weights.reduce(function(a,b){return a+b;},0);
     sliders.forEach(function(s,i){
-      var pct = totalW>0 ? Math.round(weights[i]/totalW*100) : 0;
-      var row = s.closest(".trow");
-      row.querySelector(".w-read").children[0].textContent = "weight "+weights[i];
-      row.querySelector(".pctv").textContent = pct+"%";
-      var fillPos = (weights[i]/30)*100;
-      s.style.setProperty("--pct", fillPos+"%");
+      var pct=tw>0?Math.round(weights[i]/tw*100):0;
+      var row=s.closest(".trow");
+      row.querySelector(".wv").textContent="weight "+weights[i];
+      row.querySelector(".pctv").textContent=pct+"%";
+      s.style.setProperty("--pct",((weights[i]/30)*100)+"%");
     });
-
-    var tm1 = weightedTotal("tm1");
-    var pig = weightedTotal("pig");
-
-    document.getElementById("numTm1").textContent = tm1.toFixed(1);
-    document.getElementById("numPig").textContent = pig.toFixed(1);
-    document.getElementById("fillTm1").style.width = (tm1*10)+"%";
-    document.getElementById("fillPig").style.width = (pig*10)+"%";
-
-    var tm1Leads = tm1 > pig + 0.05;
-    var pigLeads = pig > tm1 + 0.05;
-    document.getElementById("leadTm1").classList.toggle("on", tm1Leads);
-    document.getElementById("leadPig").classList.toggle("on", pigLeads);
-
-    var gap = Math.abs(tm1-pig).toFixed(1);
-    var g = document.getElementById("gapNote");
-    if(totalW===0){
-      g.innerHTML = "Add some weight to any dimension to compute a verdict.";
-    } else if(tm1Leads){
-      g.innerHTML = "<b>IBM Planning Analytics leads</b> by "+gap+" under this weighting — the builder-facing dimensions are carrying it.";
-    } else if(pigLeads){
-      g.innerHTML = "<b>Pigment leads</b> by "+gap+" under this weighting — experience, adoption and safety are doing the work.";
-    } else {
-      g.innerHTML = "<b>Dead heat.</b> Under this weighting the two are within a rounding point of each other.";
-    }
+    var t=total("tm1"), p=total("pig");
+    document.getElementById("numTm1").textContent=t.toFixed(1);
+    document.getElementById("numPig").textContent=p.toFixed(1);
+    document.getElementById("fillTm1").style.width=(t*10)+"%";
+    document.getElementById("fillPig").style.width=(p*10)+"%";
+    var tl=t>p+0.05, pl=p>t+0.05;
+    document.getElementById("leadTm1").classList.toggle("on",tl);
+    document.getElementById("leadPig").classList.toggle("on",pl);
+    var gap=Math.abs(t-p).toFixed(1), g=document.getElementById("gapNote");
+    var pre=useMult?"<b>Adoption-scaled.</b> ":"";
+    if(tw===0){ g.innerHTML="Add weight to any dimension to compute a verdict."; }
+    else if(tl){ g.innerHTML=pre+"<b>TM1 leads</b> by "+gap+" here — openness, depth and the AI ceiling carry it."; }
+    else if(pl){ g.innerHTML=pre+"<b>Pigment leads</b> by "+gap+" here — adoption, experience and safety do the work."; }
+    else{ g.innerHTML=pre+"<b>Dead heat</b> — within a rounding point under this weighting."; }
   }
-
-  syncSliders();
-  render();
+  sync(); render();
 })();
 </script>
 </body>
