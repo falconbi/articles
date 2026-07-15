@@ -14,127 +14,142 @@
     --tm1:#0F62FE; --tm1-soft:rgba(15,98,254,.12);
     --pig:#6E45E8; --pig-soft:rgba(110,69,232,.12);
     --gold:#B8791A; --gold-soft:rgba(184,121,26,.14);
-    --shadow:0 1px 2px rgba(20,27,38,.04),0 10px 26px rgba(20,27,38,.07);
+    --shadow:0 1px 2px rgba(20,27,38,.04),0 8px 22px rgba(20,27,38,.07);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
   body{
     background:var(--paper); color:var(--ink);
-    font-family:'Archivo',system-ui,sans-serif; line-height:1.4; -webkit-font-smoothing:antialiased;
-    min-height:100vh; display:flex; align-items:center; justify-content:center;
-    padding:clamp(10px,2vw,20px);
+    font-family:'Archivo',system-ui,sans-serif; line-height:1.35; -webkit-font-smoothing:antialiased;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:clamp(8px,1.6vw,16px);
   }
-  .app{width:100%; max-width:1100px}
+  .app{width:100%; max-width:1120px}
 
-  .head{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:12px; flex-wrap:wrap}
-  .head h1{font-size:clamp(18px,2.7vw,26px); font-weight:800; letter-spacing:-.025em; line-height:1.05}
+  .head{display:flex; justify-content:space-between; align-items:flex-end; gap:14px; margin-bottom:10px; flex-wrap:wrap}
+  .head h1{font-size:clamp(17px,2.5vw,24px); font-weight:800; letter-spacing:-.025em; line-height:1.03}
   .head h1 .vs{color:var(--ink-faint); font-weight:500}
-  .head .thesis{font-size:12px; color:var(--ink-soft); max-width:46ch; margin-top:4px}
+  .head .thesis{font-size:11.5px; color:var(--ink-soft); max-width:48ch; margin-top:3px}
   .head .thesis b{color:var(--ink); font-weight:600}
-  .brand{font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase;
-    color:var(--ink-faint); display:flex; align-items:center; gap:7px; white-space:nowrap}
+  .brand{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--ink-faint); display:flex; align-items:center; gap:6px; white-space:nowrap}
   .brand .dot{width:5px;height:5px;border-radius:50%;background:var(--gold)}
 
-  .grid{display:grid; grid-template-columns:minmax(0,0.8fr) minmax(0,1.2fr); gap:14px}
-  .panel{background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow)}
-  .p-pad{padding:clamp(13px,1.7vw,18px)}
+  .grid{display:grid; grid-template-columns:minmax(0,0.78fr) minmax(0,1.22fr); gap:12px}
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:13px; box-shadow:var(--shadow)}
+  .p-pad{padding:clamp(11px,1.5vw,15px)}
 
-  .vhead{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px}
-  .vhead .lbl{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint)}
+  .vhead{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px}
+  .vhead .lbl{font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint)}
   .vhead .lens-now{color:var(--ink); font-weight:700}
-  .vhead .scale{font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--ink-faint)}
+  .vhead .scale{font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--ink-faint)}
 
-  .meter{margin-bottom:11px}
-  .meter-top{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:5px}
-  .meter-name{display:flex; align-items:center; gap:8px; min-width:0}
-  .swatch{width:10px;height:10px;border-radius:3px;flex:none}
+  .meter{margin-bottom:9px}
+  .meter-top{display:flex; justify-content:space-between; align-items:center; gap:7px; margin-bottom:4px}
+  .meter-name{display:flex; align-items:center; gap:7px; min-width:0}
+  .swatch{width:9px;height:9px;border-radius:3px;flex:none}
   .swatch.tm1{background:var(--tm1)} .swatch.pig{background:var(--pig)}
-  .meter-name .nm{font-weight:700; font-size:13px; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .meter-name .sub{color:var(--ink-faint); font-size:11px; font-weight:500}
-  .meter-right{display:flex; align-items:center; gap:9px; flex:none}
-  .leads{font-family:'JetBrains Mono',monospace; font-size:8.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-    color:var(--gold); background:var(--gold-soft); padding:3px 6px; border-radius:20px; opacity:0; transition:opacity .3s ease; white-space:nowrap}
+  .meter-name .nm{font-weight:700; font-size:12.5px; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .meter-name .sub{color:var(--ink-faint); font-size:10.5px; font-weight:500}
+  .meter-right{display:flex; align-items:center; gap:8px; flex:none}
+  .leads{font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--gold); background:var(--gold-soft); padding:2px 6px; border-radius:20px; opacity:0; transition:opacity .3s ease; white-space:nowrap}
   .leads.on{opacity:1}
-  .score-num{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:clamp(19px,2.8vw,25px);
+  .score-num{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:clamp(18px,2.6vw,23px);
     letter-spacing:-.01em; font-variant-numeric:tabular-nums; min-width:2.4ch; text-align:right}
-  .track{height:10px; border-radius:6px; background:#EDF0F4; overflow:hidden}
-  .fill{height:100%; border-radius:6px; width:0; transition:width .55s cubic-bezier(.22,.61,.36,1)}
+  .track{height:9px; border-radius:6px; background:#EDF0F4; overflow:hidden}
+  .fill{height:100%; border-radius:6px; width:0; transition:width .5s cubic-bezier(.22,.61,.36,1)}
   .fill.tm1{background:linear-gradient(90deg,#0F62FE,#4C8DFF)}
   .fill.pig{background:linear-gradient(90deg,#6E45E8,#9B7CFF)}
 
-  .lens-label{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.12em; text-transform:uppercase;
-    color:var(--ink-faint); margin:14px 0 7px}
-  .lenses{display:grid; grid-template-columns:1fr 1fr; gap:6px}
-  .lens-btn{font-family:'Archivo',sans-serif; font-size:12.5px; font-weight:600; color:var(--ink-soft);
-    background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:7px 10px; cursor:pointer;
+  .lens-label{font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-faint); margin:12px 0 6px; display:flex; justify-content:space-between; align-items:center}
+  .lens-label .hint{text-transform:none; letter-spacing:0; color:var(--ink-faint); font-family:'Archivo',sans-serif; font-size:10px; font-weight:500}
+  .lens-label .hint b{color:var(--gold); font-weight:700}
+  .lenses{display:grid; grid-template-columns:repeat(4,1fr); gap:5px}
+  .lens-btn{font-family:'Archivo',sans-serif; font-size:11.5px; font-weight:600; color:var(--ink-soft);
+    background:var(--surface); border:1px solid var(--line); border-radius:7px; padding:7px 4px; cursor:pointer; text-align:center;
     transition:border-color .16s,color .16s,background .16s}
   .lens-btn:hover{border-color:var(--line-strong); color:var(--ink)}
   .lens-btn[aria-pressed="true"]{background:var(--ink); color:#fff; border-color:var(--ink)}
   .lens-btn:focus-visible{outline:2px solid var(--tm1); outline-offset:2px}
 
-  .adopt-toggle{display:flex; align-items:center; gap:9px; margin-top:11px; padding:8px 10px;
-    background:var(--gold-soft); border:1px solid rgba(184,121,26,.28); border-radius:9px; cursor:pointer; user-select:none}
+  .adopt-toggle{display:flex; align-items:center; gap:8px; margin-top:10px; padding:7px 9px;
+    background:var(--gold-soft); border:1px solid rgba(184,121,26,.28); border-radius:8px; cursor:pointer; user-select:none}
   .adopt-toggle input{position:absolute; opacity:0; width:0; height:0}
-  .adopt-toggle .box{width:16px; height:16px; border-radius:4px; border:2px solid var(--gold); flex:none; position:relative; transition:background .16s}
+  .adopt-toggle .box{width:15px; height:15px; border-radius:4px; border:2px solid var(--gold); flex:none; position:relative; transition:background .16s}
   .adopt-toggle input:checked + .box{background:var(--gold)}
-  .adopt-toggle input:checked + .box::after{content:""; position:absolute; left:3px; top:0; width:5px; height:9px;
+  .adopt-toggle input:checked + .box::after{content:""; position:absolute; left:3px; top:0; width:4px; height:8px;
     border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg)}
   .adopt-toggle input:focus-visible + .box{outline:2px solid var(--tm1); outline-offset:2px}
-  .adopt-toggle .txt{font-size:11px; line-height:1.3; color:var(--ink-soft)}
+  .adopt-toggle .txt{font-size:10.5px; line-height:1.28; color:var(--ink-soft)}
   .adopt-toggle .txt b{color:var(--ink); font-weight:700}
 
-  .gap-note{margin-top:12px; padding-top:11px; border-top:1px solid var(--line); font-size:12px; color:var(--ink-soft); line-height:1.4}
+  .gap-note{margin-top:10px; padding-top:9px; border-top:1px solid var(--line); font-size:11.5px; color:var(--ink-soft); line-height:1.38}
   .gap-note b{color:var(--ink); font-weight:700}
-  .takeaway{margin-top:9px; font-size:11.5px; color:var(--ink-soft); line-height:1.45}
+  .takeaway{margin-top:8px; font-size:11px; color:var(--ink-soft); line-height:1.42}
   .takeaway b{color:var(--ink); font-weight:600}
 
-  .thead{display:grid; grid-template-columns:minmax(0,1fr) 38px 38px 126px; align-items:center; gap:10px;
-    padding:0 4px 8px; border-bottom:1px solid var(--line); margin-bottom:3px;
-    font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint)}
+  .thead{display:grid; grid-template-columns:minmax(0,1fr) 34px 34px 116px; align-items:center; gap:9px;
+    padding:0 3px 7px; border-bottom:1px solid var(--line); margin-bottom:2px;
+    font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint)}
   .thead .c{text-align:center} .thead .th-tm1{color:var(--tm1)} .thead .th-pig{color:var(--pig)} .thead .th-w{text-align:left}
-  .trow{display:grid; grid-template-columns:minmax(0,1fr) 38px 38px 126px; align-items:center; gap:10px; padding:5px 4px}
-  .trow + .trow{border-top:1px solid #EEF1F5}
-  .trow.is-adopt{background:linear-gradient(90deg,var(--gold-soft),transparent); border-radius:8px}
-  .dim-name{font-weight:600; font-size:12.5px; letter-spacing:-.005em; line-height:1.18}
-  .dim-name .key{font-family:'JetBrains Mono',monospace; font-size:7.5px; font-weight:700; letter-spacing:.08em; color:var(--gold);
-    background:var(--gold-soft); padding:1px 5px; border-radius:10px; margin-left:6px; vertical-align:middle}
-  .dim-note{color:var(--ink-faint); font-size:10px; font-weight:400; margin-top:1px}
+  .trow{display:grid; grid-template-columns:minmax(0,1fr) 34px 34px 116px; align-items:center; gap:9px; padding:4px 3px}
+  .trow + .trow{border-top:1px solid #F0F2F5}
+  .trow.is-adopt{background:linear-gradient(90deg,var(--gold-soft),transparent); border-radius:7px}
+  .dim-name{font-weight:600; font-size:12px; letter-spacing:-.005em; line-height:1.15; display:flex; align-items:center; flex-wrap:wrap; gap:2px}
+  .dim-name .key{font-family:'JetBrains Mono',monospace; font-size:7px; font-weight:700; letter-spacing:.08em; color:var(--gold);
+    background:var(--gold-soft); padding:1px 4px; border-radius:9px; vertical-align:middle}
+  .dim-note{color:var(--ink-faint); font-size:9.5px; font-weight:400; margin-top:0}
+  .info-btn{width:14px; height:14px; border-radius:50%; border:1px solid var(--line-strong); background:var(--surface);
+    color:var(--ink-faint); font-family:'JetBrains Mono',monospace; font-size:8.5px; font-weight:700; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; line-height:1; padding:0; flex:none}
+  .info-btn:hover{border-color:var(--ink-soft); color:var(--ink)}
+  .info-btn:focus-visible{outline:2px solid var(--tm1); outline-offset:2px}
 
-  .chip{justify-self:center; width:34px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:8px;
-    font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13.5px; font-variant-numeric:tabular-nums; position:relative}
+  .chip{justify-self:center; width:32px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:7px;
+    font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; font-variant-numeric:tabular-nums; position:relative}
   .chip.tm1{background:var(--tm1-soft); color:var(--tm1)} .chip.pig{background:var(--pig-soft); color:var(--pig)}
-  .chip .tick{position:absolute; left:4px; right:4px; bottom:3px; height:2.5px; border-radius:2px; background:currentColor; opacity:.28; transform-origin:left}
+  .chip .tick{position:absolute; left:4px; right:4px; bottom:3px; height:2px; border-radius:2px; background:currentColor; opacity:.28; transform-origin:left}
 
   .cell-w{display:flex; flex-direction:column; gap:3px}
   .w-slider{-webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:3px;
     background:linear-gradient(90deg,var(--gold) 0%,var(--gold) var(--pct,50%),#E3E7EC var(--pct,50%)); cursor:pointer}
-  .w-slider::-webkit-slider-thumb{-webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#fff;
-    border:2px solid var(--gold); box-shadow:0 1px 3px rgba(20,27,38,.2); cursor:pointer}
-  .w-slider::-moz-range-thumb{width:14px; height:14px; border-radius:50%; background:#fff; border:2px solid var(--gold);
-    box-shadow:0 1px 3px rgba(20,27,38,.2); cursor:pointer}
+  .w-slider::-webkit-slider-thumb{-webkit-appearance:none; width:13px; height:13px; border-radius:50%; background:#fff;
+    border:2px solid var(--gold); box-shadow:0 1px 2px rgba(20,27,38,.2); cursor:pointer}
+  .w-slider::-moz-range-thumb{width:13px; height:13px; border-radius:50%; background:#fff; border:2px solid var(--gold);
+    box-shadow:0 1px 2px rgba(20,27,38,.2); cursor:pointer}
   .w-slider:focus-visible{outline:2px solid var(--tm1); outline-offset:3px}
-  .w-read{display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--ink-faint)}
+  .w-read{display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:8.5px; color:var(--ink-faint)}
   .w-read .pctv{color:var(--ink); font-weight:700}
 
-  .caveat{margin-top:11px; font-size:10px; color:var(--ink-faint); line-height:1.5; text-align:center}
+  .caveat{margin-top:9px; font-size:9.5px; color:var(--ink-faint); line-height:1.45; text-align:center}
   .caveat b{color:var(--ink-soft); font-weight:600}
+
+  /* rationale popover */
+  #pop{position:fixed; z-index:60; max-width:272px; background:#fff; border:1px solid var(--line); border-radius:11px;
+    box-shadow:0 4px 10px rgba(20,27,38,.10),0 18px 42px rgba(20,27,38,.16); padding:12px 13px;
+    opacity:0; pointer-events:none; transform:translateY(3px); transition:opacity .14s ease, transform .14s ease}
+  #pop.on{opacity:1; pointer-events:auto; transform:translateY(0)}
+  #pop .pop-title{font-weight:700; font-size:12px; letter-spacing:-.01em; margin-bottom:8px}
+  #pop .pop-row{display:flex; gap:8px; margin-top:7px; align-items:flex-start}
+  #pop .pop-tag{font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; padding:2px 6px; border-radius:6px; flex:none; white-space:nowrap}
+  #pop .pop-tag.tm1{background:var(--tm1-soft); color:var(--tm1)} #pop .pop-tag.pig{background:var(--pig-soft); color:var(--pig)}
+  #pop .pop-txt{font-size:11px; color:var(--ink-soft); line-height:1.4}
 
   @media(max-width:780px){
     body{align-items:flex-start}
     .grid{grid-template-columns:1fr}
-    .lenses{grid-template-columns:1fr 1fr 1fr 1fr}
   }
   @media(max-width:520px){
     .thead{display:none}
-    .trow{grid-template-columns:1fr 1fr; grid-template-areas:"name name" "tm1 pig" "w w"; gap:7px 10px; padding:10px 4px}
+    .trow{grid-template-columns:1fr 1fr; grid-template-areas:"name name" "tm1 pig" "w w"; gap:6px 9px; padding:9px 3px}
     .trow .dim-cell{grid-area:name} .trow .cell-tm1{grid-area:tm1; justify-self:start} .trow .cell-pig{grid-area:pig; justify-self:start} .trow .cell-w{grid-area:w}
-    .chip{width:100%; height:32px; flex-direction:row; gap:7px}
+    .chip{width:100%; height:30px; flex-direction:row; gap:6px}
     .chip.tm1::before{content:"TM1"} .chip.pig::before{content:"Pigment"}
-    .chip::before{font-family:'Archivo',sans-serif; font-weight:600; font-size:11px}
+    .chip::before{font-family:'Archivo',sans-serif; font-weight:600; font-size:10.5px}
     .chip .tick{display:none}
-    .lenses{grid-template-columns:1fr 1fr}
   }
-  @media(prefers-reduced-motion:reduce){ .fill,.leads{transition:none} }
+  @media(prefers-reduced-motion:reduce){ .fill,.leads,#pop{transition:none} }
 </style>
 </head>
 <body>
@@ -143,7 +158,7 @@
   <div class="head">
     <div>
       <h1>IBM Planning Analytics <span class="vs">vs</span> Pigment</h1>
-      <p class="thesis">Scores are fixed; <b>the weights are yours to move.</b> Switch lens or drag — the winner changes. <b>The weighting decides it.</b></p>
+      <p class="thesis">Scores fixed; <b>weights are yours to move.</b> Switch lens or drag — the winner changes. <b>The weighting decides it.</b></p>
     </div>
     <div class="brand"><span class="dot"></span>falconbi · decision instrument</div>
   </div>
@@ -172,7 +187,7 @@
         <div class="track"><div class="fill pig" id="fillPig"></div></div>
       </div>
 
-      <div class="lens-label">Weighting lens</div>
+      <div class="lens-label"><span>Weighting lens</span><span class="hint">tap <b>&#9432;</b> for the base case</span></div>
       <div class="lenses" role="group" aria-label="Weighting lens">
         <button class="lens-btn" data-lens="balanced" aria-pressed="true">Balanced</button>
         <button class="lens-btn" data-lens="builder" aria-pressed="false">Builder</button>
@@ -187,7 +202,7 @@
       </label>
 
       <div class="gap-note" id="gapNote"></div>
-      <p class="takeaway">Weight openness, depth and the AI ceiling and TM1 takes the builder lens — on sovereignty and engine, its honest strengths. Everywhere else, adoption and UX carry Pigment.</p>
+      <p class="takeaway">At moderate complexity the builder call is a coin-toss. Push <b>engine depth</b> up — the truly advanced models — and TM1 pulls ahead. Below that, adoption and UX carry Pigment.</p>
     </section>
 
     <section class="panel p-pad" aria-label="Scored dimensions">
@@ -202,27 +217,52 @@
 
   </div>
 
-  <p class="caveat"><b>Scores are a considered calibration, not vendor benchmarks</b> — shift them and the verdict shifts. Presets are illustrative; use your own weights. A reasoning aid, not a verdict.</p>
+  <p class="caveat"><b>A considered calibration, not vendor benchmarks.</b> Presets are illustrative — use your own weights. A reasoning aid, not a verdict.</p>
 
+</div>
+
+<!-- rationale popover -->
+<div id="pop" role="tooltip" aria-hidden="true">
+  <div class="pop-title"></div>
+  <div class="pop-row"><span class="pop-tag tm1"></span><span class="pop-txt" data-side="tm1"></span></div>
+  <div class="pop-row"><span class="pop-tag pig"></span><span class="pop-txt" data-side="pig"></span></div>
 </div>
 
 <script>
 (function(){
   "use strict";
   var DIMS=[
-    {name:"Build ergonomics / iteration", note:"Rename, shared objects, fast change", tm1:5, pig:8, adopt:false},
-    {name:"Engine depth & builder ecosystem", note:"API depth, Bedrock/TM1py, mature patterns", tm1:9, pig:5, adopt:false},
-    {name:"Openness / deployment control", note:"On-prem, private cloud, own-AI in-house", tm1:9, pig:4, adopt:false},
-    {name:"External-AI ceiling", note:"What connected AI can do", tm1:9, pig:6, adopt:false},
-    {name:"Built-in AI maturity", note:"Out-of-the-box, today", tm1:6, pig:8, adopt:false},
-    {name:"Access-rights enforcement", note:"AI honours who-sees-what", tm1:7, pig:8, adopt:false},
-    {name:"Safety by default", note:"Low config burden", tm1:5, pig:8, adopt:false},
-    {name:"Everyday UI / experience", note:"Dashboards, charts, modernity", tm1:3, pig:9, adopt:false},
-    {name:"Adoption / stickiness", note:"Do users stay in the tool?", tm1:4, pig:8, adopt:true}
+    {name:"Build ergonomics / iteration", note:"Rename, shared objects, fast change", tm1:5, pig:8, adopt:false,
+      rtm1:"Powerful, but edits ripple through rules and feeders, and objects are harder to refactor cleanly.",
+      rpig:"Native rename, shared/reusable objects and clean propagation make iterating fast and low-rework."},
+    {name:"Engine depth & builder ecosystem", note:"API depth, Bedrock/TM1py, mature patterns", tm1:9, pig:5, adopt:false,
+      rtm1:"Deep writable REST API, 30+ years of documented best-practice patterns, mature open tooling (Bedrock, TM1py, Arc).",
+      rpig:"Capable but young — far less accumulated tooling, community depth and established patterns."},
+    {name:"Openness / deployment control", note:"On-prem, private cloud, own-AI in-house", tm1:9, pig:4, adopt:false,
+      rtm1:"Runs on-prem or private cloud; you can keep the entire AI loop in-house on your own models.",
+      rpig:"SaaS-only and vendor-AI-mediated — simpler and safer, but no data or deployment sovereignty."},
+    {name:"External-AI ceiling", note:"What connected AI can do", tm1:9, pig:6, adopt:false,
+      rtm1:"Deep, writable API lets a connected frontier model read, write and restructure a live model.",
+      rpig:"Governed MCP surface is deliberately narrower and read-oriented — lower ceiling, safer default."},
+    {name:"Built-in AI maturity", note:"Out-of-the-box, today", tm1:6, pig:8, adopt:false,
+      rtm1:"Native assistant is younger and more conservative (Granite-tier), mostly querying-focused.",
+      rpig:"Mature, shipping agent network today — Analyst, Modeler, Planner, Consolidation."},
+    {name:"Access-rights enforcement", note:"AI honours who-sees-what", tm1:7, pig:8, adopt:false,
+      rtm1:"Enforced, but the open route puts more onus on you to configure and prove it.",
+      rpig:"AI runs under the user's own login; native governance is more turnkey and proven."},
+    {name:"Safety by default", note:"Low config burden", tm1:5, pig:8, adopt:false,
+      rtm1:"Open canvas — guardrails are whatever you impose; higher configuration burden.",
+      rpig:"Curated environment ships permissions, approvals and guardrails as standard."},
+    {name:"Everyday UI / experience", note:"Dashboards, charts, modernity", tm1:3, pig:9, adopt:false,
+      rtm1:"Front end carries a decade of legacy and a steep learning curve.",
+      rpig:"Modern dashboards and native interactive charts — a clear generation ahead."},
+    {name:"Adoption / stickiness", note:"Do users stay in the tool?", tm1:4, pig:8, adopt:true,
+      rtm1:"Users often drift back to Excel exports, pulling data out of the governed environment.",
+      rpig:"High, happy adoption keeps work — and data — inside the governed tool. The precondition for everything else."}
   ];
   var PRESETS={
     balanced:[11,11,10,11,10,11, 9,11,16],
-    builder: [12,16,16,15, 6, 8, 5, 6,16],
+    builder: [13,16,14,15, 6, 8, 5, 7,16],
     user:    [ 6, 3, 3, 6,12,13,12,21,24]
   };
   var LABEL={balanced:"Balanced",builder:"Builder",user:"User",custom:"Custom"};
@@ -232,19 +272,65 @@
   var rowsEl=document.getElementById("rows");
   var sliders=[];
 
+  /* ---- popover ---- */
+  var pop=document.getElementById("pop");
+  var popTitle=pop.querySelector(".pop-title");
+  var popTags=pop.querySelectorAll(".pop-tag");
+  var popTxts=pop.querySelectorAll(".pop-txt");
+  var hideTimer=null, openIdx=-1, sticky=false;
+
+  function fillPop(i){
+    var d=DIMS[i];
+    popTitle.textContent=d.name;
+    popTags[0].textContent="TM1 "+d.tm1; popTags[1].textContent="Pig "+d.pig;
+    popTxts[0].textContent=d.rtm1; popTxts[1].textContent=d.rpig;
+  }
+  function positionPop(anchor){
+    pop.classList.add("on"); pop.setAttribute("aria-hidden","false");
+    var r=anchor.getBoundingClientRect();
+    var pw=pop.offsetWidth, ph=pop.offsetHeight, m=8;
+    var left=r.left; if(left+pw>window.innerWidth-m) left=window.innerWidth-pw-m; if(left<m) left=m;
+    var top=r.bottom+m; if(top+ph>window.innerHeight-m) top=r.top-ph-m; if(top<m) top=m;
+    pop.style.left=left+"px"; pop.style.top=top+"px";
+  }
+  function openPop(i,anchor){ clearTimeout(hideTimer); openIdx=i; fillPop(i); positionPop(anchor); }
+  function hidePop(){ pop.classList.remove("on"); pop.setAttribute("aria-hidden","true"); openIdx=-1; sticky=false; }
+  function scheduleHide(){ clearTimeout(hideTimer); hideTimer=setTimeout(function(){ if(!sticky) hidePop(); },120); }
+  pop.addEventListener("mouseenter",function(){ clearTimeout(hideTimer); });
+  pop.addEventListener("mouseleave",scheduleHide);
+  document.addEventListener("click",function(e){ if(sticky && !pop.contains(e.target) && !e.target.classList.contains("info-btn")) hidePop(); });
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape") hidePop(); });
+  window.addEventListener("resize",hidePop);
+
   DIMS.forEach(function(d,i){
     var row=document.createElement("div");
     row.className="trow"+(d.adopt?" is-adopt":"");
     row.innerHTML=
-      '<div class="dim-cell"><div class="dim-name">'+d.name+(d.adopt?'<span class="key">key</span>':'')+'</div><div class="dim-note">'+d.note+'</div></div>'+
+      '<div class="dim-cell"><div class="dim-name">'+d.name+(d.adopt?' <span class="key">key</span>':'')+
+        ' <button class="info-btn" type="button" aria-label="Why these scores for '+d.name+'">&#9432;</button></div>'+
+        '<div class="dim-note">'+d.note+'</div></div>'+
       '<div class="chip tm1 cell-tm1">'+d.tm1+'<span class="tick" style="transform:scaleX('+(d.tm1/10)+')"></span></div>'+
       '<div class="chip pig cell-pig">'+d.pig+'<span class="tick" style="transform:scaleX('+(d.pig/10)+')"></span></div>'+
       '<div class="cell-w"><input type="range" class="w-slider" min="0" max="30" step="1" value="'+weights[i]+'" aria-label="Weight for '+d.name+'">'+
       '<div class="w-read"><span class="wv">weight '+weights[i]+'</span><span class="pctv">0%</span></div></div>';
     rowsEl.appendChild(row);
+
     var s=row.querySelector(".w-slider");
     (function(idx){ s.addEventListener("input",function(){ weights[idx]=parseInt(s.value,10); setLens("custom"); render(); }); })(i);
     sliders.push(s);
+
+    var info=row.querySelector(".info-btn");
+    (function(idx,btn){
+      btn.addEventListener("mouseenter",function(){ if(!sticky) openPop(idx,btn); });
+      btn.addEventListener("mouseleave",function(){ if(!sticky) scheduleHide(); });
+      btn.addEventListener("focus",function(){ openPop(idx,btn); });
+      btn.addEventListener("blur",function(){ if(!sticky) scheduleHide(); });
+      btn.addEventListener("click",function(e){
+        e.stopPropagation();
+        if(openIdx===idx && sticky){ hidePop(); }
+        else { sticky=true; openPop(idx,btn); }
+      });
+    })(i,info);
   });
 
   var btns=Array.prototype.slice.call(document.querySelectorAll(".lens-btn"));
@@ -287,7 +373,7 @@
     if(tw===0){ g.innerHTML="Add weight to any dimension to compute a verdict."; }
     else if(tl){ g.innerHTML=pre+"<b>TM1 leads</b> by "+gap+" here — openness, depth and the AI ceiling carry it."; }
     else if(pl){ g.innerHTML=pre+"<b>Pigment leads</b> by "+gap+" here — adoption, experience and safety do the work."; }
-    else{ g.innerHTML=pre+"<b>Dead heat</b> — within a rounding point under this weighting."; }
+    else{ g.innerHTML=pre+"<b>Dead heat</b> — within a rounding point. Push engine depth up and TM1 tips ahead."; }
   }
   sync(); render();
 })();
