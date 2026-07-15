@@ -2,7 +2,7 @@
 
 Open, vendor-agnostic notes on enterprise planning, EPM and FP&A — written to make the choices legible to the people who sign off on them, not just the people who build them.
 
-Published via GitHub Pages: **https://falconbi.github.io/articles/**
+Published via GitHub Pages: **https://falconbi.github.io/Articles-/**
 
 ## Articles
 
