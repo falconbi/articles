@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IF() Dimensional Scope Contamination · falconbi</title>
+<meta name="description" content="A real-world Pigment case study: a 13-branch IF formula silently inflated reconciliation totals by exactly 12×. Three failed fixes and the isolation pattern that resolves it permanently.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#16181d;--ink-2:#39414f;--slate:#6b7280;
+  --paper:#fafafc;--surface:#ffffff;--surface-2:#f3f4f7;
+  --line:#e3e6ec;--line-strong:#cdd2db;
+  --crimson:#b21e3a;--crimson-deep:#8a1329;--crimson-tint:#fbeef1;
+  --steel:#3e5c74;--steel-tint:#eef2f6;
+  --ok:#1f7a4d;
+  --violet:#5b21b6;--violet-tint:#ede9fe;
+  --amber:#b45309;--amber-tint:#fffbeb;
+  --display:"Space Grotesk",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",monospace;
+  --maxread:44rem;
+  --gutter:clamp(1.25rem,4vw,3rem);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:1.0625rem;line-height:1.72;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--crimson-deep);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:2px}
+
+/* topbar */
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem var(--gutter);background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+.wordmark{font-family:var(--mono);font-weight:500;font-size:.95rem;letter-spacing:.02em;color:var(--ink)}
+.wordmark b{color:var(--crimson)}
+.topbar-right{display:flex;align-items:center;gap:1.5rem;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase}
+.topbar-right a{color:var(--ink-2)}
+.topbar-right a:hover{color:var(--crimson-deep);text-decoration:none}
+@media(max-width:640px){.topbar-kicker{display:none}}
+
+/* shell */
+.shell{max-width:74rem;margin:0 auto;padding:0 var(--gutter);display:grid;grid-template-columns:1fr}
+@media(min-width:1040px){.shell{grid-template-columns:15rem minmax(0,1fr);gap:3.5rem}}
+
+/* toc */
+.toc{display:none}
+@media(min-width:1040px){
+  .toc{display:block;position:sticky;top:5rem;align-self:start;max-height:calc(100vh - 7rem);overflow:auto;padding-top:3rem;font-size:.9rem}
+  .toc .toc-label{font-family:var(--mono);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--slate);margin-bottom:.9rem}
+  .toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+  .toc li{margin:0}
+  .toc a{display:block;padding:.34rem 0 .34rem 1rem;margin-left:-1px;color:var(--ink-2);border-left:2px solid transparent;line-height:1.35}
+  .toc a:hover{color:var(--ink);text-decoration:none;border-left-color:var(--line-strong)}
+  .toc a.active{color:var(--crimson-deep);border-left-color:var(--crimson);font-weight:500}
+  .toc .num{font-family:var(--mono);font-size:.78rem;color:var(--slate);margin-right:.5rem}
+}
+
+main{min-width:0;padding-bottom:5rem}
+
+/* hero */
+.hero{padding:clamp(2.5rem,7vw,5rem) 0 1.5rem}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--violet);display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+.eyebrow span::after{content:"·";margin-left:.6rem;color:var(--line-strong)}
+.eyebrow span:last-child::after{content:""}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(2.1rem,5.5vw,3.4rem);line-height:1.05;letter-spacing:-.02em;margin:1.1rem 0 0;max-width:22ch}
+.lede{font-size:clamp(1.05rem,2.1vw,1.22rem);line-height:1.58;color:var(--ink-2);max-width:40rem;margin:1.4rem 0 0}
+.lede b{color:var(--ink);font-weight:600}
+.meta-row{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.8rem}
+.chip{font-family:var(--mono);font-size:.76rem;padding:.32rem .7rem;border-radius:2rem;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+.chip.violet{background:var(--violet-tint);border-color:color-mix(in srgb,var(--violet) 30%,transparent);color:var(--violet)}
+.chip.amber{background:var(--amber-tint);border-color:color-mix(in srgb,var(--amber) 30%,transparent);color:var(--amber)}
+
+/* plain english intro */
+.pe-intro{background:var(--violet-tint);border:1px solid color-mix(in srgb,var(--violet) 20%,transparent);border-radius:1rem;padding:clamp(1.5rem,3vw,2.25rem);margin:2.5rem 0 3rem}
+.pe-intro .pe-label{font-family:var(--mono);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--violet);margin-bottom:1rem;display:block}
+.pe-intro h2{font-family:var(--display);font-weight:600;font-size:1.35rem;line-height:1.2;margin:0 0 1rem;letter-spacing:-.01em;color:var(--ink)}
+.pe-intro h3{font-family:var(--display);font-weight:600;font-size:1.02rem;margin:1.4rem 0 .4rem;color:var(--ink)}
+.pe-intro p{margin:.7rem 0;max-width:none}
+.pe-intro p:last-child{margin-bottom:0}
+.pe-intro ul{padding-left:1.2rem;margin:.5rem 0}
+.pe-intro li{margin:.35rem 0}
+.pe-intro .pe-takeaway{margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid color-mix(in srgb,var(--violet) 20%,transparent);font-weight:600;color:var(--ink)}
+
+/* prose */
+section{padding-top:3.5rem;scroll-margin-top:5rem}
+.prose{max-width:var(--maxread)}
+.snum{font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--crimson);display:block;margin-bottom:.5rem}
+h2{font-family:var(--display);font-weight:600;font-size:clamp(1.45rem,3vw,1.95rem);line-height:1.1;letter-spacing:-.015em;margin:0 0 .4rem}
+h3{font-family:var(--display);font-weight:600;font-size:1.18rem;line-height:1.25;margin:2.25rem 0 .5rem}
+.prose p{max-width:var(--maxread)}
+p{margin:.9rem 0}
+strong{font-weight:600}
+em{font-style:italic}
+code,.m{font-family:var(--mono);font-size:.86em;background:var(--surface-2);border:1px solid var(--line);border-radius:.35rem;padding:.08rem .35rem;color:var(--crimson-deep);word-break:break-word}
+.hr{height:1px;background:var(--line);border:none;margin:3.5rem 0 0}
+
+/* tables */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:.7rem;margin:1.5rem 0;background:var(--surface);-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:26rem;font-size:.92rem}
+thead th{text-align:left;font-family:var(--mono);font-weight:500;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);padding:.75rem 1rem;border-bottom:1px solid var(--line-strong);white-space:nowrap;background:var(--surface-2)}
+tbody td{padding:.7rem 1rem;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface-2)}
+td code{background:transparent;border:none;padding:0;font-size:.85rem}
+
+/* callouts */
+.callout{border-left:3px solid var(--crimson);background:var(--crimson-tint);border-radius:0 .6rem .6rem 0;padding:1rem 1.15rem;margin:1.4rem 0;font-size:.95rem}
+.callout.steel{border-left-color:var(--steel);background:var(--steel-tint)}
+.callout.warn{border-left-color:var(--amber);background:var(--amber-tint)}
+.callout.violet{border-left-color:var(--violet);background:var(--violet-tint)}
+.callout .co-label{font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--crimson-deep);display:block;margin-bottom:.35rem}
+.callout.steel .co-label{color:var(--steel)}
+.callout.warn .co-label{color:var(--amber)}
+.callout.violet .co-label{color:var(--violet)}
+.callout p{margin:.4rem 0}
+.callout p:first-of-type{margin-top:0}
+.callout p:last-child{margin-bottom:0}
+
+/* principle box */
+.principle-box{background:var(--ink);color:#e8eaf0;border-radius:1rem;padding:clamp(1.5rem,3vw,2.25rem);margin:2rem 0}
+.principle-box .pb-label{font-family:var(--mono);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--crimson) 80%,white);display:block;margin-bottom:.75rem}
+.principle-box p{margin:.7rem 0;max-width:none;line-height:1.65;color:#e8eaf0}
+.principle-box p:last-child{margin-bottom:0}
+.principle-box strong{color:#ffffff;font-weight:600}
+.principle-box code{font-family:var(--mono);font-size:.86em;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:.35rem;padding:.08rem .35rem;color:#c4b5fd}
+
+/* attempt cards */
+.attempt{border:1px solid var(--line);border-radius:.75rem;background:var(--surface);padding:1.25rem 1.4rem;margin:1.25rem 0;display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:start}
+.attempt-badge{width:2.2rem;height:2.2rem;border-radius:.5rem;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:500;font-size:.95rem;background:var(--amber-tint);color:var(--amber);border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);flex:0 0 auto}
+.attempt-head{font-family:var(--display);font-weight:600;font-size:1rem;margin-bottom:.35rem;line-height:1.25}
+.attempt p{margin:.4rem 0;font-size:.95rem}
+.attempt p:last-child{margin-bottom:0}
+.attempt .result{font-family:var(--mono);font-size:.78rem;color:var(--crimson-deep);background:var(--crimson-tint);border:1px solid color-mix(in srgb,var(--crimson) 20%,transparent);border-radius:.4rem;padding:.3rem .65rem;display:block;margin-top:.5rem;line-height:1.55}
+
+/* code */
+pre{font-family:var(--mono);font-size:.82rem;line-height:1.6;background:var(--ink);color:#e8eaf0;border-radius:.7rem;padding:1.25rem 1.4rem;overflow-x:auto;margin:1.5rem 0;-webkit-overflow-scrolling:touch}
+pre .c-crim{color:#ff9db0}
+pre .c-steel{color:#8fc7dc}
+pre .c-ok{color:#7fdca6}
+pre .c-amber{color:#fcd34d}
+pre .c-mut{color:#8b93a7}
+
+ul.clean{padding-left:1.2rem;max-width:var(--maxread)}
+ul.clean li{margin:.4rem 0}
+ol.clean{padding-left:1.2rem;max-width:var(--maxread)}
+ol.clean li{margin:.65rem 0}
+
+/* doc gap items */
+.docgap{border:1px solid var(--line);border-radius:.6rem;background:var(--surface);padding:1rem 1.25rem;margin:.85rem 0}
+.docgap-title{font-family:var(--display);font-weight:600;font-size:.97rem;margin-bottom:.3rem}
+.docgap p{margin:.35rem 0;font-size:.93rem;max-width:none}
+.docgap p:last-child{margin-bottom:0}
+
+/* footer */
+footer{border-top:1px solid var(--line);margin-top:4rem;padding:3rem var(--gutter);background:var(--surface)}
+.foot-inner{max-width:74rem;margin:0 auto;display:grid;gap:1.5rem}
+@media(min-width:720px){.foot-inner{grid-template-columns:1.4fr 1fr;align-items:end}}
+.foot-mark{font-family:var(--mono);font-size:1.05rem;color:var(--ink)}
+.foot-mark b{color:var(--crimson)}
+.foot-inner p{margin:.5rem 0;color:var(--ink-2);font-size:.92rem;max-width:34rem}
+.foot-meta{font-family:var(--mono);font-size:.78rem;color:var(--slate);line-height:1.7}
+.foot-meta a{color:var(--ink-2)}
+.license{display:inline-block;margin-top:.4rem;font-family:var(--mono);font-size:.74rem;color:var(--slate);border:1px solid var(--line);border-radius:2rem;padding:.25rem .7rem}
+
+:focus-visible{outline:2px solid var(--crimson);outline-offset:2px;border-radius:2px}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="index.html" style="text-decoration:none"><span class="wordmark">falcon<b>bi</b></span></a>
+  <div class="topbar-right">
+    <span class="topbar-kicker">Pigment · Patterns</span>
+    <a href="index.html">← All articles</a>
+  </div>
+</header>
+
+<div class="shell">
+
+<nav class="toc" aria-label="On this page">
+  <div class="toc-label">On this page</div>
+  <ol>
+    <li><a href="#context"><span class="num">01</span>Context</a></li>
+    <li><a href="#model"><span class="num">02</span>The model</a></li>
+    <li><a href="#problem"><span class="num">03</span>The problem</a></li>
+    <li><a href="#mechanism"><span class="num">04</span>What Pigment did</a></li>
+    <li><a href="#failed"><span class="num">05</span>Failed fixes</a></li>
+    <li><a href="#fix"><span class="num">06</span>The actual fix</a></li>
+    <li><a href="#principle"><span class="num">07</span>Core principle</a></li>
+    <li><a href="#docs"><span class="num">08</span>Documentation gap</a></li>
+    <li><a href="#scope"><span class="num">09</span>Scope beyond IF</a></li>
+    <li><a href="#questions"><span class="num">10</span>Questions</a></li>
+    <li><a href="#references"><span class="num">11</span>References</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="eyebrow"><span>Open methodology</span><span>Pigment</span><span>Patterns</span></div>
+  <h1>IF() Dimensional Scope Contamination</h1>
+  <p class="lede">A 13-branch IF formula silently inflated reconciliation totals by <b>exactly 12×</b> — no error, no warning, no failed validation. A real-world case study and the isolation pattern that resolves it permanently.</p>
+  <div class="meta-row">
+    <span class="chip violet">Pigment</span>
+    <span class="chip amber">IF scope · Pattern</span>
+    <span class="chip">Cost apportionment model</span>
+    <span class="chip">July 2026</span>
+  </div>
+</div>
+
+<!-- PLAIN ENGLISH INTRO -->
+<div class="pe-intro reveal">
+  <span class="pe-label">Start here — the plain-language version</span>
+  <h2>The simple version</h2>
+  <p>Imagine you're asked to calculate the monthly salary cost for your Finance team. Simple enough. Now imagine that somewhere else in the same spreadsheet, a formula for a completely different team references a list of 12 project codes.</p>
+  <p>Without you realising it, the tool silently applies those 12 project codes to your Finance salary calculation too — multiplying it by 12. Your $100K salary cost suddenly shows as $1.2M. The formula looks correct. No error message appears. The number is just wrong.</p>
+  <p>That is exactly what happened here.</p>
+  <h3>Why it happens</h3>
+  <p>Most planning tools — and the AI that helps build them — are designed to write formulas the same way Excel or SQL does: one big formula with many conditions, each handling a different scenario. The problem is that Pigment works differently under the hood. When a formula has multiple conditions, <strong>the tool looks at all of them at once</strong> before deciding which one to use. If any one condition involves a list of 12 items, the tool temporarily applies that list of 12 to every other condition in the formula — even the ones that have nothing to do with it.</p>
+  <p>The end result: numbers that are a clean multiple of the list size. In this case, 12× too high.</p>
+  <h3>Why it's hard to catch</h3>
+  <ul>
+    <li>The formula passes all built-in checks — no errors, no warnings</li>
+    <li>The number looks plausible at a glance (it's still a large, round-ish figure)</li>
+    <li>It only becomes obvious when you know what the answer <em>should</em> be and notice the exact multiple</li>
+  </ul>
+  <h3>How it was fixed</h3>
+  <p>Rather than one large formula handling everything, the logic was split into smaller, self-contained calculations — each handling only what it needs to, with no risk of unintended cross-contamination. Those smaller calculations are then combined into the final result.</p>
+  <p>Think of it like separating your Finance and Projects cost centres into their own tabs before combining them on a summary sheet — rather than trying to do everything in one cell.</p>
+  <p class="pe-takeaway">This is not a one-off bug. It is a known characteristic of how Pigment processes formulas — one that affects human modellers and AI alike. Complex logic with many conditions should always be broken into smaller, named calculations. Each piece is easier to check, easier to explain, and immune to this type of silent contamination.</p>
+</div>
+
+<hr class="hr">
+
+<!-- 01 CONTEXT -->
+<section id="context" class="reveal">
+  <span class="snum">01 — Context</span>
+  <h2>Context</h2>
+  <div class="prose">
+    <p>This document describes a real bug encountered while building a cost apportionment model in Pigment. A single reconciliation-control metric silently returned values inflated by an exact factor of 12, with no error and no failed validation. The root cause is the interaction between Pigment's eager evaluation of <code>IF</code>, its automatic dimension alignment, and its default aggregation on assignment.</p>
+    <p>The purpose is threefold: to document the mechanism precisely enough to be reproducible, to establish exactly where Pigment's documentation does and does not cover it, and to record the isolation pattern that fixes it. Documentation references point to the current Pigment Knowledge Base (<code>kb.pigment.com</code>) and are collected in the <a href="#references">References</a> section.</p>
+  </div>
+</section>
+
+<!-- 02 THE MODEL -->
+<section id="model" class="reveal">
+  <span class="snum">02 — The model</span>
+  <h2>The model</h2>
+  <div class="prose">
+    <h3>Target metric</h3>
+    <p><code>CST_Ctrl_Input_Total ($)</code></p>
+    <ul class="clean">
+      <li><strong>Structure:</strong> <code>[CST_ReconciliationCheck, CST_Version, Month]</code></li>
+      <li><strong>Purpose:</strong> A reconciliation control metric. For each member of <code>CST_ReconciliationCheck</code> it returns a different calculated value — one per check type.</li>
+      <li><code>CST_ReconciliationCheck</code> has <strong>13 members</strong>: RC01, RC02, RC03, RC04, RC05, RC06, VAL00, VAL01, VAL02, VAL03, VAL04, VAL05, VAL06.</li>
+    </ul>
+    <h3>The formula</h3>
+    <p>A single nested <code>IF</code> chain — one branch per <code>ReconciliationCheck</code> member. Every branch specifies both its True value and its False value (the next nested <code>IF</code>). This detail matters later: it is exactly the shape that suppresses the one dimension hint Pigment would otherwise surface.</p>
+  </div>
+<pre>IF(CST_ReconciliationCheck.Name = <span class="c-steel">"RC01"</span>,
+  <span class="c-crim">'CST_Ctrl_Total_Overhead ($)'</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"RC02"</span>,
+  <span class="c-crim">'CST_Data_Pool_Settled_Amount ($)'</span><span class="c-ok">[FILTER: CST_Activity.Name = "Input"][REMOVE: CST_CostPool, CST_Activity, CST_CostCenter]</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"RC03"</span>,
+  <span class="c-crim">'CST_Data_Pool_Settled_Amount ($)'</span><span class="c-ok">[REMOVE: CST_CostPool, CST_Activity, CST_CostCenter]</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"RC04"</span>,
+  IF(NOT ISBLANK(<span class="c-crim">'CST_A2A_Final_Settlement ($)'</span>),
+    <span class="c-crim">'CST_Input_A2A_Base_Amount ($)'</span><span class="c-ok">[SELECT: CST_ActivityDest.Name = "Input"][SELECT: CST_CostCenter.Name = "Input"]</span>
+  )<span class="c-ok">[REMOVE: CST_Activity]</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"RC05"</span>,
+  <span class="c-crim">'CST_A2A_Final_Settlement ($)'</span><span class="c-ok">[REMOVE: CST_Activity]</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"RC06"</span>,
+  <span class="c-crim">'CST_Ctrl_Total_Overhead ($)'</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"VAL00"</span>,
+  IF(ISBLANK(<span class="c-crim">CST_Input_Apportionment_Type</span>), 1)<span class="c-ok">[REMOVE SUM: CST_Account, CST_CostCenter]</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"VAL01"</span>,
+  IF(<span class="c-crim">CST_Input_Apportionment_Type</span> = <span class="c-steel">"Indirect"</span>,
+    IF(ABS(<span class="c-crim">'CST_Input_Driver_Pct_Share (%)'</span><span class="c-ok">[REMOVE SUM: CST_CostPool]</span> - 100) <span class="c-amber">&gt;</span> 0.1, 1)
+  )<span class="c-ok">[REMOVE SUM: CST_Account, CST_CostCenter]</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"VAL02"</span>,
+  IF(<span class="c-crim">CST_Input_P2P_Is_Active</span> AND ISBLANK(<span class="c-crim">CST_Input_P2P_Driver_Type</span>), 1)<span class="c-ok">[REMOVE SUM: CST_CostPool, CST_CostPoolDest]</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"VAL03"</span>,
+  IF(<span class="c-crim">CST_Calc_P2A_Driver_Value</span><span class="c-ok">[REMOVE SUM: CST_Activity]</span> <span class="c-amber">&gt;</span> 0 AND ISBLANK(<span class="c-crim">CST_Input_P2A_Driver_Type</span>), 1)<span class="c-ok">[REMOVE SUM: CST_CostPool]</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"VAL04"</span>,
+  IF(<span class="c-crim">CST_Input_A2A_Is_Active</span><span class="c-ok">[SELECT ANY: CST_CostCenter.Name = "Input"]</span> AND <span class="c-crim">CST_Calc_A2A_Driver_Value</span><span class="c-ok">[REMOVE SUM: CST_ActivityDest]</span> = 0, 1)<span class="c-ok">[REMOVE SUM: CST_Activity]</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"VAL05"</span>,
+  IF(<span class="c-crim">CST_Calc_A2SL_Driver_Value</span><span class="c-ok">[REMOVE SUM: CST_ServiceLine]</span> <span class="c-amber">&gt;</span> 0 AND ISBLANK(<span class="c-crim">CST_Input_A2SL_Driver_Type</span>), 1)<span class="c-ok">[REMOVE SUM: CST_Activity]</span>,
+IF(CST_ReconciliationCheck.Name = <span class="c-steel">"VAL06"</span>,
+  0,
+  BLANK
+)))))))))))))</pre>
+</section>
+
+<!-- 03 THE PROBLEM -->
+<section id="problem" class="reveal">
+  <span class="snum">03 — The problem</span>
+  <h2>The problem</h2>
+  <div class="prose">
+    <h3>Symptom</h3>
+    <p>RC01 and RC06 returned <strong>~$1.55B/month</strong> instead of the expected <strong>~$129M/month</strong>.</p>
+  </div>
+  <div class="callout warn">
+    <span class="co-label">The smoking number</span>
+    <p>$1.55B ÷ $129M = <strong>exactly 12</strong>. An exact integer ratio is the tell: the value has been multiplied by a dimension's member count.</p>
+  </div>
+  <div class="prose">
+    <h3>The contaminating dimension</h3>
+    <p><code>CST_ActivityDest</code> — a dimension with <strong>12 members</strong>.</p>
+    <h3>Metrics implicated in the contamination</h3>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Metric</th><th>Referenced by</th><th>Carries CST_ActivityDest?</th></tr></thead>
+      <tbody>
+        <tr><td><code>CST_Ctrl_Total_Overhead ($)</code></td><td>RC01, RC06</td><td>No</td></tr>
+        <tr><td><code>CST_Input_A2A_Base_Amount ($)</code></td><td>RC04</td><td><strong>Yes</strong></td></tr>
+        <tr><td><code>CST_Calc_A2A_Driver_Value</code></td><td>VAL04</td><td><strong>Yes</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>RC01 and RC06 return a metric that has no <code>CST_ActivityDest</code>. Two other branches — RC04 and VAL04 — reference metrics that do. That is the entire setup for the failure.</p>
+  </div>
+</section>
+
+<!-- 04 MECHANISM -->
+<section id="mechanism" class="reveal">
+  <span class="snum">04 — What Pigment did</span>
+  <h2>What Pigment actually did</h2>
+  <div class="prose">
+    <p>Pigment's <code>IF()</code> uses <strong>eager evaluation</strong>: before selecting the winning branch, it evaluates the whole expression in the <strong>union of every dimension referenced anywhere across all branches</strong>. Because RC04 and VAL04 reference metrics dimensioned by <code>CST_ActivityDest</code>, that dimension enters the evaluation scope of the entire formula — including the RC01 and RC06 branches, which never mention it.</p>
+    <h3>Step 1 — Scope determination</h3>
+    <p>Pigment takes the union of all dimensions across all 13 branches. <code>CST_ActivityDest</code> (12 members) enters scope from RC04 and VAL04. All branches — including RC01 and RC06 — are now evaluated in a scope that includes <code>CST_ActivityDest</code>.</p>
+    <h3>Step 2 — RC01 branch evaluated in the expanded scope</h3>
+    <p><code>CST_Ctrl_Total_Overhead ($)</code> has no <code>CST_ActivityDest</code>. To align it to the union scope, Pigment replicates its value ($129M) across all 12 <code>ActivityDest</code> members — the same behaviour as the <code>[ADD Constant: …]</code> modifier. RC01 now holds 12 cells, each containing $129M.</p>
+    <h3>Step 3 — IF condition applied</h3>
+    <p><code>ReconciliationCheck = RC01</code> → the RC01 branch wins. All 12 cells ($129M each) are selected.</p>
+    <h3>Step 4 — Result assigned to the target metric</h3>
+    <p><code>CST_Ctrl_Input_Total ($)</code> has no <code>CST_ActivityDest</code> in its structure. Aligning the output back down uses the default <code>[REMOVE SUM: …]</code> behaviour. <strong>12 × $129M = $1.55B.</strong></p>
+    <div class="callout steel">
+      <span class="co-label">Why no error fired</span>
+      <p>No error was raised. The formula passed all validation checks. The two halves of this mechanism — replication in Step 2 and summation in Step 4 — both appear on the <a href="https://kb.pigment.com/docs/dimension-alignment-indicator">Dimensionality Hints</a> page as ordinary output-vs-structure alignment. What is nowhere documented is that an <code>IF</code> can chain them: replicate an unrelated branch across a foreign dimension, then sum it away, leaving a clean multiple.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 05 FAILED FIXES -->
+<section id="failed" class="reveal">
+  <span class="snum">05 — Failed fixes</span>
+  <h2>Failed fix attempts</h2>
+
+  <div class="attempt">
+    <div class="attempt-badge">1</div>
+    <div>
+      <div class="attempt-head"><code>[BY CONSTANT: CST_ActivityDest]</code> on the RC01/RC06 branches</div>
+      <p>Intended to pin <code>ActivityDest</code> at its context value.</p>
+      <span class="result">✗ Failed — BY CONSTANT holds the dimension at its context value but does not remove it from scope. The 12 cells still existed and were still summed on assignment.</span>
+    </div>
+  </div>
+
+  <div class="attempt">
+    <div class="attempt-badge">2</div>
+    <div>
+      <div class="attempt-head"><code>[SELECT: CST_ActivityDest.Name = "Input"]</code> on <code>CST_Ctrl_Total_Overhead ($)</code></div>
+      <p><code>SELECT</code> collapses a dimension to a single member and removes it from scope — exactly what was needed.</p>
+      <span class="result">✗ Rejected at formula time: "The SELECT modifier cannot filter on a Dimension that is not present in the Metric structure. Missing Dimension: CST_ActivityDest." SELECT is only valid on dimensions in the referenced metric's own structure. CST_Ctrl_Total_Overhead ($) has no CST_ActivityDest, so the modifier that would have fixed the problem is precisely the one Pigment forbids here.</span>
+    </div>
+  </div>
+
+  <div class="attempt">
+    <div class="attempt-badge">3</div>
+    <div>
+      <div class="attempt-head">Wrapper metric with <code>CST_ActivityDest</code> in its structure</div>
+      <p>Created <code>CST_Ctrl_Total_Overhead_by_ActivityDest ($)</code> with <code>CST_ActivityDest</code> in its dimension list, referencing <code>CST_Ctrl_Total_Overhead ($)</code>, then applied <code>[SELECT: CST_ActivityDest.Name = "Input"]</code> in the RC01/RC06 branches.</p>
+      <span class="result">✗ Partially improved but did not fully resolve — VAL04 still introduced ActivityDest into the outer IF's union scope, so contamination persisted from a different branch. This is the tell that the problem is not any single branch but the shared evaluation scope of the whole expression.</span>
+    </div>
+  </div>
+</section>
+
+<!-- 06 THE ACTUAL FIX -->
+<section id="fix" class="reveal">
+  <span class="snum">06 — The actual fix</span>
+  <h2>The actual fix</h2>
+  <div class="prose">
+    <p>Split the single 13-branch <code>IF</code> into two metrics along the natural dimensional boundary, then combine with a thin expression that introduces no dimensions of its own.</p>
+    <h3><code>CST_Ctrl_Input_RC ($)</code> — RC01 to RC06 only</h3>
+    <p><code>ActivityDest</code> enters scope only from RC04. RC04 uses <code>[SELECT: CST_ActivityDest.Name = "Input"]</code>, which is valid because that branch's referenced metric has <code>ActivityDest</code>. RC01/RC06 use the wrapper metric plus <code>[SELECT: CST_ActivityDest.Name = "Input"]</code>. VAL04 — the other contaminating branch — is completely absent from this metric.</p>
+    <h3><code>CST_Ctrl_Input_VAL ($)</code> — VAL00 to VAL06 only</h3>
+    <p>VAL04's <code>ActivityDest</code> is fully contained within this metric, where <code>[REMOVE SUM: CST_ActivityDest]</code> handles it correctly and consistently across the VAL branches.</p>
+    <h3><code>CST_Ctrl_Input_Total ($)</code> — simplified to:</h3>
+  </div>
+<pre><span class="c-crim">'CST_Ctrl_Input_RC ($)'</span> + <span class="c-crim">'CST_Ctrl_Input_VAL ($)'</span></pre>
+  <div class="prose">
+    <p>No <code>ActivityDest</code> in scope at all. The combining metric is a pure sum of two already-resolved, correctly-dimensioned inputs.</p>
+  </div>
+</section>
+
+<!-- 07 CORE PRINCIPLE -->
+<section id="principle" class="reveal">
+  <span class="snum">07 — Core principle</span>
+  <h2>The core principle</h2>
+  <div class="principle-box">
+    <span class="pb-label">Core principle</span>
+    <p>In Pigment, <strong>any dimension referenced anywhere in an IF formula — even deep inside a nested branch — expands the evaluation scope of the entire expression.</strong> Modifiers such as <code>SELECT</code> and <code>REMOVE</code> collapse dimensions from a branch's <em>output</em>, but they do not prevent that dimension from entering the <em>evaluation scope</em> in the first place.</p>
+    <p><strong>The only true isolation boundary is a separate metric.</strong></p>
+    <p>Therefore: when branches of an IF operate on different dimension sets, place them in separate metrics. The combining metric should be a thin expression — a sum or coalesce — that itself introduces no new dimensions. This is the pattern that survives future edits, because adding a new mixed-dimension branch to a monolithic IF silently re-opens the contamination, whereas adding it to an isolated metric cannot reach across the boundary.</p>
+  </div>
+</section>
+
+<!-- 08 DOCUMENTATION GAP -->
+<section id="docs" class="reveal">
+  <span class="snum">08 — Documentation gap</span>
+  <h2>Documentation gap</h2>
+  <div class="prose">
+    <p>The behaviour is <em>partially</em> documented, but never assembled into the causal chain that produces the failure, and never surfaced where a modeller building an IF would look.</p>
+  </div>
+
+  <div class="docgap">
+    <div class="docgap-title">The IF() reference — dimensional union documented, numerical consequence absent</div>
+    <p>The <a href="https://kb.pigment.com/docs/if-function">IF function page</a> states that the function "automatically allocates missing Dimensions on arguments to make them match" and that "the resulting set of Dimensions is the combination of all Dimensions used in the arguments." This is the dimensional union — presented as a convenience. It never states that a branch which omits a dimension is <em>replicated</em> across it, that the result is then <em>summed</em> on assignment, or that the net effect is a value multiplied by the foreign dimension's member count.</p>
+  </div>
+
+  <div class="docgap">
+    <div class="docgap-title">The ×12 symptom is documented — but decoupled from IF</div>
+    <p><a href="https://kb.pigment.com/docs/troubleshoot-your-formulas">Troubleshoot Your Formulas</a> notes that referencing a metric by Month when yours lacks it can make "your values … 12 times higher, depending on how many years you have set up." That is this failure's fingerprint — but it is framed around a direct metric reference, buried in a troubleshooting checklist, and never connected to IF or eager branch evaluation.</p>
+  </div>
+
+  <div class="docgap">
+    <div class="docgap-title">The two mechanical halves are documented — but only separately</div>
+    <p><a href="https://kb.pigment.com/docs/dimension-alignment-indicator">Dimensionality Hints</a> describes both the replication (adding a dimension uses ADD Constant, applying the value "consistently across" members) and the summation (removing a dimension uses REMOVE SUM). Nowhere are the two combined into the compounding case.</p>
+  </div>
+
+  <div class="docgap">
+    <div class="docgap-title">The one IF-specific hint cannot fire on a nested IF chain</div>
+    <p><a href="https://kb.pigment.com/docs/explanatory-hints">Explanatory Hints</a> surfaces a "Dimension alignment in IF expressions" hint — but only "for formulas using an IF expression, which have the 'Value if true' argument specified, but the 'Value if false or BLANK' argument not specified." Every branch in a nested IF chain specifies its False value (the next IF). The sole in-product IF dimension hint is therefore structurally incapable of triggering on the exact construct where this bites hardest.</p>
+  </div>
+
+  <div class="docgap">
+    <div class="docgap-title">No best-practice guidance recommends the fix</div>
+    <p><a href="https://kb.pigment.com/docs/align-block-structures-effective-formula-operations">Align Block Structures for Effective Formula Operations</a> gives only generic advice — plan your metric structure, note dimension differences, validate in the Formula Playground. No page recommends isolating mixed-dimension IF branches into separate metrics.</p>
+  </div>
+
+  <div class="callout steel">
+    <span class="co-label">Summary</span>
+    <p>Every fact needed to understand this failure is documented, but scattered across four pages, framed as routine alignment, and absent from the IF() reference as a <em>consequence</em>. The failure passed all validation checks and was detectable only by knowing the expected output value and observing the exact 12× multiple.</p>
+  </div>
+</section>
+
+<!-- 09 SCOPE BEYOND IF -->
+<section id="scope" class="reveal">
+  <span class="snum">09 — Scope beyond IF</span>
+  <h2>Scope beyond IF</h2>
+  <div class="prose">
+    <p>This is not unique to IF. Any construct that evaluates differently-dimensioned expressions in a shared scope exhibits the same union behaviour:</p>
+    <h3>SWITCH</h3>
+    <p><a href="https://kb.pigment.com/docs/switch-function">SWITCH</a> uses identical eager-union evaluation across its result expressions and carries exactly the same exposure — with the same documentation silence.</p>
+    <h3>Arithmetic between mismatched metrics</h3>
+    <p>(<code>MetricA + MetricB</code> etc.) Per the "Dimension hints in arithmetic expressions" section of <a href="https://kb.pigment.com/docs/explanatory-hints">Explanatory Hints</a>, operators align operands to their dimensional union in the same way.</p>
+    <div class="callout">
+      <span class="co-label">Why IF is the most dangerous</span>
+      <p>IF is the most dangerous because the contaminating branch is the one <em>not selected</em>: the condition looks locally correct, the offending metric is out of view, and nothing about the winning branch hints that an unrelated branch has widened its scope. Arithmetic mismatches are usually more visible because both operands are on screen simultaneously.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 10 QUESTIONS -->
+<section id="questions" class="reveal">
+  <span class="snum">10 — Questions for Pigment</span>
+  <h2>Questions for Pigment</h2>
+  <div class="prose">
+    <ol class="clean">
+      <li>Is the numerical consequence of eager evaluation — silent value inflation by a dimension's member count — documented anywhere as a <em>consequence</em>, beyond the scattered mechanical descriptions?</li>
+      <li>Is there a plan to add a <strong>formula-time warning</strong> when an IF (or SWITCH) branch introduces a dimension not present in the target metric's structure and not referenced by all branches?</li>
+      <li>Is splitting mixed-dimension IF branches into separate metrics the officially recommended pattern? If so, can it be stated on the IF() and SWITCH reference pages and in the block-structure best-practice guide?</li>
+      <li>Beyond IF, SWITCH, and arithmetic operators, are there other constructs where this dimensional scope contamination can occur?</li>
+    </ol>
+    <h3>What good documentation would look like</h3>
+    <p>A single note on the IF() and SWITCH reference pages:</p>
+  </div>
+  <div class="callout violet">
+    <span class="co-label">Suggested documentation</span>
+    <p><strong>Warning — dimensional scope across branches.</strong> IF evaluates every branch in the union of all dimensions referenced anywhere in the expression, including branches that are not selected. If one branch references a metric dimensioned by a dimension that another branch omits, the omitting branch's value is replicated across that dimension. When the result is assigned to a target metric that lacks the dimension, the replicated values are summed — producing a result equal to the correct value multiplied by the dimension's member count. Modifiers such as SELECT and REMOVE adjust a branch's output but do not remove the dimension from the shared evaluation scope. To isolate branches that operate on different dimension sets, place each set in its own metric and combine them with a thin summing metric that introduces no dimensions of its own.</p>
+  </div>
+</section>
+
+<!-- 11 REFERENCES -->
+<section id="references" class="reveal">
+  <span class="snum">11 — References</span>
+  <h2>References</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Topic</th><th>Page</th></tr></thead>
+      <tbody>
+        <tr><td>Dimensional union of IF arguments</td><td><a href="https://kb.pigment.com/docs/if-function">IF function</a></td></tr>
+        <tr><td>IF dimension-alignment hint (fires only when the False argument is unspecified)</td><td><a href="https://kb.pigment.com/docs/explanatory-hints">Explanatory Hints</a></td></tr>
+        <tr><td>ADD Constant replication / REMOVE SUM summation; ƒ indicator</td><td><a href="https://kb.pigment.com/docs/dimension-alignment-indicator">Dimensionality Hints</a></td></tr>
+        <tr><td>Default Constant allocation and Sum aggregation</td><td><a href="https://kb.pigment.com/docs/aggregators-and-allocators">Aggregation and allocation methods</a></td></tr>
+        <tr><td>"Values … 12 times higher" (decoupled from IF)</td><td><a href="https://kb.pigment.com/docs/troubleshoot-your-formulas">Troubleshoot Your Formulas</a></td></tr>
+        <tr><td>Generic structure-alignment best practice (no IF callout)</td><td><a href="https://kb.pigment.com/docs/align-block-structures-effective-formula-operations">Align Block Structures</a></td></tr>
+        <tr><td>Same eager-union behaviour in SWITCH</td><td><a href="https://kb.pigment.com/docs/switch-function">SWITCH function</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open methodology and tools for IBM Planning Analytics and Pigment. Everything published here is free to use, adapt, and share.</p>
+      <a href="index.html" class="license">← All articles</a>
+    </div>
+    <div class="foot-meta">
+      Published July 2026<br>
+      Discovered in production while building the CST Apportionment module<br>
+      <a href="https://github.com/falconbi/articles">github.com/falconbi/articles</a><br>
+      <span class="license">CC0 — public domain</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+const tocLinks = document.querySelectorAll('.toc a');
+const sections = document.querySelectorAll('section[id]');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      tocLinks.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector(`.toc a[href="#${e.target.id}"]`);
+      if(a) a.classList.add('active');
+    }
+  });
+},{rootMargin:'-10% 0% -75% 0%'});
+sections.forEach(s => io.observe(s));
+
+const ro = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){e.target.classList.add('in');ro.unobserve(e.target)}
+  });
+},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+</script>
+</body>
+</html>
