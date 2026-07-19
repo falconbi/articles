@@ -497,6 +497,13 @@ td code { background: transparent; border: none; padding: 0; font-size: .85rem; 
   transition: border-color .15s, box-shadow .15s;
 }
 .tool-card:hover { border-color: var(--teal); box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.tool-icon {
+  width: 34px; height: 34px; border-radius: .45rem;
+  background: var(--teal-tint); display: flex; align-items: center; justify-content: center;
+  margin-bottom: .75rem; flex-shrink: 0;
+}
+.tool-icon svg { width: 17px; height: 17px; color: var(--teal); }
+@media (prefers-color-scheme: dark) { .tool-icon { background: var(--teal-tint); } }
 .tool-name { font-family: var(--mono); font-weight: 500; font-size: .85rem; color: var(--ink); margin-bottom: .3rem; }
 .tool-desc { font-size: .875rem; color: var(--ink-muted); line-height: 1.55; flex: 1; }
 .tool-footer {
