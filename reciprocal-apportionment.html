@@ -30,8 +30,11 @@
   .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem var(--gutter);background:color-mix(in srgb, var(--paper) 88%, transparent);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
   .wordmark{font-family:var(--mono);font-weight:500;font-size:.95rem;color:var(--ink)}
   .wordmark b{color:var(--crimson)}
-  .topbar .kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
-  @media (max-width:640px){ .topbar .kicker{display:none} }
+  .topbar-right{display:flex;align-items:center;gap:1.5rem}
+  .topbar-right .kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
+  .topbar-right a{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+  .topbar-right a:hover{color:var(--crimson-deep);text-decoration:none}
+  @media(max-width:640px){.topbar-right .kicker{display:none}}
 
   .shell{max-width:74rem;margin:0 auto;padding:0 var(--gutter);display:grid;grid-template-columns:1fr}
   @media (min-width:1040px){ .shell{grid-template-columns:15rem minmax(0,1fr);gap:3.5rem} }
@@ -148,8 +151,11 @@
 <body>
 
 <header class="topbar">
-  <span class="wordmark">falcon<b>bi</b></span>
-  <span class="kicker">Concept note · Cost allocation</span>
+  <a href="index.html" style="text-decoration:none"><span class="wordmark">falcon<b>bi</b></span></a>
+  <div class="topbar-right">
+    <span class="kicker">Concept note · Cost allocation</span>
+    <a href="index.html">← articles</a>
+  </div>
 </header>
 
 <div class="shell">
@@ -479,12 +485,12 @@
     <div>
       <div class="foot-mark">falcon<b>bi</b></div>
       <p>Open EPM methodology — practical design for planning and cost models. The methodology is published in full; implementation is available.</p>
-      <span class="license">CC BY 4.0 · attribution appreciated</span>
+      <span class="license">CC0 — public domain</span>
     </div>
     <div class="foot-meta">
       Concept note — reciprocal apportionment<br>
       Part of the cost-apportionment series<br>
-      <a href="https://falconbi.github.io">falconbi.github.io</a><br>
+      <a href="index.html">← All articles</a><br>
       © 2026 falconbi
     </div>
   </div>
