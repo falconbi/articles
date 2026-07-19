@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>falconbi · articles</title>
+    <meta name="description" content="Open, vendor-agnostic notes on enterprise planning, EPM and FP&A.">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #16181d;
+            --ink-2: #39414f;
+            --slate: #6b7280;
+            --paper: #fafafc;
+            --surface: #ffffff;
+            --crimson: #b21e3a;
+            --line: #e3e6ec;
+        }
+        body {
+            margin: 0;
+            font-family: 'IBM Plex Sans', system-ui, sans-serif;
+            background: var(--paper);
+            color: var(--ink);
+            line-height: 1.75;
+        }
+        header {
+            padding: 3rem 5% 2rem;
+            background: white;
+            border-bottom: 1px solid var(--line);
+            text-align: center;
+        }
+        .wordmark {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        .wordmark b { color: var(--crimson); }
+        .tagline {
+            font-size: 1.15rem;
+            color: var(--ink-2);
+            max-width: 520px;
+            margin: 1rem auto 0;
+        }
+        main {
+            max-width: 980px;
+            margin: 4rem auto;
+            padding: 0 5%;
+        }
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            text-align: center;
+            margin-bottom: 3rem;
+            font-size: 2.2rem;
+        }
+        .section h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.55rem;
+            border-bottom: 2px solid var(--crimson);
+            padding-bottom: 0.6rem;
+            margin-bottom: 1.8rem;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1.75rem;
+        }
+        .card {
+            background: white;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 1.8rem;
+            transition: all 0.25s ease;
+        }
+        .card:hover {
+            border-color: var(--crimson);
+            transform: translateY(-6px);
+            box-shadow: 0 12px 25px -10px rgba(178, 30, 58, 0.12);
+        }
+        .card h3 {
+            margin: 0 0 0.8rem;
+            font-size: 1.28rem;
+            font-family: 'Space Grotesk', sans-serif;
+            line-height: 1.2;
+        }
+        .card p {
+            color: var(--ink-2);
+            margin: 0 0 1.2rem;
+            font-size: 0.98rem;
+        }
+        .card a {
+            color: var(--crimson);
+            font-weight: 600;
+            text-decoration: none;
+        }
+        footer {
+            text-align: center;
+            padding: 4rem 5% 2rem;
+            color: var(--slate);
+            font-size: 0.92rem;
+            border-top: 1px solid var(--line);
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="wordmark">falcon<b>bi</b></div>
+    <p class="tagline">Open, vendor-agnostic notes on enterprise planning, EPM and FP&amp;A — written to make the choices legible to the people who sign off on them.</p>
+</header>
+
+<main>
+    <h1>Articles</h1>
+
+    <div class="section">
+        <h2>Platform Selection</h2>
+        <div class="cards">
+            <div class="card">
+                <h3>IBM Planning Analytics vs Pigment — Weighted Decision Scorecard</h3>
+                <p>Interactive scorecard for the AI-era planning-platform choice. Adjust weights or switch lens and watch the winner change in real time.</p>
+                <a href="planning-platform-scorecard.html">Read article →</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Cost Apportionment Series</h2>
+        <div class="cards">
+            <div class="card">
+                <h3>Cost Apportionment in Pigment — a five-stage engine</h3>
+                <p>Full technical reference model: dimensions, transaction lists, reciprocal settlements, reconciliation layer, and complete data flow.</p>
+                <a href="cost-apportionment.html">Read article →</a>
+            </div>
+            <div class="card">
+                <h3>Cost apportionment, explained — executive briefing</h3>
+                <p>What each service really costs. Five-stage overview framed for decision-makers and why the numbers can be trusted.</p>
+                <a href="cost-apportionment-executive.html">Read article →</a>
+            </div>
+            <div class="card">
+                <h3>Reciprocal apportionment — when cost flows both ways</h3>
+                <p>Deep dive into mutual service departments, the three allocation methods, Leontief origins, worked example, and practical system handling.</p>
+                <a href="reciprocal-apportionment.html">Read article →</a>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer>
+    Part of <a href="https://falconbi.github.io" style="color:var(--crimson)">falconbi</a> — independent EPM/FP&amp;A methodology, published in the open.<br>
+    © 2026 falconbi
+</footer>
+
+</body>
+</html>
