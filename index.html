@@ -8,134 +8,92 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --ink: #16181d;
-            --ink-2: #39414f;
-            --slate: #6b7280;
-            --paper: #fafafc;
-            --surface: #ffffff;
-            --crimson: #b21e3a;
-            --line: #e3e6ec;
-        }
         body {
-            margin: 0;
+            margin: 0 auto;
+            max-width: 680px;
+            padding: 3rem 6%;
             font-family: 'IBM Plex Sans', system-ui, sans-serif;
-            background: var(--paper);
-            color: var(--ink);
             line-height: 1.75;
+            color: #1f252e;
+            background: #fafafc;
         }
         header {
-            padding: 2.5rem 5% 1.5rem;
-            background: white;
-            border-bottom: 1px solid var(--line);
             text-align: center;
+            padding-bottom: 2.5rem;
+            border-bottom: 1px solid #d4d9e0;
         }
         .wordmark {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 2.6rem;
+            font-size: 2.35rem;
             font-weight: 700;
             letter-spacing: -0.02em;
         }
-        .wordmark b { color: var(--crimson); }
-        main {
-            max-width: 960px;
-            margin: 3.5rem auto;
-            padding: 0 5%;
-        }
         h1 {
             font-family: 'Space Grotesk', sans-serif;
-            text-align: center;
-            margin-bottom: 3rem;
-            font-size: 2.1rem;
+            margin: 2.8rem 0 1.8rem;
+            font-size: 1.8rem;
         }
-        .section h2 {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1.5rem;
-            border-bottom: 2px solid var(--crimson);
-            padding-bottom: 0.5rem;
-            margin-bottom: 1.6rem;
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-            gap: 1.6rem;
+        li {
+            padding: 1.25rem 0;
+            border-bottom: 1px solid #d4d9e0;
         }
-        .card {
-            background: white;
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 1.6rem;
-            transition: all 0.2s;
-        }
-        .card:hover {
-            border-color: var(--crimson);
-            transform: translateY(-4px);
-        }
-        .card h3 {
-            margin: 0 0 0.7rem;
-            font-size: 1.22rem;
+        li:last-child { border-bottom: none; }
+        li h3 {
+            margin: 0 0 0.5rem;
+            font-size: 1.2rem;
             font-family: 'Space Grotesk', sans-serif;
         }
-        .card p {
-            color: var(--ink-2);
-            margin: 0 0 1.1rem;
-            font-size: 0.97rem;
+        li p {
+            margin: 0;
+            color: #475569;
+            font-size: 0.98rem;
         }
-        .card a {
-            color: var(--crimson);
-            font-weight: 600;
+        li a {
+            color: #1f252e;
             text-decoration: none;
         }
+        li a:hover {
+            text-decoration: underline;
+        }
         footer {
+            margin-top: 4.5rem;
             text-align: center;
-            padding: 3.5rem 5% 2rem;
-            color: var(--slate);
+            color: #64748b;
             font-size: 0.9rem;
-            border-top: 1px solid var(--line);
         }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="wordmark">falcon<b>bi</b></div>
+    <div class="wordmark">falconbi</div>
 </header>
 
-<main>
-    <h1>Articles</h1>
+<h1>Articles</h1>
 
-    <div class="section">
-        <h2>Platform Selection</h2>
-        <div class="cards">
-            <div class="card">
-                <h3>IBM Planning Analytics vs Pigment — Weighted Decision Scorecard</h3>
-                <p>Interactive scorecard. Adjust weights or switch lens to compare the platforms.</p>
-                <a href="planning-platform-scorecard.html">Read →</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="section">
-        <h2>Cost Apportionment</h2>
-        <div class="cards">
-            <div class="card">
-                <h3>Cost Apportionment in Pigment — a five-stage engine</h3>
-                <p>Technical reference: dimensions, transaction lists, reciprocal settlements, and full data flow.</p>
-                <a href="cost-apportionment.html">Read →</a>
-            </div>
-            <div class="card">
-                <h3>Cost apportionment, explained — executive briefing</h3>
-                <p>Overview of the five-stage model and why the results can be trusted.</p>
-                <a href="cost-apportionment-executive.html">Read →</a>
-            </div>
-            <div class="card">
-                <h3>Reciprocal apportionment — when cost flows both ways</h3>
-                <p>Mutual service departments, the three methods, worked example, and how planning systems solve it.</p>
-                <a href="reciprocal-apportionment.html">Read →</a>
-            </div>
-        </div>
-    </div>
-</main>
+<ul>
+    <li>
+        <h3><a href="planning-platform-scorecard.html">IBM Planning Analytics vs Pigment — Weighted Decision Scorecard</a></h3>
+        <p>Interactive scorecard for comparing the platforms.</p>
+    </li>
+    <li>
+        <h3><a href="cost-apportionment.html">Cost Apportionment in Pigment — a five-stage engine</a></h3>
+        <p>Technical reference: dimensions, reciprocal settlements, and full data flow.</p>
+    </li>
+    <li>
+        <h3><a href="cost-apportionment-executive.html">Cost apportionment, explained — executive briefing</a></h3>
+        <p>Five-stage model overview for decision-makers.</p>
+    </li>
+    <li>
+        <h3><a href="reciprocal-apportionment.html">Reciprocal apportionment — when cost flows both ways</a></h3>
+        <p>Mutual services, the three methods, worked example, and system handling.</p>
+    </li>
+</ul>
 
 <footer>
     falconbi — independent EPM/FP&amp;A methodology<br>
