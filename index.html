@@ -9,119 +9,16 @@
 <meta name="description" content="Free methodology, design patterns, and open-source tools for IBM Planning Analytics and Pigment. Practitioner work from live implementations, published openly.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-:root{
-  --ink:#16181d;--ink-2:#39414f;--slate:#6b7280;
-  --paper:#fafafc;--surface:#ffffff;--surface-2:#f3f4f7;
-  --line:#e3e6ec;--line-strong:#cdd2db;
-  --crimson:#b21e3a;--crimson-deep:#8a1329;--crimson-tint:#fbeef1;
-  --steel:#3e5c74;--steel-tint:#eef2f6;
-  --ok:#1f7a4d;--ok-tint:#f0fdf4;
-  --violet:#5b21b6;--violet-tint:#ede9fe;
-  --amber:#b45309;--amber-tint:#fffbeb;
-  --teal:#0f766e;--teal-tint:#f0fdfa;
-  --display:"Space Grotesk",system-ui,sans-serif;
-  --body:"IBM Plex Sans",system-ui,sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",monospace;
-  --gutter:clamp(1.25rem,5vw,3rem);
-  --maxwidth:72rem;
-}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:1.05rem;line-height:1.72;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-a{color:var(--crimson-deep);text-decoration:none}
-a:hover{text-decoration:underline;text-underline-offset:2px}
-
-/* topbar */
-.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem var(--gutter);background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
-.wordmark{font-family:var(--mono);font-weight:500;font-size:.95rem;letter-spacing:.02em;color:var(--ink)}
-.wordmark b{color:var(--crimson)}
-.topbar-links{display:flex;align-items:center;gap:1.5rem;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase}
-.topbar-links a{color:var(--slate)}
-.topbar-links a:hover{color:var(--ink);text-decoration:none}
-@media(max-width:580px){.topbar-links{display:none}}
-
-/* hero */
-.hero{max-width:var(--maxwidth);margin:0 auto;padding:0 var(--gutter);padding-top:clamp(3rem,8vw,5.5rem);padding-bottom:clamp(2rem,5vw,3.5rem);border-bottom:1px solid var(--line)}
-.hero-eyebrow{font-family:var(--mono);font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--crimson);margin-bottom:1.2rem}
-.hero h1{font-family:var(--display);font-weight:700;font-size:clamp(2.8rem,8vw,5.5rem);line-height:.95;letter-spacing:-.03em;margin:0 0 2rem}
-.hero h1 span{color:var(--crimson)}
-.hero-body{display:grid;gap:2rem}
-@media(min-width:760px){.hero-body{grid-template-columns:1fr 1fr;gap:clamp(2rem,5vw,5rem);align-items:start}}
-.hero-tagline{font-size:clamp(1.08rem,2.1vw,1.28rem);color:var(--ink-2);line-height:1.55;max-width:34rem}
-.hero-tagline strong{color:var(--ink);font-weight:600}
-.hero-philosophy{font-size:.97rem;color:var(--ink-2);line-height:1.72;border-left:2px solid var(--line-strong);padding-left:1.25rem;max-width:30rem;margin:0}
-
-/* content shell */
-.content-shell{max-width:var(--maxwidth);margin:0 auto;padding:0 var(--gutter)}
-
-/* topic area sections */
-.topic-area{padding:3.5rem 0;border-bottom:1px solid var(--line)}
-.area-meta{margin-bottom:1.75rem}
-@media(min-width:800px){
-  .area-layout{display:grid;grid-template-columns:13rem 1fr;gap:2.5rem;align-items:start}
-  .area-meta{margin-bottom:0;padding-top:.35rem}
-}
-.area-label{font-family:var(--mono);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--slate);display:flex;align-items:center;gap:.55rem;margin-bottom:.5rem}
-.area-label::before{content:"";display:block;width:1.75rem;height:2px;background:var(--area-color,var(--crimson));flex:0 0 auto}
-.area-title{font-family:var(--display);font-weight:600;font-size:clamp(1.3rem,2.8vw,1.7rem);line-height:1.1;letter-spacing:-.015em;margin:0 0 .35rem}
-.area-desc{color:var(--ink-2);font-size:.93rem;margin:0;max-width:20rem}
-
-/* article list */
-.article-list{list-style:none;margin:0;padding:0}
-.article-item{display:grid;grid-template-columns:5.5rem 1fr;gap:.75rem 1rem;padding:1.1rem 0;border-bottom:1px solid var(--line);align-items:start}
-.article-item:first-child{border-top:1px solid var(--line)}
-@media(max-width:480px){.article-item{grid-template-columns:1fr;gap:.4rem}}
-.article-tags{display:flex;flex-direction:column;gap:.35rem;padding-top:.05rem}
-@media(max-width:480px){.article-tags{flex-direction:row;flex-wrap:wrap}}
-.tag{font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .55rem;border-radius:2rem;border:1px solid;white-space:nowrap;display:inline-block;text-align:center}
-.tag.tm1{background:var(--steel-tint);color:var(--steel);border-color:color-mix(in srgb,var(--steel) 25%,transparent)}
-.tag.pigment{background:var(--violet-tint);color:var(--violet);border-color:color-mix(in srgb,var(--violet) 25%,transparent)}
-.tag.method{background:var(--ok-tint);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 25%,transparent)}
-.tag.compare{background:var(--amber-tint);color:var(--amber);border-color:color-mix(in srgb,var(--amber) 25%,transparent)}
-.article-body h3{font-family:var(--display);font-weight:600;font-size:1.07rem;line-height:1.25;margin:0 0 .3rem}
-.article-body h3 a{color:var(--ink)}
-.article-body h3 a:hover{color:var(--crimson-deep);text-decoration:none}
-.article-body p{margin:0;color:var(--ink-2);font-size:.92rem;line-height:1.55}
-.ext-icon{font-size:.8em;opacity:.6;margin-left:.2em}
-
-/* tools */
-.tools-section{padding:3.5rem 0 4.5rem}
-@media(min-width:800px){
-  .tools-layout{display:grid;grid-template-columns:13rem 1fr;gap:2.5rem;align-items:start}
-}
-.tools-grid{list-style:none;margin:0;padding:0;display:grid;gap:.75rem;grid-template-columns:1fr}
-@media(min-width:520px){.tools-grid{grid-template-columns:1fr 1fr}}
-@media(min-width:820px){.tools-grid{grid-template-columns:1fr 1fr 1fr}}
-.tool-card{background:var(--surface);border:1px solid var(--line);border-radius:.75rem;padding:1.1rem 1.25rem;display:flex;flex-direction:column;transition:border-color .15s ease,box-shadow .15s ease}
-.tool-card:hover{border-color:var(--line-strong);box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.tool-name{font-family:var(--mono);font-weight:500;font-size:.88rem;color:var(--ink);margin-bottom:.3rem}
-.tool-desc{font-size:.875rem;color:var(--ink-2);line-height:1.5;flex:1}
-.tool-footer{display:flex;align-items:center;justify-content:space-between;margin-top:.85rem;padding-top:.75rem;border-top:1px solid var(--line)}
-.tool-platform{font-family:var(--mono);font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;color:var(--slate)}
-.tool-link{font-family:var(--mono);font-size:.72rem;color:var(--crimson-deep)}
-.tool-link:hover{text-decoration:underline;text-underline-offset:2px}
-
-/* footer */
-footer{border-top:1px solid var(--line);padding:3rem var(--gutter);background:var(--surface)}
-.foot-inner{max-width:var(--maxwidth);margin:0 auto;display:grid;gap:1.5rem}
-@media(min-width:720px){.foot-inner{grid-template-columns:1.4fr 1fr;align-items:end}}
-.foot-mark{font-family:var(--mono);font-size:1.05rem;color:var(--ink)}
-.foot-mark b{color:var(--crimson)}
-.foot-inner p{margin:.5rem 0;color:var(--ink-2);font-size:.92rem;max-width:34rem}
-.foot-meta{font-family:var(--mono);font-size:.78rem;color:var(--slate);line-height:1.7}
-.foot-meta a{color:var(--ink-2)}
-.license{display:inline-block;margin-top:.4rem;font-family:var(--mono);font-size:.74rem;color:var(--slate);border:1px solid var(--line);border-radius:2rem;padding:.25rem .7rem}
-
-:focus-visible{outline:2px solid var(--crimson);outline-offset:2px;border-radius:2px}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
 </head>
 <body>
 
 <header class="topbar">
-  <span class="wordmark">falcon<b>bi</b></span>
+  <a href="index.html" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
   <nav class="topbar-links" aria-label="Site sections">
     <a href="#apportionment">Apportionment</a>
     <a href="#consolidation">Consolidation</a>
@@ -132,14 +29,14 @@ footer{border-top:1px solid var(--line);padding:3rem var(--gutter);background:va
   </nav>
 </header>
 
-<div class="hero">
-  <div class="hero-eyebrow">Open EPM methodology</div>
+<div class="hero-hub">
+  <div class="eyebrow"><span>Open EPM methodology</span></div>
   <h1>falcon<span>bi</span></h1>
-  <div class="hero-body">
-    <p class="hero-tagline">
+  <div class="hub-body">
+    <p class="hub-tagline">
       <strong>Methodology, design patterns, and open-source tools</strong> for IBM Planning Analytics and Pigment — from practitioner work in live implementations.
     </p>
-    <p class="hero-philosophy">
+    <p class="hub-philosophy">
       Everything published here is free to use, adapt, and share. No paywalls, no courses to sell. Just open practice so others don't have to start from scratch.
     </p>
   </div>
@@ -147,7 +44,7 @@ footer{border-top:1px solid var(--line);padding:3rem var(--gutter);background:va
 
 <div class="content-shell">
 
-  <section class="topic-area" id="apportionment" style="--area-color:var(--crimson)">
+  <section class="topic-area" id="apportionment" style="--area-color:var(--teal)">
     <div class="area-layout">
       <div class="area-meta">
         <div class="area-label">Methodology</div>
@@ -173,7 +70,7 @@ footer{border-top:1px solid var(--line);padding:3rem var(--gutter);background:va
           <div class="article-tags"><span class="tag pigment">Pigment</span></div>
           <div class="article-body">
             <h3><a href="cost-apportionment.html">Cost Apportionment in Pigment — a five-stage engine</a></h3>
-            <p>Full technical reference: all 11 dimensions, transaction lists, metrics, reciprocal settlements, control checks, and board layouts. A worked reference model built on real data.</p>
+            <p>Full technical reference: all 11 dimensions, transaction lists, metrics, reciprocal settlements, control checks, and board layouts.</p>
           </div>
         </li>
         <li class="article-item">
@@ -187,7 +84,7 @@ footer{border-top:1px solid var(--line);padding:3rem var(--gutter);background:va
     </div>
   </section>
 
-  <section class="topic-area" id="consolidation" style="--area-color:var(--steel)">
+  <section class="topic-area" id="consolidation" style="--area-color:var(--navy)">
     <div class="area-layout">
       <div class="area-meta">
         <div class="area-label">Methodology</div>
@@ -206,7 +103,7 @@ footer{border-top:1px solid var(--line);padding:3rem var(--gutter);background:va
     </div>
   </section>
 
-  <section class="topic-area" id="cashflow" style="--area-color:var(--teal)">
+  <section class="topic-area" id="cashflow" style="--area-color:var(--forest)">
     <div class="area-layout">
       <div class="area-meta">
         <div class="area-label">Methodology</div>
@@ -225,7 +122,7 @@ footer{border-top:1px solid var(--line);padding:3rem var(--gutter);background:va
     </div>
   </section>
 
-  <section class="topic-area" id="platform" style="--area-color:var(--amber)">
+  <section class="topic-area" id="platform" style="--area-color:var(--sienna)">
     <div class="area-layout">
       <div class="area-meta">
         <div class="area-label">Comparison</div>
@@ -266,7 +163,7 @@ footer{border-top:1px solid var(--line);padding:3rem var(--gutter);background:va
   <section class="tools-section" id="tools">
     <div class="tools-layout">
       <div class="area-meta">
-        <div class="area-label" style="--area-color:var(--ink)">Open source</div>
+        <div class="area-label" style="--area-color:var(--ink-faint)">Open source</div>
         <h2 class="area-title">Tools &amp; Apps</h2>
         <p class="area-desc">Open-source tools built for TM1/Planning Analytics environments. Clone, adapt, use freely.</p>
       </div>
@@ -328,7 +225,10 @@ footer{border-top:1px solid var(--line);padding:3rem var(--gutter);background:va
 <footer>
   <div class="foot-inner">
     <div>
-      <div class="foot-mark">falcon<b>bi</b></div>
+      <div class="foot-brand">
+        <img src="favicon.png" alt="FalconBI">
+        <span>falcon<b>bi</b></span>
+      </div>
       <p>Independent EPM/FP&amp;A methodology and tooling. Published openly for the practitioner community.</p>
       <a href="https://github.com/falconbi" target="_blank" rel="noopener" class="license">github.com/falconbi ↗</a>
     </div>

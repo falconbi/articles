@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon.png" type="image/png">
+<title>Ragged Hierarchy Pattern — Lean Single-Master · falconbi</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../falconbi.css">
+<style>
+main {
+  max-width: 52rem; margin: 0 auto;
+  padding: 3rem var(--gutter) 6rem;
+}
+main h1 { max-width: none; border-bottom: 2px solid var(--border-s); padding-bottom: .85rem; margin-bottom: .75rem; }
+main h2 { margin-top: 3rem; }
+main h1 + h2 { border-top: none; margin-top: .75rem; }
+.masthead-sub { font-size: 1.1rem; color: var(--ink-muted); margin: .75rem 0 1.5rem; }
+.doc-meta { font-family: var(--mono); font-size: .72rem; color: var(--ink-faint); line-height: 1.9; }
+.doc-meta strong { color: var(--ink-soft); font-weight: 500; }
+.muted { color: var(--ink-muted); }
+.sub { color: var(--ink-muted); font-size: .95rem; }
+.card  { background: var(--navy-tint);   border: 1px solid color-mix(in srgb,var(--navy)  20%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.warn  { background: var(--sienna-tint); border: 1px solid color-mix(in srgb,var(--sienna) 25%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.ok    { background: var(--forest-tint); border: 1px solid color-mix(in srgb,var(--forest) 20%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.card h3 { margin-top: 0; color: var(--navy);   }
+.warn h3 { margin-top: 0; color: var(--sienna); }
+.ok h3   { margin-top: 0; color: var(--forest); }
+.rule { background: var(--code-bg); color: var(--code-fg); border-radius: 8px; padding: 1rem 1.5rem; margin: 1.25rem 0; font-family: var(--mono); font-size: .88rem; line-height: 1.7; }
+.rule code { background: rgba(255,255,255,.1); color: var(--code-fg); }
+.glance { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1.5rem 0; font-size: .9rem; }
+.glance .row { display: grid; grid-template-columns: 9rem 1fr; border-bottom: 1px solid var(--border); }
+.glance .row:last-child { border-bottom: none; }
+.glance .k, .glance .key { background: var(--surface); padding: .55rem .85rem; font-family: var(--mono); font-size: .75rem; font-weight: 600; color: var(--ink-soft); border-right: 1px solid var(--border); }
+.glance .v, .glance .val { padding: .55rem .85rem; color: var(--ink-soft); }
+.glance .hdr { background: var(--border-s); font-family: var(--mono); font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); padding: .35rem .85rem; grid-column: 1 / -1; }
+.tree { font-family: var(--mono); font-size: .82rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; overflow-x: auto; line-height: 1.8; color: var(--ink-soft); white-space: pre; }
+tbody tr:hover td { background: var(--surface); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="../index.html" class="brand">
+    <img src="../favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right">
+    <span class="kicker">Pigment · Hierarchy Patterns</span>
+    <a href="../index.html">← articles</a>
+  </div>
+</header>
+
+<main>
+<h1>Ragged Hierarchy Pattern in Pigment — Lean Single-Master</h1>
+<h2>A Modelling &amp; Implementation Reference</h2>
+<p><strong>Version:</strong> 1.0
+<strong>Author:</strong> James Lovering
+<strong>Last Updated:</strong> July 2026
+<strong>Applies to:</strong> Simple, low-governance ragged hierarchies where a single maintainer controls the model.<br>
+<strong>Start here first:</strong> <a href="00_ragged_hierarchies_concepts.html">Ragged Hierarchies in Pigment — Concepts &amp; Pattern Selection</a>, which explains the failure mode and the choice between this pattern and the <a href="balanced_hierarchy_pattern.html">Balanced Levels</a> companion.</p>
+<blockquote>
+<p><strong>Read this first.</strong> This is the <strong>lean</strong> pattern — optimised for maintenance simplicity and clean UI, at the cost of a narrow but real calculation hazard that must be managed by discipline. For any model where many hands will touch it, governance is weak, or level-grain calculations are known to be needed, use the companion document <em>Ragged Hierarchy Pattern — Balanced Levels</em>, which is loss-proof by construction. Section 1 below states exactly when each is appropriate.</p>
+
+<blockquote style="border-left-color:var(--amber);background:var(--amber-soft);">
+<p><strong>Disclaimer — reference, not warranty.</strong> This is a practitioner design reference, not a guarantee of fitness for any particular model. Validate every formula and behaviour against your own environment and requirements before relying on it in production. Specific things to re-check:</p>
+<p>• <strong>Platform behaviour can change.</strong> Formula and aggregation behaviour described here (including the <code>BY</code> blank-drop and the <code>BY COUNT</code> child-count idiom) was observed on Pigment as of July 2026; re-test after platform updates, as vendor behaviour may change without notice and is, in places, not officially documented.<br>
+• <strong>Model-confirmed vs logic-verified.</strong> Some formulas here are confirmed in a working model and others are logic-verified pending in-model validation — see the confirmation-status note in Section 3.2. Do not treat the two as equivalent.<br>
+• <strong>Assumptions.</strong> The pattern assumes a unique <code>Name</code>/<code>Code</code> per item, a non-blank <code>Internal_ID</code> on every row, and a clean single-parent tree. Confirm these hold in your data.<br>
+• <strong>No professional advice.</strong> Nothing here is legal, financial, or accounting advice. Modelling choices with reporting or compliance consequences are yours to validate.</p>
+<p>Provided as-is, without warranty of any kind. You are responsible for testing and validating to your own needs.</p>
+</blockquote>
+<p><strong>Naming note:</strong> formulas use <code>Cost Centre Load</code>, <code>Cost Centre L1</code>–<code>L7</code>, and <code>Cost Centre</code> (the position-free leaf) as the worked example.</p>
+</blockquote>
+<hr />
+<h2>1. When to Use This Pattern</h2>
+<p>Both patterns solve the same ragged-hierarchy problem and rest on the same underlying necessity — every calculation grain needs a complete set of members behind it. They differ in <em>when</em> that completeness is built and <em>where</em> the members live.</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Balanced (companion doc)</th>
+<th>Lean (this doc)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Calculation safety</td>
+<td>Every level, by construction</td>
+<td>Leaf / L1 / views safe as-built; level-grain metrics require a helper (Section 5)</td>
+</tr>
+<tr>
+<td>When safety is paid for</td>
+<td>Up front (promotion, per-level imports)</td>
+<td>On demand (helper built when a consumer appears)</td>
+</tr>
+<tr>
+<td>Level list contents</td>
+<td>Real + promoted members</td>
+<td>Real members only (display); synthetics confined to a Calc helper</td>
+</tr>
+<tr>
+<td>View / UI appearance</td>
+<td>Shows promoted / "No Rollup" rows</td>
+<td>Clean — real members only; ragged leaves nest under their BU</td>
+</tr>
+<tr>
+<td>Hierarchy changes</td>
+<td>Touch multiple lists via imports</td>
+<td>Touch the Load List, re-import projections</td>
+</tr>
+<tr>
+<td>Governance burden</td>
+<td>None ongoing — structure enforces safety</td>
+<td>One rule, enforced forever: level-grain metrics → Calc helper</td>
+</tr>
+<tr>
+<td>Fails how, if misused</td>
+<td>Hard to misuse</td>
+<td><strong>Silently</strong>, if the rule is breached</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Use the lean pattern when:</strong> the model has a single knowledgeable maintainer, level-grain calculations are absent or rare, and clean member-only reporting is a priority. <strong>Use the balanced pattern instead when:</strong> many people build in the model, governance is weak, or department/BU-grain rules and budgets are expected — in which case building completeness up front costs no more and removes the hazard entirely.</p>
+<hr />
+<h2>2. Architecture</h2>
+<p>The lean pattern treats the <strong>Load List as the permanent master</strong>. Operational dimensions are thin projections of it, populated by <strong>import</strong> (see the separation rule below).</p>
+
+<figure style="margin:22px 0 26px;">
+<svg viewBox="0 0 900 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ragged tree on the left; on the right the same items with all leaves aligned on one bottom leaf row, and a BLANK occupying the skipped L2 slot above each ragged leaf">
+  <defs>
+    <style>
+      .lvl{font:600 11px "SF Mono",Consolas,monospace;fill:#46586f;letter-spacing:1px;}
+      .nt{font:600 12px "Segoe UI",Arial,sans-serif;fill:#17263c;}
+      .panel-t{font:700 13px "SF Mono",Consolas,monospace;letter-spacing:1px;}
+      .edge{stroke:#3d5a80;stroke-width:1.5;fill:none;}
+      .edge-b{stroke:#c8302f;stroke-width:1.5;fill:none;stroke-dasharray:4 3;}
+      .real{fill:#ffffff;stroke:#3d5a80;stroke-width:1.4;}
+      .node{fill:#e4ebf3;stroke:#3d5a80;stroke-width:1.6;}
+      .leaf{fill:#e2f1ee;stroke:#257d6f;stroke-width:1.5;}
+      .blank{fill:#fbeceb;stroke:#c8302f;stroke-width:1.3;stroke-dasharray:3 3;}
+      .blank-t{font:600 10.5px "SF Mono",Consolas,monospace;fill:#c8302f;}
+      .cap{font:600 11px "SF Mono",Consolas,monospace;letter-spacing:0.5px;}
+      .rowline{stroke:#e4ebf3;stroke-width:1;}
+      .rowlab{font:600 10.5px "SF Mono",Consolas,monospace;fill:#46586f;letter-spacing:1px;}
+    </style>
+  </defs>
+
+  <line x1="452" y1="30" x2="452" y2="400" stroke="#d5dde5" stroke-width="1.5" stroke-dasharray="2 4"/>
+
+  <!-- row guides + labels -->
+  <text class="lvl" x="14" y="72">L1</text>
+  <text class="lvl" x="14" y="172">L2</text>
+  <text class="lvl" x="14" y="272">LEAF</text>
+  <line class="rowline" x1="70" y1="90" x2="884" y2="90"/>
+  <line class="rowline" x1="70" y1="190" x2="884" y2="190"/>
+  <line class="rowline" x1="70" y1="248" x2="884" y2="248"/>
+
+  <!-- ===== LEFT: RAGGED AS LOADED (depth-accurate) ===== -->
+  <text class="panel-t" x="60" y="24" fill="#257d6f">RAGGED — as loaded (mixed depths)</text>
+  <path class="edge" d="M235,72 C235,120 150,120 150,150"/>
+  <path class="edge" d="M235,72 C235,130 250,130 250,258"/>
+  <path class="edge" d="M235,72 C235,130 350,130 350,258"/>
+  <path class="edge" d="M150,184 C150,215 110,215 110,258"/>
+  <path class="edge" d="M150,184 C150,215 190,215 190,258"/>
+
+  <rect class="real" x="185" y="54" width="100" height="32" rx="6"/><text class="nt" x="235" y="75" text-anchor="middle">Marketing</text>
+  <rect class="node" x="100" y="152" width="100" height="32" rx="6"/><text class="nt" x="150" y="173" text-anchor="middle">Digital Team</text>
+  <rect class="leaf" x="60" y="260" width="100" height="30" rx="6"/><text class="nt" x="110" y="280" text-anchor="middle">Digital AMER</text>
+  <rect class="leaf" x="170" y="260" width="100" height="30" rx="6"/><text class="nt" x="220" y="280" text-anchor="middle">Digital EMEA</text>
+  <rect class="leaf" x="285" y="260" width="90" height="30" rx="6"/><text class="nt" x="330" y="280" text-anchor="middle">AMER Mktg</text>
+  <rect class="leaf" x="382" y="260" width="60" height="30" rx="6"/><text class="nt" x="412" y="280" text-anchor="middle" font-size="10.5">Brand</text>
+  <text class="cap" x="60" y="330" fill="#46586f" font-style="italic" font-weight="400">AMER Mktg &amp; Brand sit at Depth 1 —</text>
+  <text class="cap" x="60" y="345" fill="#46586f" font-style="italic" font-weight="400">shallower than the Digital leaves.</text>
+
+  <!-- ===== RIGHT: LEAN LAYOUT ===== -->
+  <text class="panel-t" x="500" y="24" fill="#3d5a80">LEAN — all leaves on one row, BLANK fills skipped L2</text>
+
+  <!-- edges -->
+  <path class="edge" d="M700,72 C700,120 620,120 620,150"/>
+  <path class="edge" d="M700,72 C700,130 770,130 770,150"/>
+  <path class="edge" d="M700,72 C700,130 850,130 850,150"/>
+  <path class="edge" d="M620,184 C620,215 580,215 580,258"/>
+  <path class="edge" d="M620,184 C620,215 660,215 660,258"/>
+  <path class="edge-b" d="M770,184 L770,258"/>
+  <path class="edge-b" d="M850,184 L850,258"/>
+
+  <rect class="real" x="650" y="54" width="100" height="32" rx="6"/><text class="nt" x="700" y="75" text-anchor="middle">Marketing</text>
+
+  <!-- L2 row: real node + two blanks -->
+  <rect class="node" x="570" y="152" width="100" height="32" rx="6"/><text class="nt" x="620" y="173" text-anchor="middle">Digital Team</text>
+  <rect class="blank" x="725" y="152" width="90" height="32" rx="6"/><text class="blank-t" x="770" y="172" text-anchor="middle">BLANK</text>
+  <rect class="blank" x="820" y="152" width="60" height="32" rx="6"/><text class="blank-t" x="850" y="172" text-anchor="middle">BLANK</text>
+
+  <!-- LEAF row: all four aligned -->
+  <rect class="leaf" x="530" y="260" width="100" height="30" rx="6"/><text class="nt" x="580" y="280" text-anchor="middle">Digital AMER</text>
+  <rect class="leaf" x="640" y="260" width="100" height="30" rx="6"/><text class="nt" x="690" y="280" text-anchor="middle">Digital EMEA</text>
+  <rect class="leaf" x="750" y="260" width="90" height="30" rx="6"/><text class="nt" x="795" y="280" text-anchor="middle">AMER Mktg</text>
+  <rect class="leaf" x="847" y="260" width="45" height="30" rx="6"/><text class="nt" x="869" y="280" text-anchor="middle" font-size="10">Brand</text>
+
+  <text class="cap" x="500" y="330" fill="#46586f" font-style="italic" font-weight="400">Every leaf is on the LEAF row. The two ragged</text>
+  <text class="cap" x="500" y="345" fill="#46586f" font-style="italic" font-weight="400">leaves have no real L2, so their L2 slot is BLANK —</text>
+  <text class="cap" x="500" y="360" fill="#46586f" font-style="italic" font-weight="400">the gap sits between leaf and BU, not at the leaf.</text>
+
+  <!-- legend -->
+  <rect class="node" x="90" y="428" width="20" height="14" rx="3"/><text class="cap" x="118" y="439" fill="#46586f">real L2 node (Has_Children)</text>
+  <rect class="leaf" x="330" y="428" width="20" height="14" rx="3"/><text class="cap" x="358" y="439" fill="#46586f">leaf (all on one row)</text>
+  <rect class="blank" x="560" y="428" width="20" height="14" rx="3"/><text class="cap" x="588" y="439" fill="#46586f">BLANK — skipped L2 slot above a ragged leaf</text>
+</svg>
+<figcaption style="font-size:13px;color:#46586f;margin-top:8px;font-family:var(--mono);">Fig. 1 — In the lean pattern every leaf lands on the single LEAF row regardless of its depth in the source tree. Where a leaf has no real intermediate parent (AMER Mktg, Brand), its L2 slot is BLANK — the gap sits <em>between</em> the leaf and its BU, not at the leaf. Digital AMER/EMEA roll up through the real Digital Team node; the two ragged leaves connect to Marketing through an empty L2.</figcaption>
+</figure>
+<table>
+<thead>
+<tr>
+<th>Block</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Cost Centre Load</code></td>
+<td><strong>Master</strong> — every node, all levels; source of truth for all hierarchy logic</td>
+</tr>
+<tr>
+<td><code>Cost Centre</code></td>
+<td>Operational leaf dimension for all metrics — leaf items only (position-free name; Section 6)</td>
+</tr>
+<tr>
+<td><code>Cost Centre L1</code>, <code>L2</code>, …</td>
+<td>Thin display lists — real members of each level only; <strong>no synthetic or promoted members</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The Load List carries the same machinery detailed in the companion document — <code>Parent_Internal_ID</code>, <code>Depth</code>, the corrected <code>Depth Exceeded</code> (see Section 3), and the <code>Level 1</code>–<code>Level 7</code> resolvers. The one deliberate difference from the balanced pattern:</p>
+<blockquote>
+<p><strong>Level resolvers return BLANK where no ancestor exists</strong> at that level. A Depth-1 ragged leaf has <code>Level 2</code> = BLANK. There is <strong>no promotion</strong> — this is what keeps the display lists to real members only, and it is also the source of the calculation hazard in Section 4.</p>
+
+<blockquote style="border-left-color:var(--teal);background:var(--teal-soft);">
+<p><strong>Seven levels are provisioned from day one and parked until needed.</strong> The <code>Level 1</code>–<code>Level 7</code> resolvers exist and compute immediately, whatever depth today's data reaches. Unused deeper levels sit dormant at no cost — a hierarchy only 2–3 deep simply leaves L4–L7 idle, and the unused stub properties can be set to <strong>hidden</strong> to keep the property list uncluttered (their activation instructions live in their own formula comments, so nothing is lost by hiding them). The ceiling is free headroom, not future work; you build no levels you don't need and retro-fit none you do.</p>
+<p><em>Two distinct numbers, easily conflated. The <strong>frame</strong> is the height the hierarchy actually has — a property of the tree. The <strong>ceiling</strong> is the depth the resolvers support — a property of this template. A hierarchy with a frame of 3 sits comfortably under a ceiling of 7. See <a href="00_ragged_hierarchies_concepts.html">Concepts §1</a>.</em></p>
+</blockquote>
+</blockquote>
+<h3>The Separation Rule (Paramount — applies to this pattern too)</h3>
+<blockquote>
+<p><strong>Production lists are populated by import from the Load List — never implemented as List Subsets of it, and never live-derived by formula from it.</strong></p>
+</blockquote>
+<p>Loads must be checkable before they reach the model. An import is a gate: refresh the Load List, inspect and validate it, then deliberately push it into the operational dimensions that models and apps use. A subset or a formula-derived link removes that gate and makes production a live reflection of staging.</p>
+<blockquote style="border-left-color:var(--amber);background:var(--amber-soft);">
+<p><strong>Consequence for this pattern — read carefully.</strong> A "self-maintaining" variant is often proposed for the lean pattern, in which the operational dimensions' parent-link properties are <em>formulas</em> that resolve from the Load List at runtime (the double-ITEM bridge). It recalculates on every reload with no import step — but it is exactly the live-coupling the separation rule forbids: the Load List becomes a permanent runtime dependency, and any load defect reaches calculations with no checkpoint. <strong>This pattern therefore uses import-populated projections, the same as the balanced pattern.</strong> The maintenance saving of the lean pattern comes from the single flat master import and the pre-written resolvers — <em>not</em> from live-derived links, which are deliberately rejected.</p>
+</blockquote>
+<hr />
+<h2>3. Corrected <code>Depth Exceeded</code> (Applies to Both Patterns)</h2>
+<p>The overflow warning must detect depth directly, not from the capped <code>Depth</code> value.</p>
+<blockquote style="border-left-color:var(--amber);background:var(--amber-soft);">
+<p><strong>IMPORTANT — do NOT use <code>IF(Depth &gt; 6, ...)</code>.</strong> The <code>Depth</code> property is itself capped at 6 by its IFDEFINED chain, so <code>Depth &gt; 6</code> is unreachable dead code: an item 8 levels deep still reports Depth = 6 and the warning never fires.</p>
+</blockquote>
+<pre><code class="language-pigment">// Corrected overflow detector — tests a 7th parent hop directly.
+// If a 7th hop resolves, the item exceeds the 7-level ceiling.
+// To extend the ceiling to 8 levels: add one more Parent_Internal_ID hop to this chain.
+IFDEFINED(
+    'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+    &quot;⚠️ Depth &gt; 6 — hierarchy exceeds 7 levels. Extend Depth, Level properties, and parent hops.&quot;,
+    BLANK
+)
+</code></pre>
+
+<h3>3.1 Has_Children Flag — Why the Blank Pattern Needs It</h3>
+<p>Before the Level resolvers, the blank pattern needs one extra property the balanced pattern does not: a <strong>Has_Children</strong> flag. Here is why.</p>
+<p>At any given depth, an item can be one of two very different things, and <strong>depth alone cannot tell them apart</strong>. Under one BU root, at Depth&nbsp;1, you may have both a real department (which itself has teams below it) and a bare cost centre (a ragged leaf with nothing below it):</p>
+<pre><code>Marketing                Depth 0  (BU root)
+├── Digital Team         Depth 1  ← has children → a real L2 department
+│   ├── Digital AMER     Depth 2  (leaf)
+│   └── Digital EMEA     Depth 2  (leaf)
+├── AMER Marketing       Depth 1  ← no children → a ragged leaf
+└── Brand Development    Depth 1  ← no children → a ragged leaf</code></pre>
+<p>All three middle items are Depth&nbsp;1, but at Level&nbsp;2 they must resolve differently: <code>Digital Team</code> is a genuine L2 department and should return <strong>itself</strong>; <code>AMER Marketing</code> and <code>Brand Development</code> are ragged leaves with no L2 role and should return <strong>BLANK</strong>. The distinguishing fact is not depth — it is <em>whether the item has children</em>.</p>
+<blockquote style="border-left-color:var(--steel);background:var(--steel-soft);">
+<p><strong>This ambiguity is unique to the blank pattern.</strong> The balanced pattern sidesteps it entirely: under promotion, &ldquo;Depth&nbsp;1 → itself at Level&nbsp;2&rdquo; is correct for <em>both</em> — a real department returns itself, and a ragged leaf returning itself is the intended promotion. Only the blank pattern must actively distinguish the two, which is why only it needs the Has_Children flag. A genuine simplicity point in the balanced pattern&rsquo;s favour.</p>
+</blockquote>
+
+<h4>Has_Children — reverse traversal via BY COUNT</h4>
+<p>Detecting children means aggregating <em>from</em> child items back <em>to</em> their parent — a reverse traversal. Property chains only walk <em>up</em> (child → parent), never down, so you cannot ask an item to list its children directly. The correct Pigment idiom is <code>BY COUNT</code>: group all items by their <code>Parent_Internal_ID</code> and write each parent&rsquo;s child-count back onto it.</p>
+<pre><code class="language-pigment">// Has_Children — TRUE if any item names this item as its Parent_Internal_ID.
+// Internal_ID is any non-blank value on every item, used purely as something to count.
+// BY COUNT groups all items by their parent, tallying children onto each parent slot.
+// > 0 is TRUE for parents; leaves are never counted, so they read as BLANK/FALSE.
+'Cost Centre Load'.Internal_ID [BY COUNT: 'Cost Centre Load'.Parent_Internal_ID] > 0</code></pre>
+<pre><code class="language-pigment">// Is_Leaf — the inverse. NOT on a blank (unset leaf) returns TRUE, so no IFDEFINED guard is needed.
+NOT 'Cost Centre Load'.'Has_Children'</code></pre>
+
+<blockquote style="border-left:3px solid #8a5a2b">
+<p><strong>Verify <code>NOT</code> against a blank in your own model.</strong> The form above was confirmed against a <code>Has_Children</code> flag derived from the <code>BY COUNT</code> metric. A separate build (July 2026) found <code>NOT</code> failing to evaluate against a Boolean <em>list property</em> holding TRUE/blank, where <code>ISBLANK(&hellip;)</code> worked correctly:</p>
+<pre><code class="language-pigment">// Worked where NOT did not, on a TRUE/blank Boolean list property:
+ISBLANK('Cost Centre Load'.'Is_Leaf')</code></pre>
+<p>The two observations may differ because one flag is metric-derived and the other is a plain list property, or one may have been misdiagnosed. <strong>Both are unresolved as of this version.</strong> Test <code>NOT</code> on your own blanks before relying on it; prefer <code>ISBLANK()</code> where the operand is a TRUE/blank list property.</p>
+</blockquote>
+
+<h4>MATCH — the same signal as a list property</h4>
+<p><code>BY COUNT</code> requires a metric object. <code>MATCH</code> answers the identical downward question as a plain list property, at the cost of a text <code>Parent_Code</code> to search against:</p>
+<pre><code class="language-pigment">// Is_Leaf — nobody references this item's Code as their Parent_Code.
+IF(ISBLANK(MATCH('Cost Centre Load'.Code, 'Cost Centre Load'.Parent_Code)), TRUE)</code></pre>
+<p>MATCH is the cleaner default for small and moderate lists — one property, no metric object. <code>BY COUNT</code> is the proven idiom at volume: it groups once, where MATCH searches a column per row. MATCH has not been benchmarked on large dimensions; test before committing on a list of tens of thousands of items.</p>
+
+<p><strong>Note:</strong> unlike the balanced pattern, leaf detection here is <strong>load-bearing</strong>. Every Level resolver above Level 1 gates on it to distinguish a real node from a ragged leaf at the same Depth. It is not an optional QA layer.</p>
+<p><strong>Empirically confirmed:</strong> for one root with three Depth-1 children — one with grandchildren, two without — the flag reads TRUE for the department and FALSE for the two leaves, because <code>BY COUNT</code> only places a value on items that actually appear as some other item&rsquo;s parent.</p>
+
+<h3>3.2 Level Resolver Formulas — Blank Form, Has_Children-Aware (all 7 levels)</h3>
+<blockquote style="border-left-color:var(--amber);background:var(--amber-soft);">
+<p><strong>These are NOT the balanced pattern&rsquo;s resolvers.</strong> Here a resolver returns <strong>BLANK</strong> where the item has no true ancestor at that level — there is no promotion. At the target depth, an item returns itself <em>only if it has children</em> (a real node at that level); a leaf at the same depth returns BLANK. If you copy the balanced pattern&rsquo;s promoting resolvers by mistake you will have built the balanced pattern, not this one. <code>Level 1</code> is identical in both patterns (roots are never ragged and always return themselves); <code>Level 2</code> onward carry the Has_Children gate.</p>
+</blockquote>
+<p>The rule for <strong>Level N</strong> (target depth = <code>N−1</code>): shallower than the target → BLANK; exactly at the target depth → <em>itself if Has_Children, else BLANK</em>; deeper than the target → walk up <code>(Depth − target)</code> parent hops. All seven are written out below.</p>
+<blockquote style="border-left-color:var(--steel);background:var(--steel-soft);">
+<p><strong>Model-name mapping.</strong> These formulas use the document&rsquo;s naming, <code>Cost Centre Load</code>. The working Pigment model uses <code>Cost Center Load Option 3</code> (US spelling, with the <code>Option 3</code> suffix). The two are the same list — substitute the name your model actually uses when copying in either direction.</p>
+<p><strong>Confirmation status.</strong> <code>Parent_Internal_ID</code>, <code>Depth</code>, <code>Element Level</code> and <code>Level 1</code> are confirmed working in the model. The <code>Has_Children</code> flag and the Level 2–7 gates are logic-verified here (every level checked against the depth/hop rule) and follow the Pigment-AI-provided <code>BY COUNT</code> idiom; validate the <code>BY COUNT</code> result and one mixed-depth case (a Depth-1 department resolving to itself, a Depth-1 leaf to BLANK) in the model before relying on them in production calculations.</p>
+</blockquote>
+
+<p><strong>Level 1</strong> — root ancestor (no Has_Children gate; a root is always the L1 ancestor)</p>
+<pre><code class="language-pigment">// Level 1 ancestor. Returns the root (Depth 0) for any item. Identical to the balanced pattern.
+IF('Cost Centre Load'.Depth == 0, ITEM('Cost Centre Load'.Name, 'Cost Centre Load'.Name),
+IF('Cost Centre Load'.Depth == 1, 'Cost Centre Load'.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 2, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 3, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 4, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 5, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 6, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+BLANK )))))))</code></pre>
+
+<p><strong>Level 2</strong> — target Depth 1. A Depth-1 item returns itself only if it has children; a ragged leaf returns BLANK.</p>
+<pre><code class="language-pigment">// Level 2 — Has_Children-aware.
+// Depth 0: BLANK   Depth 1 + Has_Children: itself   Depth 1 + leaf: BLANK
+// Depth 2: 1 hop   Depth 3: 2   Depth 4: 3   Depth 5: 4   Depth 6: 5
+IF('Cost Centre Load'.Depth == 0, BLANK,
+IF('Cost Centre Load'.Depth == 1,
+    IF('Cost Centre Load'.'Has_Children', ITEM('Cost Centre Load'.Name, 'Cost Centre Load'.Name), BLANK),
+IF('Cost Centre Load'.Depth == 2, 'Cost Centre Load'.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 3, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 4, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 5, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 6, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+BLANK )))))))</code></pre>
+
+<p><strong>Level 3</strong> — target Depth 2.</p>
+<pre><code class="language-pigment">// Level 3 — Has_Children-aware.
+// Depth 0-1: BLANK   Depth 2 + Has_Children: itself   Depth 2 + leaf: BLANK
+// Depth 3: 1 hop   Depth 4: 2   Depth 5: 3   Depth 6: 4
+IF('Cost Centre Load'.Depth &lt;= 1, BLANK,
+IF('Cost Centre Load'.Depth == 2,
+    IF('Cost Centre Load'.'Has_Children', ITEM('Cost Centre Load'.Name, 'Cost Centre Load'.Name), BLANK),
+IF('Cost Centre Load'.Depth == 3, 'Cost Centre Load'.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 4, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 5, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 6, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+BLANK ))))))</code></pre>
+
+<p><strong>Level 4</strong> — target Depth 3.</p>
+<pre><code class="language-pigment">// Level 4 — Has_Children-aware.
+IF('Cost Centre Load'.Depth &lt;= 2, BLANK,
+IF('Cost Centre Load'.Depth == 3,
+    IF('Cost Centre Load'.'Has_Children', ITEM('Cost Centre Load'.Name, 'Cost Centre Load'.Name), BLANK),
+IF('Cost Centre Load'.Depth == 4, 'Cost Centre Load'.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 5, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 6, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+BLANK )))))</code></pre>
+
+<p><strong>Level 5</strong> — target Depth 4.</p>
+<pre><code class="language-pigment">// Level 5 — Has_Children-aware.
+IF('Cost Centre Load'.Depth &lt;= 3, BLANK,
+IF('Cost Centre Load'.Depth == 4,
+    IF('Cost Centre Load'.'Has_Children', ITEM('Cost Centre Load'.Name, 'Cost Centre Load'.Name), BLANK),
+IF('Cost Centre Load'.Depth == 5, 'Cost Centre Load'.Parent_Internal_ID,
+IF('Cost Centre Load'.Depth == 6, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID,
+BLANK ))))</code></pre>
+
+<p><strong>Level 6</strong> — target Depth 5.</p>
+<pre><code class="language-pigment">// Level 6 — Has_Children-aware.
+IF('Cost Centre Load'.Depth &lt;= 4, BLANK,
+IF('Cost Centre Load'.Depth == 5,
+    IF('Cost Centre Load'.'Has_Children', ITEM('Cost Centre Load'.Name, 'Cost Centre Load'.Name), BLANK),
+IF('Cost Centre Load'.Depth == 6, 'Cost Centre Load'.Parent_Internal_ID,
+BLANK )))</code></pre>
+
+<p><strong>Level 7</strong> — target Depth 6 (deepest supported; no deeper hops possible).</p>
+<pre><code class="language-pigment">// Level 7 — Has_Children-aware.
+IF('Cost Centre Load'.Depth &lt;= 5, BLANK,
+IF('Cost Centre Load'.Depth == 6,
+    IF('Cost Centre Load'.'Has_Children', ITEM('Cost Centre Load'.Name, 'Cost Centre Load'.Name), BLANK),
+BLANK ))</code></pre>
+
+<p>The shape is mechanical: for <strong>Level N</strong>, everything shallower than Depth <code>N−1</code> is BLANK; an item exactly at Depth <code>N−1</code> returns itself <em>if it has children</em> (a real node at that level) and BLANK otherwise (a ragged leaf); each deeper depth adds one more <code>Parent_Internal_ID</code> hop. The Has_Children gate at the target depth is the whole difference from a naive depth-only resolver — it is what correctly separates a real internal node from a ragged leaf sitting at the same depth.</p>
+<hr />
+<h2>4. What Is Safe, and the Known Edge</h2>
+<h3>4.1 Safe As-Built</h3>
+<ul>
+<li><strong>All leaf-grain calculation</strong> — metrics live on <code>Cost Centre</code>; blanks never enter.</li>
+<li><strong>L1 references</strong> — every item has a root; the property is always populated.</li>
+<li><strong>Node-keyed assumptions with inheritance</strong> — rates and drivers entered against any node in the master list; leaves resolve by nearest-ancestor climb: <code>IFBLANK(rate[self], IFBLANK(rate[parent], …))</code>. One formula handles both blank kinds (no ancestor at a level; no entry at a node), and this is a genuinely good pattern in its own right (enter one BU rate, override per department only where it differs).</li>
+<li><strong>Driver-based apportionment</strong> — drivers held at leaf; pools spread across leaves; levels never referenced.</li>
+<li><strong>All view-based reporting, including charts</strong> — charts are configured from views; views group by properties and retain blank-mapped items under a blank header with complete totals (empirically: view total 28 where the equivalent <code>BY</code> metric showed 13).</li>
+</ul>
+<h3>4.2 The Known Edge</h3>
+<p>Two families cannot be handled by build style alone:</p>
+<ol>
+<li><strong>Metrics dimensioned by a skippable level.</strong> Any <code>[BY: …'Level N']</code> into a level-dimensioned metric silently drops every item blank at that level — totals short, no error.</li>
+</ol>
+<blockquote>
+<p><strong>Empirically confirmed (July 2026):</strong> a four-item fixture (two items with a populated intermediate property, two blank, values totalling 28) aggregated via <code>[BY: ...]</code> to that property returned <strong>13</strong>. The two blank items vanished with no error and no null row. The control (fully-populated property) returned 28; a view over the same blanks also returned 28.</p>
+</blockquote>
+<p>Fetches from such metrics back down to ragged leaves return BLANK and propagate through arithmetic (a blank rate quietly zeroes an allocation).</p>
+<ol start="2">
+<li><strong>Member-shaped uses.</strong> Level selectors on boards (blank is not selectable — ragged leaves become unreachable), subtotal rows in calculated output (no member, no row), and complement/set filters (<code>L2 &lt;&gt; X</code> — blank membership is undocumented and nondeterministic).</li>
+</ol>
+<p><strong>The rule:</strong> a level is calculation-safe iff no item skips it. In a ragged hierarchy the skippable levels are exactly where the hazard lives, and the set of skippable levels grows as the hierarchy deepens.</p>
+<h3>4.3 Handling Isolated Cases</h3>
+<p>Occasional edge cases can be patched per-formula — legitimate rule logic:</p>
+<pre><code class="language-pigment">// Fallback up the chain: department rate, else BU rate.
+'Cost by Leaf' * IFBLANK('Rate by L2'[BY: 'Cost Centre'.'Cost Centre L2'],
+                         'Rate by L1'[BY: 'Cost Centre'.'Cost Centre L1'])
+</code></pre>
+<p>This is fine for one-off rules. But the safety now lives in <em>every</em> such formula, applied by every author, forever — a discipline tax with silent failure on any lapse. Recurring or member-shaped cases should instead be fixed structurally:</p>
+<hr />
+<h2>5. The Helper Bridge — Deferred Completeness</h2>
+<p>When a genuine level-grain consumer appears — a department-held budget to variance against, an L2 selector requirement — add a <strong>helper Calc dimension</strong> rather than patching formulas one by one.</p>
+<ul>
+<li><code>Cost Centre L2 Calc</code> = all real L2 members <strong>plus one synthetic member per root</strong> ("Marketing – Direct", "G&amp;A – Direct", …), each parented to its root. Per-root synthetics are forced: a single global "Undefined" member cannot carry a coherent L1 parent link across roots — the 67 ragged leaves in the worked data span six BUs.</li>
+<li>One mapping property on <code>Cost Centre</code>, coalesced <strong>once at source</strong> so it is never blank:</li>
+</ul>
+<pre><code class="language-pigment">// 'L2 Calc' on the leaf — never blank by construction.
+// The synthetic per-root member gives ragged leaves a real home at L2 grain.
+IFBLANK( ITEM('Cost Centre'.'Cost Centre L2'.Name, 'Cost Centre L2 Calc'.Name),
+         &lt;this leaf's per-root synthetic in L2 Calc&gt; )
+</code></pre>
+<p>Every level-grain calculation then uses the helper: <code>[BY: 'Cost Centre'.'L2 Calc']</code>, rates dimensioned by <code>Cost Centre L2 Calc</code>, filters and selectors on <code>L2 Calc</code>. Because the helper is a complete member set, it clears the member-shaped cases too: complement filters become deterministic, every leaf is selector-reachable, every subtotal row exists. The <strong>display</strong> list stays pure, so views keep their clean real-members-only appearance.</p>
+<p>Everything the helper needs already exists in the Load List resolvers, so it is buildable at any time — an import and one property, zero rework of existing structures. This is why the lean pattern can defer completeness: you pay for it only if and when a level-grain consumer actually appears.</p>
+<h3>The Non-Deferrable Build Rule</h3>
+<blockquote>
+<p><strong>Any metric dimensioned by a level uses the Calc helper list, never the display property.</strong></p>
+</blockquote>
+<p>A rate table or aggregation accidentally built on the display property quietly reinstates the blank-drop for ragged leaves. This single documented rule is the lean pattern's entire governance burden — much smaller than "handle blanks in every formula," but it <strong>must</strong> be enforced, and it fails silently if breached. This is the reason the lean pattern is recommended only for models with disciplined, knowledgeable maintenance.</p>
+<blockquote>
+<p><strong>Note:</strong> the helper is a <em>calc</em> structure. Calculation outputs at L2 grain (e.g. a variance report) will show the synthetic "– Direct" rows — correctly, because that is where the ragged leaves' values live. You move where the synthetics appear (calc outputs, not display rollups), not whether they are ever seen. If members-only output is required everywhere, that requirement is itself a reason to prefer the balanced pattern.</p>
+</blockquote>
+<hr />
+<h2>6. Naming Rule</h2>
+<p>The metric-facing dimension carries a <strong>position-free name</strong> — <code>Cost Centre</code>, never <code>Cost Centre L3</code>. Numbered names are stable only for positions that don't move, and deepening moves the leaf. The upper levels keep top-anchored numbers (<code>Cost Centre L1</code>, <code>L2</code>, …). With the position-free name, deepening costs two actions — create the new intermediate level list, switch the leaf import's source from <code>Level N</code> to <code>Level N+1</code> — and <strong>zero rule changes</strong>, because rules only ever reference <code>'Cost Centre'</code> and the stable upper levels.</p>
+<h3>True-Leaf Membership — A Deepening Caution</h3>
+<p>Unlike the balanced pattern (where promotion makes leaf membership additive), the lean pattern defines the leaf dimension as <strong>true leaves only</strong>. This has a consequence when a leaf gains children — see Section 7.</p>
+<hr />
+<h2>7. True-Leaf Instability on Deepening (Design Limitation)</h2>
+<p>This is a consequence of the lean pattern's definition of "leaf" — not a formula error, and no formula can fix it. It is the primary structural cost of the lean pattern when the hierarchy may grow, and the main reason to prefer the balanced pattern when future deepening is plausible.</p>
+<h3>7.1 What Happens When a Depth-2 Leaf Gains a Child</h3>
+<p>Demonstrated empirically: adding "Accounting - AP" as a child of Accounting (a Depth-2 leaf in the leaf dimension) produced the following state:</p>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Observed result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Does Accounting still appear in the leaf dimension?</td>
+<td><strong>YES</strong> — Pigment made no automatic change</td>
+</tr>
+<tr>
+<td>Is "Accounting - AP" automatically added to the leaf dimension?</td>
+<td><strong>NO</strong> — it only exists in the Load List</td>
+</tr>
+<tr>
+<td>Is Accounting's metric data at risk?</td>
+<td><strong>YES</strong> — removing it from the leaf dimension orphans all stored values</td>
+</tr>
+</tbody>
+</table>
+<h3>7.2 Why This Is Structural</h3>
+<p>The lean pattern defines leaves implicitly: the leaf dimension is a curated list. The Load List's Level formulas have no knowledge of who is in the leaf dimension and cannot self-correct when the hierarchy grows. A node that was a leaf yesterday and has a child today is still, incorrectly, a member of the leaf dimension — and its own value now risks being double-counted against its new children's rollup, or lost if it is removed.</p>
+<p>The balanced pattern does not have this problem: promotion makes a former leaf its own descendant at deeper levels, so it remains a valid, postable member of the leaf grain automatically — membership is additive, and existing data survives.</p>
+<h3>7.3 Required Migration Procedure (No Built-In Automation)</h3>
+<p>When a leaf gains children in production:</p>
+<ol>
+<li><strong>Identify impact</strong> — list every metric dimensioned by the leaf dimension.</li>
+<li><strong>Snapshot data</strong> — export all values stored against the former leaf.</li>
+<li><strong>Add new items</strong> — add the sub-items to the Load List (with correct <code>Parent_Internal_ID</code>) <strong>and</strong> ensure they flow into the leaf dimension on the next import.</li>
+<li><strong>Remap data</strong> — re-enter or import historical data against the new sub-items.</li>
+<li><strong>Resolve the former leaf</strong> — decide whether it remains a postable member or is removed; if removed, its stored values are lost unless remapped in step 4.</li>
+<li><strong>Human decision required</strong> — how historical data is redistributed to children cannot be automated; it requires a business decision per affected metric.</li>
+</ol>
+<p>This migration event is the primary structural cost of the lean pattern on deepening, and the main reason to choose the balanced pattern when the hierarchy may grow.</p>
+<hr />
+<h2>8. Maintenance Profile &amp; Summary</h2>
+<p><strong>What the lean pattern buys:</strong> hierarchy changes are made in the Load List — one flat import with Parent IDs, resolvers pre-written to 7 levels, no per-level source files. Display lists show only real organisational members, so everyday reporting and boards are clean, with ragged leaves nesting naturally under their BU.</p>
+<p><strong>What it costs:</strong> a narrow but silent calculation hazard at any skippable level, managed by the Section 5 build rule (level-grain metrics → Calc helper) and, on deepening, the Section 7 true-leaf migration. Both are manageable by a disciplined single maintainer; both are traps for a team without that discipline.</p>
+<p><strong>The honest bottom line:</strong> the lean and balanced patterns are the same architecture with completeness built lazily versus eagerly. The lean pattern is a legitimate choice for simple, well-governed models where clean member-only display matters. Where data-loss safety must be guaranteed regardless of who touches the model next, use the balanced pattern.</p>
+<hr />
+<p><em>End of document.</em></p>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open EPM methodology — Pigment hierarchy patterns. Published freely for the practitioner community.</p>
+      <span class="license">CC0 — public domain</span>
+    </div>
+    <div class="foot-meta">
+      Pigment · Hierarchy Patterns<br>
+      <a href="../index.html">← All articles</a><br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+</body>
+</html>

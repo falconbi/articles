@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon.png" type="image/png">
+<title>COA Mapping Properties — Leaf Gate Correction · falconbi</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../falconbi.css">
+<style>
+main {
+  max-width: 52rem; margin: 0 auto;
+  padding: 3rem var(--gutter) 6rem;
+}
+main h1 { max-width: none; border-bottom: 2px solid var(--border-s); padding-bottom: .85rem; margin-bottom: .75rem; }
+main h2 { margin-top: 3rem; }
+main h1 + h2 { border-top: none; margin-top: .75rem; }
+.masthead-sub { font-size: 1.1rem; color: var(--ink-muted); margin: .75rem 0 1.5rem; }
+.doc-meta { font-family: var(--mono); font-size: .72rem; color: var(--ink-faint); line-height: 1.9; }
+.doc-meta strong { color: var(--ink-soft); font-weight: 500; }
+.muted { color: var(--ink-muted); }
+.sub { color: var(--ink-muted); font-size: .95rem; }
+.card  { background: var(--navy-tint);   border: 1px solid color-mix(in srgb,var(--navy)  20%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.warn  { background: var(--sienna-tint); border: 1px solid color-mix(in srgb,var(--sienna) 25%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.ok    { background: var(--forest-tint); border: 1px solid color-mix(in srgb,var(--forest) 20%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.card h3 { margin-top: 0; color: var(--navy);   }
+.warn h3 { margin-top: 0; color: var(--sienna); }
+.ok h3   { margin-top: 0; color: var(--forest); }
+.rule { background: var(--code-bg); color: var(--code-fg); border-radius: 8px; padding: 1rem 1.5rem; margin: 1.25rem 0; font-family: var(--mono); font-size: .88rem; line-height: 1.7; }
+.rule code { background: rgba(255,255,255,.1); color: var(--code-fg); }
+.glance { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1.5rem 0; font-size: .9rem; }
+.glance .row { display: grid; grid-template-columns: 9rem 1fr; border-bottom: 1px solid var(--border); }
+.glance .row:last-child { border-bottom: none; }
+.glance .k, .glance .key { background: var(--surface); padding: .55rem .85rem; font-family: var(--mono); font-size: .75rem; font-weight: 600; color: var(--ink-soft); border-right: 1px solid var(--border); }
+.glance .v, .glance .val { padding: .55rem .85rem; color: var(--ink-soft); }
+.glance .hdr { background: var(--border-s); font-family: var(--mono); font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); padding: .35rem .85rem; grid-column: 1 / -1; }
+.tree { font-family: var(--mono); font-size: .82rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; overflow-x: auto; line-height: 1.8; color: var(--ink-soft); white-space: pre; }
+tbody tr:hover td { background: var(--surface); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="../index.html" class="brand">
+    <img src="../favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right">
+    <span class="kicker">Pigment · Hierarchy Patterns</span>
+    <a href="../index.html">← articles</a>
+  </div>
+</header>
+
+<main>
+<header>
+  <p class="kicker">Snyk COA · Correction Note</p>
+  <h1>Mapping Properties — Leaf Gate Correction</h1>
+  <p class="sub">Four edits to the A.1–A.4 mapping properties. No change to any number on screen.</p>
+</header>
+
+<div class="ok">
+  <h3>Before you start — nothing is broken</h3>
+  <p style="margin-bottom:0">The model produces correct results today. This correction makes the formulas <em>say</em> what they currently <em>do by accident</em>. If Saturday runs short, this can wait — but it should not ship to handover without it.</p>
+</div>
+
+<h2>1. What is wrong</h2>
+
+<p>Each mapping property has a branch that says, in effect: <em>“if you sit at this level’s depth, map to yourself.”</em></p>
+
+<pre><code>// A.2, BS branch — as currently built
+IF('A.0 Chart of Accounts Flat'.Depth = 3,
+    ITEM('A.0 Chart of Accounts Flat'.Account_Code, 'A.2 Level 2'.Account_Code),
+    ...</code></pre>
+
+<p>But two different kinds of Element sit at Depth 3 in the BS:</p>
+<ul>
+  <li>A <strong>real L2 node</strong> — has children. It belongs in <code>A.2 Level 2</code> and should map to itself.</li>
+  <li>A <strong>ragged leaf</strong> — no children, its branch simply stops here. It belongs in <code>A.0</code> only, and should be <strong>blank</strong> at A.2.</li>
+</ul>
+
+<p>Depth alone cannot tell them apart. Both are Depth 3. Only the leaf flag separates them — and the formula does not check it.</p>
+
+<h2>2. Why it currently works anyway</h2>
+
+<p>The <code>A.2 Level 2</code> import filters on <code>L2 = TRUE</code>, and the L2 boolean contains <code>ISBLANK(L0)</code> — so leaves were never loaded into the level list.</p>
+
+<p>A ragged leaf therefore self-maps, <code>ITEM</code> searches <code>A.2 Level 2</code> for its Account_Code, finds nothing, and returns blank.</p>
+
+<div class="warn">
+  <h3>Right answer, wrong reason</h3>
+  <p>The blank arrives because a lookup <strong>silently failed</strong>, not because the formula decided the leaf has no L2. Three consequences:</p>
+  <ul style="margin-bottom:0">
+    <li>Anyone reading the formula sees leaves self-mapping into level lists. The intent is invisible.</li>
+    <li>If a leaf were ever loaded into a level list — a changed import filter, a data fix — the mapping would begin returning wrong Elements, silently.</li>
+    <li>The placement booleans gate on the leaf flag; the mapping properties do not. The two disagree about the same question.</li>
+  </ul>
+</div>
+
+<h2>3. The rule</h2>
+
+<div class="card">
+  <h3 style="margin-bottom:6px">Every self-map branch needs a leaf gate</h3>
+  <p style="margin-bottom:0">At a level’s own depth: <strong>if not a leaf → map to yourself. If a leaf → BLANK.</strong><br>
+  Hop branches (walking up to an ancestor) need no gate — a leaf walking upward resolves correctly.</p>
+</div>
+
+<p>Only <strong>one branch per property</strong> changes: the <code>Depth = &lt;this level’s depth&gt;</code> branch, in each of the BS and PL sections.</p>
+
+<table>
+  <tr><th>Property</th><th>Self-map branch (BS)</th><th>Self-map branch (PL)</th></tr>
+  <tr><td>A.1 Level 1</td><td>Depth = 4</td><td>Depth = 2</td></tr>
+  <tr><td>A.2 Level 2</td><td>Depth = 3</td><td>Depth = 1</td></tr>
+  <tr><td>A.3 Level 3</td><td>Depth = 2</td><td>Depth = 0 (root)</td></tr>
+  <tr><td>A.4 Level 4</td><td>Depth = 1</td><td>— (no PL clause)</td></tr>
+</table>
+
+<p class="muted">The PL root at Depth 0 is never a leaf, so A.3’s PL self-map branch is harmless either way — gate it anyway for consistency.</p>
+
+<h2>4. Corrected formulas</h2>
+
+<p>Gated branches are the ones wrapped in <code>IF(ISBLANK(…L0), …, BLANK)</code>. Everything else is unchanged.</p>
+
+<h3>A.1 Level 1 <span class="muted">— type: dimension → A.1 Level 1</span></h3>
+<pre><code>// A.1 Level 1 — the Level 1 Element this Element rolls into.
+// L1 sits at Depth 4 (BS, frame 5) and Depth 2 (PL, frame 3).
+// Self-map branches are gated on the leaf flag: a ragged leaf at the level's
+// own depth has no L1 member and must return BLANK.
+IF('A.0 Chart of Accounts Flat'.Statement = "BS",
+    IF('A.0 Chart of Accounts Flat'.Depth = 5,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Account_Code, 'A.1 Level 1'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 4,
+        IF(ISBLANK('A.0 Chart of Accounts Flat'.L0),
+            ITEM('A.0 Chart of Accounts Flat'.Account_Code, 'A.1 Level 1'.Account_Code),
+            BLANK),
+        BLANK)),
+    IF('A.0 Chart of Accounts Flat'.Depth = 3,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Account_Code, 'A.1 Level 1'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 2,
+        IF(ISBLANK('A.0 Chart of Accounts Flat'.L0),
+            ITEM('A.0 Chart of Accounts Flat'.Account_Code, 'A.1 Level 1'.Account_Code),
+            BLANK),
+        BLANK))
+)</code></pre>
+
+<h3>A.2 Level 2 <span class="muted">— type: dimension → A.2 Level 2</span></h3>
+<pre><code>// A.2 Level 2 — the Level 2 Element this Element rolls into.
+// L2 sits at Depth 3 (BS) and Depth 1 (PL).
+IF('A.0 Chart of Accounts Flat'.Statement = "BS",
+    IF('A.0 Chart of Accounts Flat'.Depth = 5,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Element_Parent.Account_Code, 'A.2 Level 2'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 4,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Account_Code, 'A.2 Level 2'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 3,
+        IF(ISBLANK('A.0 Chart of Accounts Flat'.L0),
+            ITEM('A.0 Chart of Accounts Flat'.Account_Code, 'A.2 Level 2'.Account_Code),
+            BLANK),
+        BLANK))),
+    IF('A.0 Chart of Accounts Flat'.Depth = 3,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Element_Parent.Account_Code, 'A.2 Level 2'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 2,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Account_Code, 'A.2 Level 2'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 1,
+        IF(ISBLANK('A.0 Chart of Accounts Flat'.L0),
+            ITEM('A.0 Chart of Accounts Flat'.Account_Code, 'A.2 Level 2'.Account_Code),
+            BLANK),
+        BLANK)))
+)</code></pre>
+
+<h3>A.3 Level 3 <span class="muted">— type: dimension → A.3 Level 3</span></h3>
+<pre><code>// A.3 Level 3 — the Level 3 Element this Element rolls into.
+// L3 sits at Depth 2 (BS) and Depth 0 (PL root).
+IF('A.0 Chart of Accounts Flat'.Statement = "BS",
+    IF('A.0 Chart of Accounts Flat'.Depth = 5,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Element_Parent.Element_Parent.Account_Code, 'A.3 Level 3'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 4,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Element_Parent.Account_Code, 'A.3 Level 3'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 3,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Account_Code, 'A.3 Level 3'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 2,
+        IF(ISBLANK('A.0 Chart of Accounts Flat'.L0),
+            ITEM('A.0 Chart of Accounts Flat'.Account_Code, 'A.3 Level 3'.Account_Code),
+            BLANK),
+        BLANK)))),
+    IF('A.0 Chart of Accounts Flat'.Depth = 3,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Element_Parent.Element_Parent.Account_Code, 'A.3 Level 3'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 2,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Element_Parent.Account_Code, 'A.3 Level 3'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 1,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Account_Code, 'A.3 Level 3'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 0,
+        IF(ISBLANK('A.0 Chart of Accounts Flat'.L0),
+            ITEM('A.0 Chart of Accounts Flat'.Account_Code, 'A.3 Level 3'.Account_Code),
+            BLANK),
+        BLANK))))
+)</code></pre>
+
+<h3>A.4 Level 4 <span class="muted">— type: dimension → A.4 Level 4</span></h3>
+<pre><code>// A.4 Level 4 — the Level 4 Element this Element rolls into.
+// L4 sits at Depth 1 (BS, frame 5). PL frame is 3, so PL has no L4.
+IF('A.0 Chart of Accounts Flat'.Statement = "BS",
+    IF('A.0 Chart of Accounts Flat'.Depth = 5,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Element_Parent.Element_Parent.Element_Parent.Account_Code, 'A.4 Level 4'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 4,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Element_Parent.Element_Parent.Account_Code, 'A.4 Level 4'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 3,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Element_Parent.Account_Code, 'A.4 Level 4'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 2,
+        ITEM('A.0 Chart of Accounts Flat'.Element_Parent.Account_Code, 'A.4 Level 4'.Account_Code),
+    IF('A.0 Chart of Accounts Flat'.Depth = 1,
+        IF(ISBLANK('A.0 Chart of Accounts Flat'.L0),
+            ITEM('A.0 Chart of Accounts Flat'.Account_Code, 'A.4 Level 4'.Account_Code),
+            BLANK),
+        BLANK))))),
+    BLANK
+)</code></pre>
+
+<h2>5. Verify after the edit</h2>
+
+<p>Nothing on screen should change. Confirm that:</p>
+<ul>
+  <li>Each mapping column shows the <strong>same values as before</strong> for a handful of known Elements — a deep leaf, a shallow leaf, an intermediate node, a root.</li>
+  <li>A ragged leaf sitting at a level’s own depth is <strong>blank</strong> at that level, as it was.</li>
+  <li>Element counts in <code>A.1</code>–<code>A.4</code> are unchanged (the imports are untouched).</li>
+</ul>
+
+<div class="warn">
+  <h3>Two open items — not part of this correction</h3>
+  <p><strong>The build rule is not written down.</strong> These level dimensions carry blanks. Any metric aggregated <code>BY</code> a level will silently drop the blank-mapped Elements — no error, totals short. A view grouped by the same property retains them and totals correctly. Before handover, add to the design notes:</p>
+  <p class="muted" style="margin-left:12px;margin-bottom:14px"><em>“Level dimensions carry blanks where a branch skips a level. Any metric aggregated BY a level will silently drop those Elements. Level-grain metrics require a complete member set (a Calc helper dimension) before use.”</em></p>
+  <p style="margin-bottom:0"><strong>Level numbering is bottom-up.</strong> L1 = one above leaf, so the same label refers to different tiers in BS and PL, and the statement roots sit at different level numbers. Deepening the hierarchy shifts every label, because new levels appear at the leaf end. Worth one factual line in the design notes; not worth reworking.</p>
+</div>
+
+<h2>6. Why the hop branches need no gate</h2>
+
+<p>A leaf walking <em>upward</em> resolves correctly regardless of leaf-ness — its ancestor at the target depth is a real node, and real nodes are in the level list. The ambiguity exists only at a level’s <strong>own depth</strong>, where a real node and a ragged leaf are indistinguishable by Depth alone.</p>
+
+<p>This is the same reason the balanced pattern needs no leaf detection at all: <em>“at your own depth, return yourself”</em> is correct for a real node (legitimately) and for a leaf (as promotion). Only a blank-based resolver has to tell them apart, and must therefore gate every level on a downward child-count.</p>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open EPM methodology — Pigment hierarchy patterns. Published freely for the practitioner community.</p>
+      <span class="license">CC0 — public domain</span>
+    </div>
+    <div class="foot-meta">
+      Pigment · Hierarchy Patterns<br>
+      <a href="../index.html">← All articles</a><br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+</body>
+</html>

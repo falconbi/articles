@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon.png" type="image/png">
+<title>Ragged Hierarchy Pattern — Balanced Levels · falconbi</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../falconbi.css">
+<style>
+main {
+  max-width: 52rem; margin: 0 auto;
+  padding: 3rem var(--gutter) 6rem;
+}
+main h1 { max-width: none; border-bottom: 2px solid var(--border-s); padding-bottom: .85rem; margin-bottom: .75rem; }
+main h2 { margin-top: 3rem; }
+main h1 + h2 { border-top: none; margin-top: .75rem; }
+.masthead-sub { font-size: 1.1rem; color: var(--ink-muted); margin: .75rem 0 1.5rem; }
+.doc-meta { font-family: var(--mono); font-size: .72rem; color: var(--ink-faint); line-height: 1.9; }
+.doc-meta strong { color: var(--ink-soft); font-weight: 500; }
+.muted { color: var(--ink-muted); }
+.sub { color: var(--ink-muted); font-size: .95rem; }
+.card  { background: var(--navy-tint);   border: 1px solid color-mix(in srgb,var(--navy)  20%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.warn  { background: var(--sienna-tint); border: 1px solid color-mix(in srgb,var(--sienna) 25%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.ok    { background: var(--forest-tint); border: 1px solid color-mix(in srgb,var(--forest) 20%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.card h3 { margin-top: 0; color: var(--navy);   }
+.warn h3 { margin-top: 0; color: var(--sienna); }
+.ok h3   { margin-top: 0; color: var(--forest); }
+.rule { background: var(--code-bg); color: var(--code-fg); border-radius: 8px; padding: 1rem 1.5rem; margin: 1.25rem 0; font-family: var(--mono); font-size: .88rem; line-height: 1.7; }
+.rule code { background: rgba(255,255,255,.1); color: var(--code-fg); }
+.glance { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1.5rem 0; font-size: .9rem; }
+.glance .row { display: grid; grid-template-columns: 9rem 1fr; border-bottom: 1px solid var(--border); }
+.glance .row:last-child { border-bottom: none; }
+.glance .k, .glance .key { background: var(--surface); padding: .55rem .85rem; font-family: var(--mono); font-size: .75rem; font-weight: 600; color: var(--ink-soft); border-right: 1px solid var(--border); }
+.glance .v, .glance .val { padding: .55rem .85rem; color: var(--ink-soft); }
+.glance .hdr { background: var(--border-s); font-family: var(--mono); font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); padding: .35rem .85rem; grid-column: 1 / -1; }
+.tree { font-family: var(--mono); font-size: .82rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; overflow-x: auto; line-height: 1.8; color: var(--ink-soft); white-space: pre; }
+tbody tr:hover td { background: var(--surface); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="../index.html" class="brand">
+    <img src="../favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right">
+    <span class="kicker">Pigment · Hierarchy Patterns</span>
+    <a href="../index.html">← articles</a>
+  </div>
+</header>
+
+<main>
+<h1>Ragged Hierarchy Pattern in Pigment — Balanced Levels</h1>
+<h2>A Modelling &amp; Implementation Reference</h2>
+<p><strong>Version:</strong> 1.0
+<strong>Author:</strong> James Lovering
+<strong>Last Updated:</strong> July 2026
+<strong>Applies to:</strong> Any dimension list with a parent-child relationship of variable depth.<br>
+<strong>Start here first:</strong> <a href="00_ragged_hierarchies_concepts.html">Ragged Hierarchies in Pigment — Concepts &amp; Pattern Selection</a>, which explains the failure mode and the choice between this pattern and the <a href="lean_hierarchy_pattern.html">Lean Single-Master</a> companion.</p>
+<blockquote>
+<p><strong>Naming note:</strong> All formulas use <code>Cost Centre Load</code>, <code>Cost Centre L1</code>–<code>L7</code>, and <code>Cost Centre</code> (the leaf) as the worked example. To apply the pattern to another dimension, substitute the entity name throughout — the structure is otherwise unchanged.</p>
+<p><strong>Companion document:</strong> A separate reference, <em>Ragged Hierarchy Pattern — Lean Single-Master</em>, describes an alternative pattern optimised for maintenance simplicity in low-risk models. This document describes the <strong>balanced</strong> pattern: the safe default that never risks data loss.</p>
+
+<blockquote style="border-left-color:var(--amber);background:var(--amber-soft);">
+<p><strong>Disclaimer — reference, not warranty.</strong> This is a practitioner design reference, not a guarantee of fitness for any particular model. Validate every formula and behaviour against your own environment and requirements before relying on it in production. Specific things to re-check:</p>
+<p>• <strong>Platform behaviour can change.</strong> Formula and aggregation behaviour described here was observed on Pigment as of July 2026; re-test after platform updates, as vendor behaviour may change without notice and is, in places, not officially documented.<br>
+• <strong>Assumptions.</strong> The pattern assumes a unique <code>Name</code> (and <code>Code</code>) per item and a clean single-parent tree. Confirm these hold in your data.<br>
+• <strong>Empirical claims.</strong> Where results are marked &ldquo;confirmed&rdquo;, they were observed in a specific test fixture; reproduce them in your own model rather than assuming they transfer.<br>
+• <strong>No professional advice.</strong> Nothing here is legal, financial, or accounting advice. Modelling choices with reporting or compliance consequences are yours to validate.</p>
+<p>Provided as-is, without warranty of any kind. You are responsible for testing and validating to your own needs.</p>
+</blockquote>
+</blockquote>
+<hr />
+<h2>At a Glance</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Problem</strong></td>
+<td>Ragged hierarchies break level-based grouping: shallow branches have no ancestor at deeper levels, so items silently vanish from grouped reports and aggregations.</td>
+</tr>
+<tr>
+<td><strong>Solution</strong></td>
+<td>A flat Load List with pre-computed <code>Level 1</code>–<code>Level N</code> ancestor properties, feeding one curated dimension list per level by <strong>import</strong>. Shallow leaves <em>promote themselves</em> at deeper levels so every node exists at every level — no blanks anywhere a calculation can meet one.</td>
+</tr>
+<tr>
+<td><strong>Safety</strong></td>
+<td>Every level is calculation-safe by construction. <code>BY</code> aggregation, fetches, filters, and selectors all resolve for every item, because no level property is ever blank.</td>
+</tr>
+<tr>
+<td><strong>Ceiling</strong></td>
+<td>Handles 7 levels (Depth 0–6) out of the box — resolvers pre-built to all 7, with unused levels parked dormant until ever needed. Extending beyond 7 is mechanical (Section 6).</td>
+</tr>
+<tr>
+<td><strong>Key invariant</strong></td>
+<td>Ancestor at Level N for a node at Depth D = <code>D − (N−1)</code> parent hops. If <code>D ≤ N−1</code>, the node returns itself (at-level or leaf promotion).</td>
+</tr>
+<tr>
+<td><strong>Separation rule</strong></td>
+<td>Production lists are <strong>import-populated from the Load List, never List Subsets or live-derived</strong>. The import is the gate: check the Load, then update the model. See Section 2.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>1. What Is a Ragged Hierarchy?</h2>
+<p>A <strong>ragged hierarchy</strong> (also called an unbalanced or variable-depth hierarchy) is one where different branches of the tree reach different depths.</p>
+<figure style="margin:22px 0 26px;">
+<svg viewBox="0 0 900 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Side by side comparison of a ragged hierarchy and the same hierarchy after leaf promotion balances it">
+  <defs>
+    <style>
+      .lvl{font:600 11px "SF Mono",Consolas,monospace;fill:#46586f;letter-spacing:1px;}
+      .nt{font:600 12.5px "Segoe UI",Arial,sans-serif;fill:#17263c;}
+      .panel-t{font:700 13px "SF Mono",Consolas,monospace;letter-spacing:1px;}
+      .edge{stroke:#3d5a80;stroke-width:1.5;fill:none;}
+      .edge-p{stroke:#b7791f;stroke-width:1.5;fill:none;stroke-dasharray:4 4;}
+      .real{fill:#ffffff;stroke:#3d5a80;stroke-width:1.4;}
+      .leaf{fill:#e2f1ee;stroke:#257d6f;stroke-width:1.5;}
+      .promo{fill:#faf3e3;stroke:#b7791f;stroke-width:1.4;stroke-dasharray:3 3;}
+      .promo-t{font:italic 11px "Segoe UI",Arial,sans-serif;fill:#b7791f;}
+      .rowline{stroke:#e4ebf3;stroke-width:1;}
+      .cap{font:600 11.5px "SF Mono",Consolas,monospace;letter-spacing:1px;}
+    </style>
+  </defs>
+
+  <!-- depth row guides + labels -->
+  <text class="lvl" x="14" y="70">L1 · D0</text>
+  <text class="lvl" x="14" y="150">L2 · D1</text>
+  <text class="lvl" x="14" y="230">L3 · D2</text>
+  <text class="lvl" x="14" y="310">L4 · D3</text>
+  <line class="rowline" x1="88" y1="86" x2="886" y2="86"/>
+  <line class="rowline" x1="88" y1="166" x2="886" y2="166"/>
+  <line class="rowline" x1="88" y1="246" x2="886" y2="246"/>
+
+  <!-- divider -->
+  <line x1="470" y1="30" x2="470" y2="400" stroke="#d5dde5" stroke-width="1.5" stroke-dasharray="2 4"/>
+
+  <!-- ============ LEFT: RAGGED ============ -->
+  <text class="panel-t" x="110" y="24" fill="#257d6f">RAGGED — as loaded</text>
+
+  <!-- edges L -->
+  <path class="edge" d="M250,66 C250,110 180,110 180,138"/>
+  <path class="edge" d="M250,66 C250,110 400,110 400,138"/>
+  <path class="edge" d="M180,166 C180,205 140,205 140,218"/>
+  <path class="edge" d="M180,166 C180,205 250,205 250,218"/>
+  <path class="edge" d="M140,246 C140,285 140,285 140,298"/>
+
+  <!-- nodes L -->
+  <rect class="real" x="200" y="48" width="100" height="34" rx="6"/><text class="nt" x="250" y="70" text-anchor="middle">Company</text>
+  <rect class="real" x="130" y="130" width="100" height="34" rx="6"/><text class="nt" x="180" y="152" text-anchor="middle">Operations</text>
+  <rect class="leaf" x="350" y="130" width="100" height="34" rx="6"/><text class="nt" x="400" y="152" text-anchor="middle">Finance</text>
+  <rect class="real" x="90" y="210" width="100" height="34" rx="6"/><text class="nt" x="140" y="232" text-anchor="middle">Logistics</text>
+  <rect class="leaf" x="210" y="210" width="100" height="34" rx="6"/><text class="nt" x="260" y="232" text-anchor="middle">Warehouse</text>
+  <rect class="leaf" x="90" y="290" width="100" height="34" rx="6"/><text class="nt" x="140" y="312" text-anchor="middle">Freight</text>
+
+  <!-- gap markers L: dotted ghost cells showing the missing depths -->
+  <rect x="350" y="210" width="100" height="34" rx="6" fill="none" stroke="#c8302f" stroke-width="1.2" stroke-dasharray="2 3"/>
+  <text class="promo-t" x="400" y="231" text-anchor="middle" fill="#c8302f">— missing —</text>
+  <rect x="90" y="210" width="0" height="0"/>
+  <text class="promo-t" x="400" y="360" text-anchor="middle" fill="#c8302f">Finance &amp; Warehouse have no</text>
+  <text class="promo-t" x="400" y="374" text-anchor="middle" fill="#c8302f">deeper level — they vanish from</text>
+  <text class="promo-t" x="400" y="388" text-anchor="middle" fill="#c8302f">any "group by L3 / L4"</text>
+
+  <!-- ============ RIGHT: BALANCED ============ -->
+  <text class="panel-t" x="560" y="24" fill="#b7791f">BALANCED — after promotion</text>
+
+  <!-- edges R (solid real, dashed promoted) -->
+  <path class="edge" d="M700,66 C700,110 630,110 630,138"/>
+  <path class="edge" d="M700,66 C700,110 830,110 830,138"/>
+  <path class="edge" d="M630,166 C630,205 590,205 590,218"/>
+  <path class="edge" d="M630,166 C630,205 700,205 700,218"/>
+  <path class="edge" d="M590,246 C590,285 590,285 590,298"/>
+  <path class="edge-p" d="M830,166 C830,205 830,205 830,218"/>
+  <path class="edge-p" d="M700,246 C700,285 700,285 700,298"/>
+  <path class="edge-p" d="M830,246 C830,285 830,285 830,298"/>
+
+  <!-- nodes R real -->
+  <rect class="real" x="650" y="48" width="100" height="34" rx="6"/><text class="nt" x="700" y="70" text-anchor="middle">Company</text>
+  <rect class="real" x="580" y="130" width="100" height="34" rx="6"/><text class="nt" x="630" y="152" text-anchor="middle">Operations</text>
+  <rect class="real" x="780" y="130" width="100" height="34" rx="6"/><text class="nt" x="830" y="152" text-anchor="middle">Finance</text>
+  <rect class="real" x="540" y="210" width="100" height="34" rx="6"/><text class="nt" x="590" y="232" text-anchor="middle">Logistics</text>
+  <rect class="leaf" x="660" y="210" width="100" height="34" rx="6"/><text class="nt" x="710" y="232" text-anchor="middle">Warehouse</text>
+  <rect class="leaf" x="540" y="290" width="100" height="34" rx="6"/><text class="nt" x="590" y="312" text-anchor="middle">Freight</text>
+
+  <!-- nodes R promoted (self-fills) -->
+  <rect class="promo" x="780" y="210" width="100" height="34" rx="6"/><text class="nt" x="830" y="231" text-anchor="middle">Finance</text>
+  <rect class="promo" x="660" y="290" width="100" height="34" rx="6"/><text class="nt" x="710" y="311" text-anchor="middle">Warehouse</text>
+  <rect class="promo" x="780" y="290" width="100" height="34" rx="6"/><text class="nt" x="830" y="311" text-anchor="middle">Finance</text>
+
+  <!-- legend -->
+  <rect class="real" x="90" y="420" width="20" height="14" rx="3"/><text class="cap" x="118" y="431" fill="#46586f">real node</text>
+  <rect class="leaf" x="210" y="420" width="20" height="14" rx="3"/><text class="cap" x="238" y="431" fill="#46586f">true leaf</text>
+  <rect class="promo" x="330" y="420" width="20" height="14" rx="3"/><text class="cap" x="358" y="431" fill="#46586f">promoted (leaf as its own deeper self)</text>
+</svg>
+<figcaption style="font-size:13px;color:#46586f;margin-top:8px;font-family:var(--mono);">Fig. 1 — Left: as loaded, Finance and Warehouse stop short, leaving gaps at deeper levels. Right: promotion fills each shallow leaf down to full depth (dashed), so every level has a complete set of members and no blank ever reaches a calculation.</figcaption>
+</figure>
+<p>In a <strong>balanced</strong> hierarchy every leaf sits at the same depth. In a ragged one, some leaves are shallower than others. This breaks naive level-based reporting: you cannot simply "group by Level 3" because some items (Finance) have no Level 3 ancestor. Without intervention, those items either disappear from the grouped view or fall into an "unknown" bucket — both are silent data-loss failures.</p>
+<p>This pattern eliminates the failure at its root: it ensures <strong>every node has a defined ancestor at every level</strong>, so no blank ever reaches a calculation.</p>
+<hr />
+<h2>2. The Two-Tier Architecture</h2>
+<p>The pattern separates concerns into two tiers, and the separation is enforced by <strong>import</strong>, not by live derivation.</p>
+<h3>Tier 1 — The Load List</h3>
+<p>A single flat dimension list holding <strong>every node</strong> in the hierarchy (roots, branches, and leaves) with a self-referential <code>Parent_Internal_ID</code> property. This is the staging layer: imported from source data, never used directly in metrics. All hierarchy intelligence (depth detection, ancestor walkout, level joins) is computed here as properties.</p>
+<p><strong>Naming convention:</strong> <code>[Entity] Load</code> (e.g., <code>Cost Centre Load</code>)</p>
+<h3>Tier 2 — Curated Dimension Lists</h3>
+<p>One standalone dimension list per level, plus the leaf dimension used by metrics, each containing <strong>only the items belonging to it</strong>, populated by extracting values from the Load List.</p>
+<ul>
+<li>The upper-level lists are named by position from the top: <code>Cost Centre L1</code>, <code>Cost Centre L2</code>, … These are stable names because roots are always L1, the tier below always L2, and so on — deepening adds levels <em>below</em>, never above.</li>
+<li>The metric-facing leaf dimension is named <strong><code>Cost Centre</code></strong> — position-free, permanent. It is never called <code>Cost Centre L3</code> even though today's leaves happen to sit at level 3; see Section 7.3 for why the number must not appear in the leaf's name.</li>
+</ul>
+<p>Each list carries a dimension property linking it to its parent list (<code>Cost Centre</code> → <code>Cost Centre L2</code> → <code>Cost Centre L1</code>), so the full hierarchy is available in any view of a leaf-dimensioned metric by grouping on those linked properties — no additional metric dimensions required. Structure and import mechanics are covered in Section 4.</p>
+
+<h3>Leaf Detection — Two Idioms, One a Metric</h3>
+<p>Leaf-ness is a <strong>downward</strong> fact: &ldquo;does anything name me as its parent?&rdquo; It cannot be derived from the hierarchy&rsquo;s upward structure at all (see 3.6). Any classification built on ancestors alone is wrong for ragged data. Two idioms answer the downward question.</p>
+
+<p><strong>MATCH &mdash; a List Property.</strong> Searches the parent column for this item&rsquo;s key. Self-contained on the Load List, no extra object. Requires a text <code>Parent_Code</code> (derived as <code>Parent.Code</code>), because <code>MATCH</code> cannot compare a dimension reference against text.</p>
+<pre><code>// Is_Leaf — nobody references this item's Code as their Parent_Code.
+IF(ISBLANK(MATCH('Cost Centre Load'.Code, 'Cost Centre Load'.Parent_Code)), TRUE)</code></pre>
+
+<p><strong>BY COUNT &mdash; a metric.</strong> Groups all items by their parent and tallies children onto each parent slot. <code>BY COUNT</code> <strong>cannot be expressed as a List Property</strong> &mdash; it must be a metric dimensioned by the Load List. So the <code>Cost Centre Child Count</code> metric sits beside the Load List, <em>reading from</em> it and <em>feeding back</em> onto its classification flags. Disposable and staging-only, never a metric the model plans against.</p>
+
+<p><strong>Which to use.</strong> MATCH is the cleaner default for small and moderate lists &mdash; one property, no metric object. BY COUNT is the proven idiom at volume: it groups once, where MATCH searches a column per row. MATCH has not been benchmarked on large dimensions; test before committing on a list of tens of thousands of items.</p>
+
+<div style="background:#f6f7f9;border-left:3px solid #8a5a2b;padding:12px 16px;margin:16px 0;font-size:14.5px">
+  <strong>Note on necessity.</strong> In the <em>balanced</em> pattern the Level resolvers never consult a leaf flag &mdash; &ldquo;at your own depth, return yourself&rdquo; is correct for a real node (legitimately) and for a leaf (as promotion). Leaf detection is therefore <strong>not load-bearing here</strong>; it supports the optional QA classification layer of Section 3.6 and nothing else. It <em>is</em> load-bearing in the lean pattern, whose resolvers must gate every level on it. This asymmetry is one of the clearest practical differences between the two.</div>
+<p>Full definitions and dependencies are in Sections 3.6 and 5.1.</p>
+
+<h3>The Separation Rule (Paramount)</h3>
+<blockquote>
+<p><strong>Production lists are populated by import from the Load List — never implemented as List Subsets of it, and never live-derived by formula from it.</strong></p>
+</blockquote>
+<p>The reason is control. Loads must be checked before they reach the model: an import gives an explicit gate where the Load List can be refreshed, inspected, and validated, and only then deliberately pushed into the curated lists that models and apps depend on. A List Subset (or a formula-derived link) dissolves that gate — it makes the production dimensions a live reflection of the Load List, so any load defect, mid-load state, or source-format change propagates instantly into calculations with no checkpoint. Import-population keeps the Load List disposable and the Model layer stable: you can rebuild the Load freely, and the model changes only when you run the import.</p>
+<figure style="margin:22px 0 26px;">
+<svg viewBox="0 0 860 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-tier architecture: the Load List staging layer feeds curated lists by import; only the leaf list dimensions metrics">
+  <defs>
+    <style>
+      .tier{font:700 11.5px "SF Mono",Consolas,monospace;letter-spacing:2px;}
+      .bt{font:700 14px "Segoe UI",Arial,sans-serif;fill:#17263c;}
+      .bs{font:400 12px "Segoe UI",Arial,sans-serif;fill:#46586f;}
+      .bm{font:500 11.5px "SF Mono",Consolas,monospace;fill:#46586f;}
+      .flow{font:600 11px "SF Mono",Consolas,monospace;fill:#3d5a80;letter-spacing:0.5px;}
+      .plink{font:italic 11.5px "Segoe UI",Arial,sans-serif;fill:#b7791f;}
+      .a-solid{stroke:#3d5a80;stroke-width:1.8;fill:none;marker-end:url(#ah);}
+      .a-amber{stroke:#b7791f;stroke-width:1.8;fill:none;marker-end:url(#aha);stroke-dasharray:6 4;}
+    </style>
+    <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 Z" fill="#3d5a80"/></marker>
+    <marker id="aha" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 Z" fill="#b7791f"/></marker>
+    <marker id="ahg" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 Z" fill="#257d6f"/></marker>
+  </defs>
+
+  <!-- TIER 1 -->
+  <text class="tier" x="30" y="24" fill="#257d6f">TIER 1 · STAGING — DISPOSABLE</text>
+  <rect x="30" y="36" width="560" height="150" rx="8" fill="#ffffff" stroke="#17263c" stroke-width="1.6"/>
+  <text class="bt" x="52" y="64">Cost Centre Load</text>
+  <text class="bs" x="52" y="85">Every node, all levels, raw parent–child data. Never used directly in metrics.</text>
+  <text class="bm" x="52" y="112" font-weight="700" fill="#17263c">Computed here:</text>
+  <text class="bm" x="52" y="132">• Depth · Level 1–7 · Depth Exceeded</text>
+  <text class="bm" x="52" y="150">• Cost Centre L1–L3 joins · L4–L7 stubs</text>
+  <text class="bm" x="52" y="168">• CC Parent / Rollup / Base — QA flags</text>
+
+  <!-- CHILD COUNT METRIC — side component that loops back into staging -->
+  <rect x="620" y="60" width="210" height="72" rx="8" fill="#eef4f1" stroke="#257d6f" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <text class="bt" x="725" y="86" text-anchor="middle" font-size="13">Cost Centre Child Count</text>
+  <text class="bs" x="725" y="105" text-anchor="middle" font-size="11">METRIC (BY COUNT) — not a</text>
+  <text class="bs" x="725" y="119" text-anchor="middle" font-size="11">list property. Counts children.</text>
+  <!-- reads from Load -->
+  <path d="M590,96 L614,96" stroke="#257d6f" stroke-width="1.6" fill="none" marker-end="url(#ahg)"/>
+  <text class="bm" x="601" y="88" text-anchor="middle" font-size="9" fill="#257d6f">reads</text>
+  <!-- feeds classification flags back -->
+  <path d="M725,132 C725,150 500,150 500,168" stroke="#257d6f" stroke-width="1.6" fill="none" stroke-dasharray="4 3" marker-end="url(#ahg)"/>
+  <text class="bm" x="640" y="146" text-anchor="middle" font-size="9" fill="#257d6f">feeds CC Rollup / CC Base</text>
+
+  <!-- IMPORT gate -->
+  <path class="a-solid" d="M170,186 L170,250"/>
+  <path class="a-solid" d="M430,186 L430,250"/>
+  <path class="a-solid" d="M700,186 L700,250"/>
+  <rect x="300" y="200" width="260" height="26" rx="13" fill="#faf3e3" stroke="#b7791f" stroke-width="1.3"/>
+  <text class="flow" x="430" y="217" text-anchor="middle" fill="#b7791f">IMPORT — the gate: check, then update</text>
+
+  <!-- TIER 2 -->
+  <text class="tier" x="30" y="248" fill="#3d5a80">TIER 2 · CURATED DIMENSIONS — STABLE</text>
+  <rect x="55" y="258" width="210" height="80" rx="8" fill="#ffffff" stroke="#3d5a80" stroke-width="1.4"/>
+  <text class="bt" x="160" y="290" text-anchor="middle">Cost Centre L1</text>
+  <text class="bs" x="160" y="312" text-anchor="middle">root items</text>
+
+  <rect x="325" y="258" width="210" height="80" rx="8" fill="#ffffff" stroke="#3d5a80" stroke-width="1.4"/>
+  <text class="bt" x="430" y="290" text-anchor="middle">Cost Centre L2</text>
+  <text class="bs" x="430" y="312" text-anchor="middle">branch items</text>
+
+  <rect x="595" y="258" width="210" height="80" rx="8" fill="#e2f1ee" stroke="#257d6f" stroke-width="1.8"/>
+  <text class="bt" x="700" y="286" text-anchor="middle">Cost Centre</text>
+  <text class="bs" x="700" y="306" text-anchor="middle">leaf items — the</text>
+  <text class="bs" x="700" y="322" text-anchor="middle">metric-facing dimension</text>
+
+  <!-- parent links right-to-left -->
+  <path class="a-amber" d="M595,298 L539,298"/>
+  <path class="a-amber" d="M325,298 L269,298"/>
+  <text class="plink" x="55" y="366">◄ parent link carried as a dimension property on each list (Cost Centre → L2 → L1)</text>
+
+  <!-- dimensions arrow to metrics -->
+  <path class="a-solid" d="M700,338 L700,424"/>
+  <text class="flow" x="716" y="386">dimensions</text>
+
+  <!-- METRICS -->
+  <rect x="30" y="428" width="800" height="104" rx="8" fill="#17263c"/>
+  <text x="52" y="462" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="14" fill="#fafbfc">Metrics — dimensioned by the leaf list only (Cost Centre)</text>
+  <text x="52" y="488" font-family="Segoe UI,Arial,sans-serif" font-size="12" fill="#bcc9d8">L2 and L1 rollup is added in views by grouping on the linked parent</text>
+  <text x="52" y="506" font-family="Segoe UI,Arial,sans-serif" font-size="12" fill="#bcc9d8">properties. The hierarchy lives in the view, not in the metric&#8217;s shape.</text>
+</svg>
+<figcaption style="font-size:13px;color:#46586f;margin-top:8px;font-family:var(--mono);">Fig. 2 — The Load List (staging) feeds one curated list per level by import — the check-then-update gate. Only the leaf list dimensions metrics; upper levels roll up through parent-link properties.</figcaption>
+</figure>
+<hr />
+<h2>3. Load List — Required Properties</h2>
+<p>Every Load List implementing this pattern carries the properties below, listed in dependency order (each may depend on earlier ones).</p>
+<h3>3.1 Core Identity Properties</h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Input / Formula</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Name</code></td>
+<td>Text (unique)</td>
+<td>Manual input / import</td>
+<td>Display name of the node</td>
+</tr>
+<tr>
+<td><code>Code</code></td>
+<td>Text</td>
+<td>Manual input / import</td>
+<td>Source system identifier</td>
+</tr>
+<tr>
+<td><code>Parent_Code</code></td>
+<td>Text</td>
+<td>Manual input / import</td>
+<td>Source code of the parent node; BLANK for root nodes</td>
+</tr>
+<tr>
+<td><code>Parent_Internal_ID</code></td>
+<td>Dimension (self)</td>
+<td>Formula</td>
+<td>Resolves <code>Parent_Code</code> to the actual dimension item in this list</td>
+</tr>
+</tbody>
+</table>
+<h4>Formula: <code>Parent_Internal_ID</code></h4>
+<pre><code class="language-pigment">// Resolves the parent code to the actual parent item in this list.
+// Returns BLANK for root nodes (no parent).
+ITEM('Cost Centre Load'.'Parent_Code', 'Cost Centre Load'.'Code')
+</code></pre>
+<blockquote>
+<p><strong>Why self-referential?</strong> A dimension property can reference the list it belongs to. This enables chained property access (<code>x.Parent_Internal_ID.Parent_Internal_ID</code>), which is the foundation of the entire ancestor walkout pattern.</p>
+</blockquote>
+<hr />
+<h3>3.2 Depth Property</h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Depth</code></td>
+<td>Integer</td>
+<td>How many levels deep this node sits (0 = root, 6 = ceiling)</td>
+</tr>
+</tbody>
+</table>
+<h4>Formula: <code>Depth</code></h4>
+<pre><code class="language-pigment">// Detects how many levels deep this item sits (0 = L1 root, 1 = L2, ..., 6 = L7).
+// Hardcoded ceiling: Depth 6 = 7 levels. Items deeper than this are CAPPED at 6 —
+// overflow is detected separately by Depth Exceeded (see 3.3).
+// To extend: add one additional IFDEFINED hop at the top (see Section 6).
+IFDEFINED('Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID, 6,
+IFDEFINED('Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID, 5,
+IFDEFINED('Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID, 4,
+IFDEFINED('Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID, 3,
+IFDEFINED('Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID, 2,
+IFDEFINED('Cost Centre Load'.Parent_Internal_ID, 1, 0 ) ) ) ) ) )
+</code></pre>
+<p><strong>How it works:</strong> <code>IFDEFINED</code> evaluates to its second argument when the first argument resolves to a defined (non-BLANK) value. Each chained hop peels back one generation. The deepest test (most hops) is checked first; the first match wins.</p>
+<table>
+<thead>
+<tr>
+<th>Node type</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Root — no parent (L1)</td>
+<td>0</td>
+</tr>
+<tr>
+<td>One level down (L2)</td>
+<td>1</td>
+</tr>
+<tr>
+<td>Two levels down (L3)</td>
+<td>2</td>
+</tr>
+<tr>
+<td>…</td>
+<td>…</td>
+</tr>
+<tr>
+<td>Six levels down (L7) — deepest supported</td>
+<td>6</td>
+</tr>
+<tr>
+<td>Seven or more levels down</td>
+<td>6 (capped — see <code>Depth Exceeded</code>)</td>
+</tr>
+</tbody>
+</table>
+
+<blockquote style="border-left-color:var(--teal);background:var(--teal-soft);">
+<p><strong>Built for 7 levels from day one — spare capacity sits parked, unused, until ever needed.</strong> The <code>Level 1</code>–<code>Level 7</code> resolvers and the <code>Cost Centre L1</code>–<code>L7</code> slots are all written and working immediately, whatever depth today's data actually reaches. A model whose hierarchy only goes 2 or 3 deep simply leaves the deeper levels dormant: the L4–L7 slots resolve to blank or promote harmlessly, the resolver formulas cost nothing, and nothing needs building. The 7-level ceiling is <em>free headroom, not future work</em> — if the hierarchy ever deepens, activation is create-one-list plus flip-one-property (Section 7), because the logic underneath is already there and tested. You never build levels you don't need, and you never have to retro-fit the ones you do.</p>
+</blockquote>
+<hr />
+<h3>3.3 Depth Exceeded (Warning Property)</h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Depth Exceeded</code></td>
+<td>Text</td>
+<td>Fires a warning if any node sits deeper than the supported ceiling</td>
+</tr>
+</tbody>
+</table>
+<blockquote style="border-left-color:var(--amber);background:var(--amber-soft);">
+<p><strong>IMPORTANT — do NOT use <code>IF(Depth &gt; 6, ...)</code>.</strong> The <code>Depth</code> property is itself capped at 6 by its IFDEFINED chain, so <code>Depth &gt; 6</code> is unreachable dead code: an item 8 levels deep still reports Depth = 6 and the warning never fires. Overflow must be detected <strong>directly</strong>, by testing whether a 7th parent hop resolves.</p>
+</blockquote>
+<h4>Formula: <code>Depth Exceeded</code></h4>
+<pre><code class="language-pigment">// Fires when a 7th parent hop resolves, i.e. the item sits deeper than the
+// 7-level ceiling. Cannot be derived from Depth, which is capped at 6.
+// To extend the ceiling to 8 levels: add one more Parent_Internal_ID hop here.
+IFDEFINED('Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+  &quot;⚠️ Depth &gt; 6 — hierarchy exceeds 7 levels. Extend Depth, Level properties, and parent hops (Section 6).&quot;,
+  BLANK)
+</code></pre>
+<p><strong>Important:</strong> Monitor this property after every data load. A non-blank value means source data has grown beyond the template ceiling and extension is required before those nodes will aggregate correctly.</p>
+
+<h4>Tuning the Ceiling to Your Data (recommended)</h4>
+<p><em>Two distinct numbers, easily conflated. The <strong>frame</strong> is the height the hierarchy actually has — a property of the tree. The <strong>ceiling</strong> is the depth the resolvers support — a property of this template. Tuning means setting the ceiling to the frame. See <a href="00_ragged_hierarchies_concepts.html">Concepts §1</a>.</em></p>
+<p>The formula above sets the ceiling at the template maximum of 7 levels. In practice, a stronger approach is to <strong>tune the ceiling to the actual known depth of your hierarchy</strong> — if the data is meant to be 3 levels deep, set <code>Depth Exceeded</code> to fire at <code>Depth &gt; 2</code>. This turns the warning from a distant overflow catch into an <em>active data-integrity assertion</em>: it fires the instant any item appears deeper than the hierarchy is designed to be, catching a bad parent link or an unexpected source row immediately rather than letting it resolve silently through levels that should not exist.</p>
+<pre><code class="language-pigment">// Depth Exceeded — tuned ceiling: 3 levels (Depth 0–2 = Element Level 1–3).
+// Fires the moment any item sits at Depth > 2, signalling a data error or an
+// intended deepening. All Level calculations at L4+ are blank by design while this holds.
+// To raise the ceiling: change the threshold from 2 to the new maximum Depth.
+IF('Cost Centre Load'.Depth &gt; 2,
+    &quot;⚠️ Depth &gt; 2 — hierarchy exceeds 3 levels. Item is beyond the known ceiling.&quot;,
+    BLANK)</code></pre>
+<p>Paired with this, the unused deeper resolvers (Level 4–7) are <strong>commented out to a single <code>BLANK</code></strong> rather than left computing — the dimension only calculates the levels it actually has, and the full reactivation recipe lives in the comment so growth is a controlled, documented step:</p>
+<pre><code class="language-pigment">// Level 4 ancestor resolver — INACTIVE (tuned ceiling: 3 levels, Depth 0–2).
+// Depth Exceeded fires for any item at Depth > 2; L4+ returns BLANK by design.
+//
+// TO REACTIVATE when the hierarchy grows beyond 3 levels:
+//   1. Raise the 'Depth Exceeded' threshold: Depth > 2  →  Depth > <new max Depth>.
+//   2. Delete the BLANK line below and uncomment the formula block.
+//
+// Depth 0 (root)          : BLANK — root sits above L4
+// Depth 1–3 (short branch): itself — leaf promotion, acts as its own L4 grouping
+// Depth 4 (L5)            : Parent (1 hop)   Depth 5 : 2 hops   Depth 6 : 3 hops
+// IF('Cost Centre Load'.Depth == 0, BLANK,
+// IF('Cost Centre Load'.Depth <= 3, ITEM('Cost Centre Load'.Name, 'Cost Centre Load'.Name),
+// IF('Cost Centre Load'.Depth == 4, 'Cost Centre Load'.Parent_Internal_ID,
+// IF('Cost Centre Load'.Depth == 5, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID,
+// IF('Cost Centre Load'.Depth == 6, 'Cost Centre Load'.Parent_Internal_ID.Parent_Internal_ID.Parent_Internal_ID,
+// BLANK )))))
+BLANK</code></pre>
+<blockquote style="border-left-color:var(--steel);background:var(--steel-soft);">
+<p><strong>Design assumption.</strong> The tuned ceiling treats a fired <code>Depth Exceeded</code> as a <em>stop-and-fix</em> signal: deepening is an exceptional, reviewed event, not routine. When real data legitimately deepens, the warning fires <em>and</em> the deeper items blank at L4+ until someone runs the reactivation recipe — so the design relies on a human seeing and acting on the warning, rather than the structure absorbing growth silently. For a governed hierarchy (cost centres, entities) this is the right trade: a loud warning plus a controlled extension beats silent auto-absorption. If you instead want growth absorbed automatically without intervention, keep all seven resolvers live (provisioned but dormant, per Section 3.5) rather than tuning the ceiling down.</p>
+</blockquote>
+<hr />
+<h3>3.4 Level Properties (Ancestor Walkout)</h3>
+<p>Level properties answer the question: <em>"Who is my ancestor at Level N?"</em> There is one property per supported level: <code>Level 1</code> through <code>Level 7</code>. These are internal resolvers; they stay named <code>Level N</code> because the number genuinely denotes an absolute depth position.</p>
+<h4>The Leaf Promotion Rule</h4>
+<p>In a ragged hierarchy, shallow nodes have no ancestor at deeper levels. Rather than returning BLANK (which would drop them from grouped reports and aggregations), they <strong>promote themselves</strong>: a node sitting at L3 is its own Level 3, Level 4, Level 5… all the way down.</p>
+<p>This is the mechanism that makes the pattern loss-proof: it guarantees every node has a defined value at every level, so no blank ever reaches a <code>BY</code>, a fetch, or a filter.</p>
+<p><strong>Worked example</strong> — <code>Warehouse</code> from the Section 1 tree (Depth 2, sits at L3):</p>
+<pre><code>Level 1 → Company     (2 parent hops)
+Level 2 → Operations  (1 parent hop)
+Level 3 → itself      (Depth equals target — at-level)
+Level 4 → itself      (leaf promotion)
+Level 5 → itself      (leaf promotion)
+Level 6 → itself      (leaf promotion)
+Level 7 → itself      (leaf promotion)
+</code></pre>
+<h4>Formula Pattern: Level N</h4>
+<p>The target depth for <strong>Level N</strong> is <code>N−1</code>. For a node at Depth <code>D</code>, its Level N ancestor is <code>D − (N−1)</code> parent hops away:</p>
+<blockquote style="border-left-color:var(--amber);background:var(--amber-soft);">
+<p><strong>What is <code>N</code>? It is the level number you are building (1–7), not a Pigment variable.</strong> This block is a template: pick the property (e.g. Level 2 → N = 2), substitute the number, and the branches resolve to hard literals. <code>N</code> never appears in the finished formula — that is why the concrete formulas below contain only <code>Depth == 0</code>, <code>Depth == 1</code>, … and no <code>N</code>. Likewise the first line&rsquo;s <code>and N &gt; 1</code> is a note to the reader (&ldquo;this BLANK line only exists in Level 2 and above&rdquo;), not something you type — in Level 1 it is absent; in Level 2+ it becomes a plain <code>IF(Depth == 0, BLANK, …)</code>.</p>
+</blockquote>
+<pre><code>IF(Depth == 0 and N &gt; 1     → BLANK  (roots have no ancestor below Level 1)
+IF(Depth &lt;= N−1             → itself (at-level, or leaf promotion when shallower)
+IF(Depth == N               → 1 parent hop
+IF(Depth == N+1             → 2 parent hops
+...
+IF(Depth == 6               → 6−(N−1) parent hops
+BLANK                       → safety fallback ))...)))
+</code></pre>
+<h4>Concrete Formulas</h4>
+<p><strong>Level 1</strong> (target: Depth 0)</p>
+<pre><code class="language-pigment">IF('Cost Centre Load'.'Depth' == 0, ITEM('Cost Centre Load'.'Name', 'Cost Centre Load'.'Name'),
+IF('Cost Centre Load'.'Depth' == 1, 'Cost Centre Load'.'Parent_Internal_ID',
+IF('Cost Centre Load'.'Depth' == 2, 'Cost Centre Load'.'Parent_Internal_ID'.'Parent_Internal_ID',
+IF('Cost Centre Load'.'Depth' == 3, 'Cost Centre Load'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID',
+IF('Cost Centre Load'.'Depth' == 4, 'Cost Centre Load'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID',
+IF('Cost Centre Load'.'Depth' == 5, 'Cost Centre Load'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID',
+IF('Cost Centre Load'.'Depth' == 6, 'Cost Centre Load'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID',
+BLANK )))))))
+</code></pre>
+<p><strong>Level 2</strong> (target: Depth 1)</p>
+<pre><code class="language-pigment">IF('Cost Centre Load'.'Depth' == 0, BLANK,
+IF('Cost Centre Load'.'Depth' &lt;= 1, ITEM('Cost Centre Load'.'Name', 'Cost Centre Load'.'Name'),
+IF('Cost Centre Load'.'Depth' == 2, 'Cost Centre Load'.'Parent_Internal_ID',
+IF('Cost Centre Load'.'Depth' == 3, 'Cost Centre Load'.'Parent_Internal_ID'.'Parent_Internal_ID',
+IF('Cost Centre Load'.'Depth' == 4, 'Cost Centre Load'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID',
+IF('Cost Centre Load'.'Depth' == 5, 'Cost Centre Load'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID',
+IF('Cost Centre Load'.'Depth' == 6, 'Cost Centre Load'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID'.'Parent_Internal_ID',
+BLANK )))))))
+</code></pre>
+<blockquote>
+<p><strong>Pattern:</strong> Each Level N formula is identical to Level N−1 except: the leading self/BLANK conditions extend by one more Depth value, and every remaining branch loses one parent hop. This makes extending the template purely mechanical.</p>
+</blockquote>
+<p><strong>Summary table — parent hops per Depth per Level:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Depth \ Level</th>
+<th>L1</th>
+<th>L2</th>
+<th>L3</th>
+<th>L4</th>
+<th>L5</th>
+<th>L6</th>
+<th>L7</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>self</td>
+<td>BLANK</td>
+<td>BLANK</td>
+<td>BLANK</td>
+<td>BLANK</td>
+<td>BLANK</td>
+<td>BLANK</td>
+</tr>
+<tr>
+<td>1</td>
+<td>↑1</td>
+<td>self</td>
+<td>self</td>
+<td>self</td>
+<td>self</td>
+<td>self</td>
+<td>self</td>
+</tr>
+<tr>
+<td>2</td>
+<td>↑2</td>
+<td>↑1</td>
+<td>self</td>
+<td>self</td>
+<td>self</td>
+<td>self</td>
+<td>self</td>
+</tr>
+<tr>
+<td>3</td>
+<td>↑3</td>
+<td>↑2</td>
+<td>↑1</td>
+<td>self</td>
+<td>self</td>
+<td>self</td>
+<td>self</td>
+</tr>
+<tr>
+<td>4</td>
+<td>↑4</td>
+<td>↑3</td>
+<td>↑2</td>
+<td>↑1</td>
+<td>self</td>
+<td>self</td>
+<td>self</td>
+</tr>
+<tr>
+<td>5</td>
+<td>↑5</td>
+<td>↑4</td>
+<td>↑3</td>
+<td>↑2</td>
+<td>↑1</td>
+<td>self</td>
+<td>self</td>
+</tr>
+<tr>
+<td>6</td>
+<td>↑6</td>
+<td>↑5</td>
+<td>↑4</td>
+<td>↑3</td>
+<td>↑2</td>
+<td>↑1</td>
+<td>self</td>
+</tr>
+</tbody>
+</table>
+<p><em>↑N = N parent hops via chained <code>Parent_Internal_ID</code>. "self" = at-level or leaf promotion. Every cell obeys hops = Depth − (Level − 1). The shaded diagonal boundary is the leaf promotion rule — and the reason no level property is ever blank below its own depth.</em></p>
+<hr />
+<h3>3.5 Curated Dimension Properties (L1–L3 Active, L4–L7 Stubs)</h3>
+<p>These properties join the Load List to the standalone curated dimension lists. They exist in two states:</p>
+<h4>Active (L1–L3)</h4>
+<ul>
+<li><strong>Type:</strong> Dimension (references the curated list)</li>
+<li><strong>Formula:</strong> <code>ITEM()</code> matches the Level N ancestor name to the curated list</li>
+</ul>
+<pre><code class="language-pigment">// Cost Centre L1 — Active dimension join.
+// Maps the Level 1 ancestor name to the Cost Centre L1 dimension list.
+ITEM('Cost Centre Load'.'Level 1'.'Name', 'Cost Centre L1'.'Name')
+</code></pre>
+<h4>Stub (L4–L7)</h4>
+<ul>
+<li><strong>Type:</strong> Text (no curated list exists yet)</li>
+<li><strong>Formula:</strong> Returns the ancestor name as plain text — BLANK when no ancestor exists</li>
+</ul>
+<pre><code class="language-pigment">// ─────────────────────────────────────────────────────────────
+// Cost Centre L4 — Template stub (Text)
+// ─────────────────────────────────────────────────────────────
+// STATUS: Stub — returns the Level 4 ancestor name as text.
+// BLANK for all current data (max Depth 2).
+//
+// WHEN TO ACTIVATE:
+// Source data contains items at Depth 3 or deeper.
+//
+// UPGRADE STEPS:
+// 1. Create dimension list &quot;Cost Centre L4&quot; with a Name property.
+// 2. Populate it by import from the distinct values in this property.
+// 3. Change this property type: Text → Dimension (Cost Centre L4).
+// 4. Replace this formula with:
+//    ITEM('Cost Centre Load'.'Level 4'.'Name', 'Cost Centre L4'.'Name')
+//
+// DEPENDENCY: Level 4 property must remain on this list.
+// CEILING: Depth formula and Level properties support up to Depth 6 (7 levels).
+// ─────────────────────────────────────────────────────────────
+'Cost Centre Load'.'Level 4'.'Name'
+</code></pre>
+<p>The instruction block is embedded directly in the formula comment so the upgrade path is self-documenting — no external reference required.</p>
+<blockquote style="border-left-color:var(--teal);background:var(--teal-soft);">
+<p><strong>Hide the stub properties until they are needed.</strong> The <code>Cost Centre L4</code>–<code>L7</code> stubs exist so the resolver machinery is complete to 7 levels, but in a hierarchy only 2–3 deep they carry no useful value and would clutter the property list. Set them to <strong>hidden</strong> on the Load List: the property, its formula, and — importantly — its embedded activation instructions all remain intact and travel with the model, but they stay out of sight until a future deepening calls for them.</p>
+<p>This pairs with the comment convention: <strong>the activation steps live in the stub&rsquo;s own formula comment</strong> (shown above), not in an external document. So when the day comes to activate <code>Cost Centre L4</code>, you unhide the property and the exact upgrade procedure is already there in front of you, in the formula editor, at the precise place the change is made. Documentation that travels with the property cannot go stale or get lost the way an external note can. Hidden-but-documented is the goal: zero clutter today, zero archaeology tomorrow.</p>
+</blockquote>
+<hr />
+
+<h3>3.6 Node Classification — Child Count &amp; Boolean Flags (optional QA layer)</h3>
+<p>The Level resolvers and <code>Depth Exceeded</code> are the working engine of the pattern — they resolve the hierarchy and catch overflow. On a staging Load List it is also useful to carry a small set of <strong>human-readable classification flags</strong> — is this item a root, an intermediate rollup node, or a leaf — so a reviewer can eyeball how each row was classified before it is promoted to the curated dimensions. These flags are a <strong>QA/validation layer, not a building block</strong>: the Level formulas do not depend on them. Built correctly, they surface real structural information the Level properties alone do not make visible.</p>
+
+<h4>Why leaf detection needs a downward signal</h4>
+<p>The instinct is to classify nodes from their ancestors: &ldquo;a root has no parent, an intermediate has a parent but no grandparent, a leaf has both.&rdquo; <strong>This upward logic is wrong for ragged hierarchies, and the failure is specific.</strong> Consider a parent whose children are a mix — one is a real rollup node with its own children, the others are bare leaves:</p>
+<pre><code>Marketing (root)
+├── Direct Leaf A   → parent ✓, grandparent ✗
+├── Direct Leaf B   → parent ✓, grandparent ✗
+└── Sub-Rollup      → parent ✓, grandparent ✗   ← has children
+    ├── Leaf C      → parent ✓, grandparent ✓
+    └── Leaf D      → parent ✓, grandparent ✓</code></pre>
+<p><strong>Direct Leaf A and Sub-Rollup are siblings — same parent, same depth, identical ancestors.</strong> Any test that looks <em>upward</em> gives them the same answer, so ancestor-blank logic classifies the direct leaves as rollup nodes: wrong. The distinguishing fact — does this item have children — lives <em>downward</em>, and upward logic is structurally blind to it. Sibling nodes are the case that breaks every upward-only classifier.</p>
+<blockquote style="border-left-color:var(--amber);background:var(--amber-soft);">
+<p><strong>The rule.</strong> <em>Position</em> facts (root, depth, level) can be read upward — an item&rsquo;s ancestors genuinely tell you where it sits. <em>Type</em> facts (is this a leaf) cannot — &ldquo;leaf&rdquo; means &ldquo;nothing points at me as its parent,&rdquo; which is a downward fact. Leaf detection therefore requires a reverse child-count, never an ancestor test.</p>
+</blockquote>
+
+<h4>Child Count — the downward signal (BY COUNT must be a metric)</h4>
+<p>The count of an item&rsquo;s children is a reverse traversal: group all items by their <code>Parent_Internal_ID</code> and tally how many land on each parent. <strong>A platform note worth knowing:</strong> in Pigment this <code>BY COUNT</code> reverse-aggregation cannot be written as a <em>List Property</em> — it must be built as a <strong>metric</strong> dimensioned by the Load List, which is then referenced back by the classification properties. That constraint applies to <code>BY COUNT</code> specifically, not to leaf detection generally: the <code>MATCH</code> idiom (Section 2) answers the same downward question as a plain list property, at the cost of an untested profile on very large lists.</p>
+<pre><code class="language-pigment">// Cost Centre Child Count — METRIC (not a list property).
+// Counts items whose Parent_Internal_ID points to this item.
+// BLANK/zero for leaves (never named as anyone's parent); > 0 for real nodes.
+'Cost Centre Load'.Internal_ID [BY COUNT: 'Cost Centre Load'.Parent_Internal_ID]</code></pre>
+
+<h4>The classification flags</h4>
+<p>With the child-count metric available, the three flags classify every item into exactly one of root / rollup / leaf. Note that <code>CC Rollup</code> and <code>CC Base</code> are sourced from the <em>child count</em> (downward), not from ancestor-blanks — this is what makes them correct for the sibling case. Both also gate on <code>Depth Exceeded</code> being blank, so an over-deep item falls out of all three for review rather than misclassifying.</p>
+<pre><code class="language-pigment">// CC Parent — TRUE for root items (no parent).
+IF(ISBLANK('Cost Centre Load'.Parent_Internal_ID), TRUE, BLANK)</code></pre>
+<pre><code class="language-pigment">// CC Rollup — TRUE for intermediate nodes: has a parent, HAS children, within ceiling.
+IF(ISDEFINED('Cost Centre Load'.Parent_Internal_ID)
+   AND NOT ISBLANK('Cost Centre Child Count')
+   AND ISBLANK('Cost Centre Load'.'Depth Exceeded'), TRUE, BLANK)</code></pre>
+<pre><code class="language-pigment">// CC Base — TRUE for leaf nodes: has a parent, NO children, within ceiling.
+IF(ISDEFINED('Cost Centre Load'.Parent_Internal_ID)
+   AND ISBLANK('Cost Centre Child Count')
+   AND ISBLANK('Cost Centre Load'.'Depth Exceeded'), TRUE, BLANK)</code></pre>
+<p>The three are mutually exclusive and complete. A childless root resolves to <code>CC Parent</code> only — the <code>ISDEFINED(Parent)</code> guard on <code>CC Rollup</code> and <code>CC Base</code> keeps a root out of both, so it is never mistaken for a leaf. Verify on real rows: a known rollup node should read <code>CC Rollup</code>, a known bare leaf should read <code>CC Base</code>, including for mixed siblings under the same parent.</p>
+<blockquote style="border-left-color:var(--teal);background:var(--teal-soft);">
+<p><strong>Use these as an audit layer, not an engine.</strong> The flags are a staging-file QA surface — a quick visual check that each item classified as expected before promotion to the curated dimensions. They read correctly <em>because</em> they are fed by the child count; the identical-looking flags fed by ancestor-blanks are the flawed version and must not be used. Keep the Level resolvers as the engine underneath; let the flags sit alongside as the human-readable check.</p>
+</blockquote>
+<hr />
+<p>The Load List computes the hierarchy; the curated lists carry it into production. Each curated list needs two things: the right items, and a <strong>parent-link property</strong> that lets views walk up the hierarchy. Both are populated by <strong>import</strong> from the Load List (never a subset or live-derived link — Section 2).</p>
+<h3>4.1 Structure — One Parent Link per List</h3>
+<p>Each curated list carries a dimension property referencing the list <strong>one level above it</strong>. Immediate parent only — higher ancestors are reached by chaining.</p>
+<table>
+<thead>
+<tr>
+<th>List</th>
+<th>Properties</th>
+<th>Parent link</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Cost Centre L1</code></td>
+<td><code>Name</code> (unique)</td>
+<td>— (top of hierarchy)</td>
+</tr>
+<tr>
+<td><code>Cost Centre L2</code></td>
+<td><code>Name</code> (unique), <code>Cost Centre L1</code></td>
+<td>Dimension → Cost Centre L1</td>
+</tr>
+<tr>
+<td><code>Cost Centre</code></td>
+<td><code>Name</code> (unique), <code>Cost Centre L2</code></td>
+<td>Dimension → Cost Centre L2</td>
+</tr>
+</tbody>
+</table>
+<p>Walking up the hierarchy from the leaf list is then chained property access:</p>
+<pre><code class="language-pigment">'Cost Centre'.'Cost Centre L2'                    // immediate parent (L2)
+'Cost Centre'.'Cost Centre L2'.'Cost Centre L1'   // two levels up (L1)
+</code></pre>
+<blockquote>
+<p><strong>Optional flattening — putting a higher level directly on the leaf.</strong></p>
+<p>The leaf list only holds a link to the list <em>one level above it</em> (<code>Cost Centre L2</code>). It has no direct <code>L1</code> property — to reach a leaf&rsquo;s BU you must <em>chain</em> two hops: <code>'Cost Centre'.'Cost Centre L2'.'Cost Centre L1'</code>. That chain works fine <em>inside a formula</em>.</p>
+<p>The problem: some parts of Pigment want a <strong>single property on the leaf</strong>, not a chain — board selectors, view groupings, and page dimensions let you pick a property of the dimension but won&rsquo;t accept a two-hop expression. So &ldquo;group this board by BU&rdquo; or &ldquo;add a BU selector&rdquo; has nothing to point at, because L1 sits two hops away.</p>
+<p>The fix: add one derived property <em>directly on the leaf</em> — call it <code>Cost Centre L1</code> — whose formula is the chain:</p>
+<pre><code>// Flattened L1 on the leaf — collapses the two-hop chain into
+// a single directly-selectable property.
+'Cost Centre'.'Cost Centre L2'.'Cost Centre L1'</code></pre>
+<p>Now L1 is a first-class property of the leaf, alongside L2, and any selector, grouping, or page dimension can point straight at it. It is <strong>no extra import</strong> because it builds no list and loads no data — it is a pure formula reading properties that already exist, recomputing itself at no load-time cost.</p>
+<p><strong>When to bother:</strong> only if something actually needs a higher level as a leaf property (a BU selector, a BU-level grouping on a leaf-dimensioned board). If everything that needs L1 lives inside formulas — where the chain already works — you don&rsquo;t need it. The same one-line trick flattens any level (L1, L2, deeper) onto the leaf if heavy board work calls for it.</p>
+</blockquote>
+
+<h4>How Many Flat Level Properties Should the Leaf Carry?</h4>
+<p>With a hierarchy up to 7 levels deep, a natural question is whether to add all seven levels as flat properties on the leaf dimension. <strong>The answer is no — you add a flat level property only where something consumes that level <em>as a leaf property</em>, and you provision them one at a time as concrete needs arise.</strong> Reflexively flattening all seven is clutter, not completeness.</p>
+<p>The reason is that there are three different things that might make you want a level available, and only one of them needs a flat property:</p>
+<table>
+<thead><tr><th>What you want to do</th><th>What it needs</th><th>Flat property required?</th></tr></thead>
+<tbody>
+<tr><td><strong>Roll up in views</strong> — subtotals by BU, department, etc.</td><td>Nothing extra. Group the view by <code>Cost Centre L2</code> and the view walks the parent-link chain (L2 → L1) itself.</td><td><strong>No</strong> — the chain already does this.</td></tr>
+<tr><td><strong>Filter / isolate leaves by ancestor in a formula</strong> (Section 8.4)</td><td>The chain, referenced in the formula: <code>'Cost Centre'.'Cost Centre L2' = X</code>.</td><td><strong>No</strong> — available without adding anything.</td></tr>
+<tr><td><strong>A selector, grouping, or page dimension</strong> that must point at one specific level</td><td>A flat property on the leaf for <em>that level only</em> (the flattening trick above).</td><td><strong>Yes — but only for the level that specific control uses.</strong></td></tr>
+</tbody>
+</table>
+<p>So across a full seven-level hierarchy the realistic count of flat level properties is <strong>small — often just one or two</strong> (commonly L1/BU, because BU selectors and BU-grouped boards are common), and rarely all seven. Every flat property you add that nothing points at is dead weight: one more attribute on the dimension to read past, maintain, and later puzzle over (&ldquo;why is L5 flattened — what uses it?&rdquo;). Unused derived properties are cheap to compute but not free to <em>understand</em>.</p>
+<blockquote style="border-left-color:var(--amber);background:var(--amber-soft);">
+<p><strong>Watch the naming — structural vs convenience properties.</strong> The leaf already carries <code>Cost Centre L2</code> as its genuine <em>immediate-parent link</em> — a structural property the walkout and imports depend on. A flattened <code>Cost Centre L1</code> is a different thing: a <em>derived convenience</em> for the UI, not a structural link. If you flatten several levels, make the distinction visible — for example prefix the convenience ones (<code>Sel_L1</code>, <code>Flat_L1</code>) — so a later reader never mistakes a flattened lookup for a real parent link and builds on it wrongly.</p>
+</blockquote>
+<p><strong>Rule of thumb:</strong> the chain is the default; a flat level property is an exception you justify by naming a concrete UI consumer for it. Provision the exceptions as they appear — not all seven up front.</p>
+
+<h3>4.2 Import Source — Distinct (Level N, Level N−1) Pairs</h3>
+<p>Each curated list is populated by an <strong>import whose source is a view of the Load List</strong>, showing the distinct <code>Level N</code> names alongside their <code>Level N−1</code> names. The second column fills the parent link.</p>
+<table>
+<thead>
+<tr>
+<th>Target list</th>
+<th>Source columns (from Load List)</th>
+<th>Mapping</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Cost Centre L1</code></td>
+<td>distinct <code>Level 1</code>.<code>Name</code></td>
+<td>→ <code>Name</code> (unique key)</td>
+</tr>
+<tr>
+<td><code>Cost Centre L2</code></td>
+<td>distinct <code>Level 2</code>.<code>Name</code> + <code>Level 1</code>.<code>Name</code></td>
+<td>→ <code>Name</code> (key), → <code>Cost Centre L1</code> (parent)</td>
+</tr>
+<tr>
+<td><code>Cost Centre</code></td>
+<td>distinct <code>Level 3</code>.<code>Name</code> + <code>Level 2</code>.<code>Name</code></td>
+<td>→ <code>Name</code> (key), → <code>Cost Centre L2</code> (parent)</td>
+</tr>
+</tbody>
+</table>
+<p>The dimension-typed parent property is resolved on import by matching the incoming text against the parent list's <code>Name</code> — the standard Pigment import behaviour for dimension properties.</p>
+<p>The (Level N, Level N−1) pair is <strong>functionally dependent</strong>: every Load List row sharing a <code>Level N</code> ancestor also shares that ancestor's <code>Level N−1</code>, so the distinct extract yields exactly one unambiguous parent per item. No deduplication conflicts are possible.</p>
+<h3>4.3 Run Order &amp; Reload Behaviour</h3>
+<ol>
+<li><strong>Import top-down: L1, then L2, then the leaf.</strong> Each import needs its parent list already populated, or the parent-link property cannot resolve.</li>
+<li><strong>Same order on every reload.</strong> Imports are upserts keyed on <code>Name</code>, so re-running is safe and idempotent.</li>
+<li><strong>The import is the gate.</strong> Refresh and validate the Load List first (Section 10), then run the imports to update the model. Models and apps only change when you choose to run the import — the Load List can be rebuilt freely in between without touching production.</li>
+<li><strong>Leaf promotion flows through cleanly.</strong> A promoted shallow leaf lands in every list at and below its own level, with parent links chaining through its own promoted entries. Example — <code>Finance</code> (Depth 1): appears in L2 and the leaf list; the chain resolves leaf <code>Finance</code> → L2 <code>Finance</code> → L1 <code>Company</code>. Rollup stays correct with no special-casing.</li>
+</ol>
+<blockquote style="border-left-color:var(--amber);background:var(--amber-soft);">
+<p><strong>Why not a List Subset or a formula-derived link?</strong> Both would make the curated lists a <em>live</em> reflection of the Load List, removing the validation gate: a bad load, a mid-load state, or a source-format change would reach models instantly. Import-population is deliberate and checkable; that is the whole point of the two-tier separation. This rule is non-negotiable in this pattern.</p>
+</blockquote>
+<hr />
+<h2>5. Complete Property Inventory — Load List</h2>
+<p>The properties below are the full set for a 7-level-capable Load List. In a hierarchy that only reaches Depth 2–3 today, the deeper-level rows (shaded) carry no useful value yet and can be set to <strong>hidden</strong> to keep the property list uncluttered — they remain fully functional and their activation instructions live in their own formula comments (Section 3.5), so hiding loses nothing.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Property</th>
+<th>Type</th>
+<th>State</th>
+<th>Visibility</th>
+<th>Depends On</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>1</td><td><code>Name</code></td><td>Text (unique)</td><td>Manual input</td><td>Show</td><td>—</td></tr>
+<tr><td>2</td><td><code>Code</code></td><td>Text</td><td>Manual input</td><td>Show</td><td>—</td></tr>
+<tr><td>3</td><td><code>Parent_Code</code></td><td>Text</td><td>Manual input</td><td>Show</td><td>—</td></tr>
+<tr><td>4</td><td><code>Parent_Internal_ID</code></td><td>Dimension (self)</td><td>Formula</td><td>Show</td><td>Code, Parent_Code</td></tr>
+<tr><td>5</td><td><code>Depth</code></td><td>Integer</td><td>Formula</td><td>Show</td><td>Parent_Internal_ID</td></tr>
+<tr><td>6</td><td><code>Depth Exceeded</code></td><td>Text</td><td>Formula</td><td>Show</td><td>Parent_Internal_ID</td></tr>
+<tr><td>7</td><td><code>Level 1</code></td><td>Dimension (self)</td><td>Formula</td><td>Show</td><td>Depth, Parent_Internal_ID</td></tr>
+<tr><td>8</td><td><code>Level 2</code></td><td>Dimension (self)</td><td>Formula</td><td>Show</td><td>Depth, Parent_Internal_ID</td></tr>
+<tr><td>9</td><td><code>Level 3</code></td><td>Dimension (self)</td><td>Formula</td><td>Show</td><td>Depth, Parent_Internal_ID</td></tr>
+<tr style="background:#f4f1e8;"><td>10</td><td><code>Level 4</code></td><td>Dimension (self)</td><td>Formula</td><td><strong>Hide until needed</strong></td><td>Depth, Parent_Internal_ID</td></tr>
+<tr style="background:#f4f1e8;"><td>11</td><td><code>Level 5</code></td><td>Dimension (self)</td><td>Formula</td><td><strong>Hide until needed</strong></td><td>Depth, Parent_Internal_ID</td></tr>
+<tr style="background:#f4f1e8;"><td>12</td><td><code>Level 6</code></td><td>Dimension (self)</td><td>Formula</td><td><strong>Hide until needed</strong></td><td>Depth, Parent_Internal_ID</td></tr>
+<tr style="background:#f4f1e8;"><td>13</td><td><code>Level 7</code></td><td>Dimension (self)</td><td>Formula</td><td><strong>Hide until needed</strong></td><td>Depth, Parent_Internal_ID</td></tr>
+<tr><td>14</td><td><code>Cost Centre L1</code></td><td>Dimension (L1 list)</td><td>Active (ITEM)</td><td>Show</td><td>Level 1, Cost Centre L1 list</td></tr>
+<tr><td>15</td><td><code>Cost Centre L2</code></td><td>Dimension (L2 list)</td><td>Active (ITEM)</td><td>Show</td><td>Level 2, Cost Centre L2 list</td></tr>
+<tr><td>16</td><td><code>Cost Centre L3</code></td><td>Dimension (leaf list)</td><td>Active (ITEM)</td><td>Show</td><td>Level 3, Cost Centre list</td></tr>
+<tr style="background:#f4f1e8;"><td>17</td><td><code>Cost Centre L4</code></td><td><strong>Text (stub)</strong></td><td>Formula (name text)</td><td><strong>Hide until needed</strong></td><td>Level 4</td></tr>
+<tr style="background:#f4f1e8;"><td>18</td><td><code>Cost Centre L5</code></td><td><strong>Text (stub)</strong></td><td>Formula (name text)</td><td><strong>Hide until needed</strong></td><td>Level 5</td></tr>
+<tr style="background:#f4f1e8;"><td>19</td><td><code>Cost Centre L6</code></td><td><strong>Text (stub)</strong></td><td>Formula (name text)</td><td><strong>Hide until needed</strong></td><td>Level 6</td></tr>
+<tr style="background:#f4f1e8;"><td>20</td><td><code>Cost Centre L7</code></td><td><strong>Text (stub)</strong></td><td>Formula (name text)</td><td><strong>Hide until needed</strong></td><td>Level 7</td></tr>
+</tbody>
+</table>
+<p><em>Shaded rows (Level 4–7 resolvers and the Cost Centre L4–L7 stubs) are the dormant deeper levels — hide them while the hierarchy is shallower than that, unhide on activation (Section 7). Rows 7–9 (<code>Level 1</code>–<code>Level 3</code>) and 14–16 stay visible because today's data uses them. As the hierarchy deepens, the boundary between "show" and "hide until needed" simply moves down.</em></p>
+<p><em>Note that <code>Depth Exceeded</code> (#6) depends on <code>Parent_Internal_ID</code> directly, not on <code>Depth</code> — see 3.3 for why. Property #16 maps the Level 3 ancestor into the leaf dimension <code>Cost Centre</code>; the property retains the <code>L3</code> suffix on the Load List because it denotes the Level-3 join, but its target list is the position-free <code>Cost Centre</code>.</em></p>
+
+<h3>5.1 Supporting Components — Child Count Metric &amp; Classification Flags</h3>
+<p>The properties above are all <strong>list properties</strong> on the Load List. The design has two further first-class components that are <em>not</em> list properties and so sit outside that table — but they are structural parts of the pattern, not optional extras, and are registered here so the schema is complete. The Child Count metric in particular is load-bearing: correct leaf classification depends on it (see 3.6).</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Kind</th>
+<th>State</th>
+<th>Depends On</th>
+<th>Consumed By</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background:#eef4f1;"><td><code>Cost Centre Child Count</code></td><td><strong>Metric</strong> (dimensioned by Load List) — <em>not a list property</em></td><td>Formula (<code>BY COUNT</code>)</td><td>Internal_ID, Parent_Internal_ID</td><td>CC Rollup, CC Base</td></tr>
+<tr><td><code>CC Parent</code></td><td>Boolean list property</td><td>Formula</td><td>Parent_Internal_ID</td><td>QA / staging review</td></tr>
+<tr><td><code>CC Rollup</code></td><td>Boolean list property</td><td>Formula</td><td>Parent_Internal_ID, Child Count, Depth Exceeded</td><td>QA / staging review</td></tr>
+<tr><td><code>CC Base</code></td><td>Boolean list property</td><td>Formula</td><td>Parent_Internal_ID, Child Count, Depth Exceeded</td><td>QA / staging review</td></tr>
+</tbody>
+</table>
+<p><em>The shaded row is the <strong>Child Count metric</strong> — a metric rather than a list property because Pigment&rsquo;s <code>BY COUNT</code> reverse-aggregation cannot be a list property (see 3.6). The three <code>CC</code> flags are an optional QA/audit layer that reads it back; they classify staging rows for human review and are <strong>not consumed by the Level resolvers</strong>. In the balanced pattern, therefore, both the metric and the flags are optional — promotion removes the need for any leaf test in the resolvers themselves. Build them for validation, not for correctness. Where leaf classification is wanted and the list is small, the <code>MATCH</code> idiom (Section 2) supplies it as a plain list property and this metric is not needed at all.</em></p>
+
+<h4>Where each component lives — full schema</h4>
+<pre><code>LOAD LIST (staging)
+├── list properties (table above): Name, Code, Parent_Code, Parent_Internal_ID,
+│     Depth, Depth Exceeded, Level 1–7, Cost Centre L1–L7
+├── CC Parent / CC Rollup / CC Base   ← boolean list properties (QA layer)
+└── referenced ▼
+METRIC LAYER
+└── Cost Centre Child Count   ← BY COUNT metric, dimensioned by the Load List
+      (required: feeds CC Rollup / CC Base with the downward child signal)</code></pre>
+<hr />
+<h2>6. Extension Guide — Adding Level 8</h2>
+<p>If source data exceeds 7 levels (<code>Depth Exceeded</code> fires), extend the template as follows. Every change is mechanical — copy the pattern, increment the number.</p>
+<ol>
+<li><strong>Update <code>Depth</code>.</strong> Add one more <code>IFDEFINED</code> branch at the top, testing 7 chained parent hops and returning <code>7</code>.</li>
+<li><strong>Update <code>Depth Exceeded</code>.</strong> Extend the overflow test from 7 chained hops to 8, and update the warning text.</li>
+<li><strong>Update Level 1–7 formulas.</strong> Add one new branch to each: <code>IF(Depth == 7, &lt;7−(N−1) parent hops&gt;, ...)</code> immediately before the safety fallback.</li>
+<li><strong>Create <code>Level 8</code> property.</strong> Follow the standard Level N pattern with target Depth = 7.</li>
+<li><strong>Create the new intermediate curated list</strong> and its parent-link import (see Section 7).</li>
+</ol>
+<blockquote>
+<p><strong>Rule of thumb:</strong> every +1 level touches 11 properties — <code>Depth</code>, <code>Depth Exceeded</code>, the seven existing <code>Level</code> formulas, the new <code>Level 8</code>, and the new curated stub. Purely mechanical.</p>
+</blockquote>
+<hr />
+<h2>7. Activating a Stub &amp; Deepening the Hierarchy</h2>
+<h3>7.1 Activating a Stub Dimension</h3>
+<p>When source data begins to include items at Level 4:</p>
+<ol>
+<li><strong>Identify distinct L4 values</strong> — filter the Load List to rows where <code>Cost Centre L4</code> is not blank.</li>
+<li><strong>Create the curated dimension list</strong> <code>Cost Centre L4</code> with a unique <code>Name</code> property <strong>and a parent-link dimension property referencing <code>Cost Centre L3</code>'s list</strong>. The parent link is not optional — it carries the rollup.</li>
+<li><strong>Populate by import</strong> from the distinct values in Step 1.</li>
+<li><strong>Update the Load List property</strong> <code>Cost Centre L4</code>: Text → Dimension.</li>
+<li><strong>Update the formula</strong> to <code>ITEM('Cost Centre Load'.'Level 4'.'Name', 'Cost Centre L4'.'Name')</code>.</li>
+<li><strong>Verify</strong> — spot-check items; items at Depth ≤ 2 resolve to themselves via leaf promotion, which is correct.</li>
+</ol>
+<h3>7.2 What Happens to the Leaf on Deepening</h3>
+<p>Because the metric-facing dimension is named <code>Cost Centre</code> (not <code>Cost Centre L3</code>), deepening does <strong>not</strong> rename or restructure it. When a former leaf gains children:</p>
+<ul>
+<li>Under promotion, the former leaf's deeper Level properties already return itself, so the leaf import (now sourced from the deeper Level column) <strong>adds</strong> the new children and <strong>keeps</strong> the former leaf as a postable parent-with-own-value. Existing members and their stored data survive — membership is <em>additive</em>, not a rebuild.</li>
+<li>A new intermediate curated list is created for the newly-real middle tier, built exactly like L2 was.</li>
+<li>Rules and metrics do not change, because they reference <code>'Cost Centre'</code> and the stable upper levels — never a leaf-position number.</li>
+</ul>
+<h3>7.3 The Naming Rule</h3>
+<p>The metric-facing dimension carries a <strong>position-free name</strong> — <code>Cost Centre</code>, never <code>Cost Centre L3</code>. Numbered names are stable only for positions that don't move, and deepening moves the leaf. The upper levels keep top-anchored numbers (<code>Cost Centre L1</code>, <code>L2</code>, …) because roots are always L1 and deepening only adds tiers below. Result: deepening costs two actions — create the new intermediate list, switch the leaf import's source column from <code>Level N</code> to <code>Level N+1</code> — and <strong>zero rule changes</strong>.</p>
+<hr />
+<h2>8. Calculation Patterns — Property-Reference Rules</h2>
+<p>Most business rules need to combine a value stored at the leaf with a value stored higher up the hierarchy. A simple example: <em>&ldquo;apply each department&rsquo;s overhead rate to every cost centre in it&rdquo;</em> — the spend sits at the leaf (each cost centre), but the rate sits at the department (an L2 level).</p>
+<p>There are two ways to build a rule like that, and they differ in <strong>what dimension the calculation itself runs on</strong>:</p>
+<ol>
+<li><strong>Dimension the calculation by the level list.</strong> The rule&rsquo;s output metric is built on <code>Cost Centre L2</code>, so it computes one value per department. Simple, but it forces the result to L2 grain, and it only sees leaves that have an L2 — the failure mode this whole document is about.</li>
+<li><strong>Keep the calculation at leaf grain, and reach up for the higher value.</strong> The rule&rsquo;s output metric stays on the leaf dimension <code>Cost Centre</code> (one value per cost centre), and where it needs the department rate it <em>fetches</em> it by following the leaf&rsquo;s parent-link property up to L2. The hierarchy is used as a <em>lookup path</em>, not as the shape of the result.</li>
+</ol>
+<p><strong>This pattern prefers the second.</strong> The rule lives at leaf grain — the one place every cost centre exists — and pulls higher-level values down as needed. The only thing that stays dimensioned by a level is a value people actually <em>type in</em> at that level (a department rate someone enters once per department); the <em>calculation</em> that consumes it stays at the leaf. Section 8.3 lays out exactly which of your blocks sit at a level and which sit at the leaf.</p>
+<h3>8.1 The Pattern</h3>
+<p>Rules are dimensioned by the leaf list (<code>Cost Centre</code>). Where a rule needs a value held at a higher level — a rate, a driver, an allocation basis — it fetches it through the chained parent-link properties rather than by dimensioning the rule itself at that level:</p>
+<pre><code class="language-pigment">// Apply a BU-level rate to every leaf cost centre.
+// 'Rate by L2' is dimensioned by Cost Centre L2 (input grain).
+// The calculation stays at leaf grain; the mapping fetches each
+// leaf's parent rate through the parent-link chain.
+'Revenue by Cost Centre' * 'Rate by L2'[BY: 'Cost Centre'.'Cost Centre L2']
+</code></pre>
+<p>Because promotion guarantees <code>Cost Centre L2</code> is never blank, this <code>BY</code> resolves for <strong>every</strong> leaf — including ragged ones, which land on their own promoted L2 entry. No silent drop.</p>
+<h3>8.2 Two Prerequisites</h3>
+<p><strong>Promotion underneath.</strong> Property-reference rules are safe only because promotion guarantees the properties are never blank. A blank level fails a lookup by the same mechanism it fails a <code>BY</code> — there is no member to resolve to — so the loss-proofing and the rule pattern are the same guarantee viewed twice.</p>
+<p><strong>Reference the curated leaf list, never the Load List.</strong> The Load List is staging (Section 2). Keying business rules to <code>'Cost Centre Load'</code> references breaks the tier separation — every re-import's item churn would ripple into calculation logic. The curated leaf list already carries the parent chain (Section 4), so rules reference <code>'Cost Centre'.'Cost Centre L2'</code> and the staging layer stays disposable. <strong>Load and Model are separate concerns: imports may rebuild the Load List freely; rules bind only to the Model layer.</strong></p>
+<p>Note the distinction: parent relationships are <em>derived</em> on the Load List (at import time, via the walkout properties), but production formulas <em>bind</em> to the curated lists, where the import has materialised the result. Derivation location and binding target are different questions — conflating them is how staging references leak into production logic.</p>
+<h3>8.3 What Level Dimensions Remain For</h3>
+<p>Level lists don't disappear — they stop being <em>calculation</em> dimensions and persist for two roles:</p>
+<table>
+<thead>
+<tr>
+<th>Use case</th>
+<th>Structure</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input grains</strong> — planners enter rates, targets, assumptions <em>at</em> a level</td>
+<td>Metric dimensioned by that level list (e.g. <code>Rate by L2</code>). An input "per BU" needs an L2-shaped container; it cannot be typed into a leaf-grain block without duplication.</td>
+</tr>
+<tr>
+<td><strong>Calculation</strong> — rules combining data across grains</td>
+<td>Leaf-dimensioned metric; higher-level values fetched via the parent-link chain (8.1)</td>
+</tr>
+<tr>
+<td><strong>Reporting</strong> — subtotals, rollups, level views</td>
+<td>View grouping over leaf metrics, or level-dimensioned metrics fed by <code>BY</code> — both safe, because promotion leaves no blanks</td>
+</tr>
+</tbody>
+</table>
+<h3>8.4 Pulling an Assumption Down From a Parent</h3>
+<p>This is the everyday job of a planning model: an assumption is entered against a parent node — an overhead rate, a headcount driver, a growth factor — and every leaf underneath needs to consume it. How you fetch it depends on <strong>whether you know which level the assumption sits at</strong>. There are three situations, in increasing generality.</p>
+
+<h4>Case A — the assumption is held at one known level</h4>
+<p>If the rate is entered per department (an L2 metric, <code>Rate by L2</code>), every leaf reaches it in a single hop, because the leaf already carries its L2 ancestor as a property:</p>
+<pre><code class="language-pigment">// Each leaf pulls its own department's rate. One hop, no climbing.
+'Spend by Cost Centre' * 'Rate by L2'[BY: 'Cost Centre'.'Cost Centre L2']</code></pre>
+<p>Promotion guarantees <code>Cost Centre L2</code> is never blank, so this resolves for every leaf including ragged ones (which land on their own promoted L2 entry). This is the common case and needs nothing clever.</p>
+
+<h4>Case B — the assumption may sit at different levels, so climb to the nearest ancestor that has one</h4>
+<p>Often an assumption is entered at whatever level makes business sense, and filled in <em>sparsely</em>: a rate is set for some departments (L2), but where a department has none the leaf should inherit its BU&rsquo;s rate (L1), and failing that a global default. You don&rsquo;t know per-leaf which level will supply the value — so you check from the <strong>most specific level upward and take the first one that has a value</strong>. An <code>IFBLANK</code> cascade does exactly this, and <em>is</em> the climb:</p>
+<pre><code class="language-pigment">// Nearest-ancestor inheritance: try the leaf's own level, then L3, then
+// L2, then L1 — stop at the first ancestor that actually carries a rate.
+// The cascade discovers which level supplies the value; you don't specify it.
+IFBLANK( 'Rate'[BY: 'Cost Centre'.'Cost Centre L3'],
+IFBLANK( 'Rate'[BY: 'Cost Centre'.'Cost Centre L2'],
+IFBLANK( 'Rate'[BY: 'Cost Centre'.'Cost Centre L1'],
+         'Global Default Rate' )))</code></pre>
+<p>Read it top to bottom: <em>&ldquo;use the L3 rate if one is set; otherwise the L2 rate; otherwise the BU rate; otherwise the global default.&rdquo;</em> Because each level property is populated for every leaf (promotion), the only thing that can be blank is the <em>rate table itself</em> at that level — which is precisely the &ldquo;no value entered here&rdquo; condition you want the climb to skip past. Order the cascade most-specific-first so the most local override wins, which is almost always the intended precedence (a department rate should beat the BU default).</p>
+
+<h4>Case C — you are given an element and must find whether it is above a given leaf</h4>
+<p>Sometimes the assumption arrives keyed to <strong>a specific element</strong> — &ldquo;this rate applies to everything under node <code>X</code>&rdquo; — and <code>X</code> could be at any level. You need each leaf to answer &ldquo;is <code>X</code> one of my ancestors?&rdquo; without knowing <code>X</code>&rsquo;s level. Because the leaf carries <em>all</em> its ancestors as properties, this is a flat scan across the ancestor slots — <code>X</code> can only match the slot at its own level:</p>
+<pre><code class="language-pigment">// Does element X sit anywhere above this leaf? Scan all ancestor slots.
+// No need to know X's level — it matches exactly one slot if it's an ancestor.
+'Cost Centre'.'Cost Centre L1' = X
+  OR 'Cost Centre'.'Cost Centre L2' = X
+  OR 'Cost Centre'.'Cost Centre L3' = X
+  // ... up to the leaf itself</code></pre>
+<p>Wrap that as a boolean helper property on the leaf (&ldquo;Is under X&rdquo;) and any rule can reuse it to apply <code>X</code>&rsquo;s assumption to exactly the leaves beneath it. This is the general form of &ldquo;climb the tree looking for a node&rdquo;, but it is not an iterative climb — the flattened ancestor properties turn it into a single flat comparison, which is why the balanced structure makes it cheap.</p>
+
+<blockquote>
+<p><strong>The through-line:</strong> in every case you are reading the leaf&rsquo;s own materialised ancestor properties — one hop when you know the level (A), an <code>IFBLANK</code> cascade when you must find the nearest filled level (B), a flat slot-scan when you must locate a named element (C). None of them traverses the tree at query time, because the walkout already did that once at the dimension layer. That is what the pre-computed levels buy you.</p>
+</blockquote>
+
+<h3>8.5 Isolating Leaves by Ancestor</h3>
+<p>Because every level is a property of the leaf dimension, isolating leaves by any ancestor at any level is a flat property comparison — no tree traversal:</p>
+<pre><code class="language-pigment">[FILTER: 'Cost Centre'.'Cost Centre L1' = &quot;G&amp;A&quot;]          // by BU
+[FILTER: 'Cost Centre'.'Cost Centre L2' = &quot;Finance Team&quot;] // by department
+</code></pre>
+<p><strong>All descendants of an arbitrary node</strong>, without knowing the node's level, is a disjunction across the ancestor slots:</p>
+<pre><code class="language-pigment">[FILTER: 'Cost Centre'.'Cost Centre L1' = P
+      OR 'Cost Centre'.'Cost Centre L2' = P
+      OR 'Cost Centre'.'Cost Centre L3' = P ... ]
+</code></pre>
+<p>This is exact precisely because no slot is ever blank: a non-descendant can never equal P at any slot, and complement queries (<code>&lt;&gt; P</code>) are well-defined because there is no blank to fall into undefined territory.</p>
+<h3>8.6 Why This Wins</h3>
+<p>A single calculation grain eliminates the grain-mismatch errors that multiply when rules are scattered across level-dimensioned blocks. Hierarchy restructures — a BU split, a re-parenting — flow through the imports and parent links without touching rule logic, because no rule names a level structure; each rule names a <em>path</em>. And because promotion leaves no blanks, every level is safe for every calculation type, with no usage constraint to police.</p>
+<hr />
+<h2>9. Design Principles &amp; Rationale</h2>
+<h3>Why not use a recursive formula directly on metrics?</h3>
+<p>Pigment formulas are not recursive: they cannot traverse a variable number of parent hops at query time. The Level properties pre-compute every ancestor relationship once, at the dimension layer, making metric formulas simple lookups.</p>
+<h3>Why leaf promotion instead of BLANK?</h3>
+<p>If shallow leaves returned BLANK at deeper levels, they would aggregate into an "unknown" bucket or vanish from grouped reports and aggregations entirely — a silent data-loss failure that typically surfaces only when someone notices a total doesn't reconcile. Leaf promotion guarantees every node participates in every level's subtotal, preserving complete aggregation trees regardless of branch depth.</p>
+<p>The failure is real and confirmed. A blank level property is <strong>excluded from <code>BY</code> aggregation</strong> with no error and no null bucket:</p>
+<blockquote style="border-left-color:var(--amber);background:var(--amber-soft);">
+<p><strong>Empirically confirmed (July 2026):</strong> a four-item fixture (two items with a populated intermediate property, two with it blank, values totalling 28) aggregated via <code>[BY: ...blank-bearing property]</code> returned <strong>13</strong> — the two blank items vanished silently. The control aggregation to a fully-populated property returned 28, and a view grouped over the same blanks also totalled 28. The formula and view layers disagree by exactly the blank-mapped rows.</p>
+</blockquote>
+<p>Promotion removes the blank, so this failure cannot occur anywhere in the model. That is the entire reason to pay the pattern's modest cost.</p>
+<p>There is also a quieter simplicity advantage. At any given depth, an item may be a real internal node (it has children) or a ragged leaf (it does not) — and at that item's own level the two must resolve differently: the real node is its own ancestor there, the leaf has no ancestor there. Depth alone cannot tell them apart, so a <em>blank</em>-based resolver has to compute an extra <code>Has_Children</code> flag (a reverse child-count) and gate every level on it. Promotion never has to make this distinction: &ldquo;at your own depth, return yourself&rdquo; is correct for <em>both</em> — a real node returns itself legitimately, and a leaf returning itself is exactly the intended promotion. So the balanced pattern is not only loss-proof but structurally simpler at this ambiguous spot: no <code>Has_Children</code> flag, no per-level gate, one uniform rule.</p>
+<h3>Why dimension metrics by the leaf list only?</h3>
+<p>Dimensioning a metric by L1 × L2 × L3 creates a sparse cross-product in which most combinations are invalid ancestry paths — dead space, with nothing preventing data landing in an invalid cell. Dimensioning by the leaf list alone makes every cell valid by construction: the L2 and L1 rollups derive from the parent-link properties, so the hierarchy is displayed in views rather than baked into the metric's shape. Activating a deeper level then never requires restructuring existing metrics — only the leaf reference changes.</p>
+<h3>Why keep the Load List separate, and import-populated?</h3>
+<ul>
+<li><strong>Source isolation:</strong> raw import data (codes, parent codes, raw names) is isolated from the clean production dimensions used in metrics.</li>
+<li><strong>The validation gate:</strong> because the curated lists are import-populated rather than subsets or live-derived, loads can be refreshed and checked in the Load List <em>before</em> they reach models. Nothing propagates to calculations until the import runs.</li>
+<li><strong>Reload safety:</strong> re-importing the Load List does not disturb the curated lists or any metrics dimensioned by them.</li>
+<li><strong>Auditability:</strong> the Load List shows every node, including intermediate nodes that may not be meaningful planning dimensions in their own right.</li>
+</ul>
+<h3>Why embed upgrade instructions in formula comments?</h3>
+<p>Formula comments are the only documentation that travels with the model and is guaranteed to be in front of a modeller when they open the property. External documents go stale; comments in the formula editor surface exactly where the decision is made.</p>
+<h3>Why Text stubs instead of leaving properties out entirely?</h3>
+<p>A Text stub immediately shows what value <em>would</em> resolve if the dimension existed; it makes data quality visible (L4 values appearing means activation is needed); and the upgrade is a type change plus a one-line formula swap — no structural rework, reversible.</p>
+<hr />
+<h2>10. Validation Checklist</h2>
+<p>After loading or reloading source data — and <strong>before</strong> running the imports that update the model — verify:</p>
+<ul>
+<li>[ ] <code>Depth Exceeded</code> is entirely blank (no depth overflow)</li>
+<li>[ ] All root nodes have <code>Depth = 0</code> and <code>Level 1 = themselves</code></li>
+<li>[ ] All leaf nodes return themselves for every <code>Level N</code> deeper than their own depth (leaf promotion — no blanks below own depth)</li>
+<li>[ ] <code>Cost Centre L1</code>–<code>L3</code> resolve to non-blank Dimension values for every node at or below that level</li>
+<li>[ ] <code>Cost Centre L4</code>–<code>L7</code> stubs show non-blank text only for items at Depth ≥ 3 / 4 / 5 / 6 respectively</li>
+<li>[ ] <strong>Node count reconciles:</strong> Load List item count equals the source extract row count — no silent exclusions</li>
+<li>[ ] <strong>Curated counts reconcile:</strong> each curated list's item count equals the count of distinct <code>Level N</code> values in the Load List</li>
+<li>[ ] Every item in <code>Cost Centre L2</code> and <code>Cost Centre</code> has a <strong>non-blank parent link</strong> (a blank means the import ran out of order or a name failed to match)</li>
+<li>[ ] Spot-check one deep node: verify its full ancestor chain against source data</li>
+</ul>
+<p>Only once these pass are the imports run to update the model — the separation gate in practice.</p>
+<hr />
+<p><em>End of document.</em></p>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open EPM methodology — Pigment hierarchy patterns. Published freely for the practitioner community.</p>
+      <span class="license">CC0 — public domain</span>
+    </div>
+    <div class="foot-meta">
+      Pigment · Hierarchy Patterns<br>
+      <a href="../index.html">← All articles</a><br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+</body>
+</html>

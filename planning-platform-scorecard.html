@@ -8,42 +8,40 @@
 <title>IBM PA vs Pigment — Weighted Decision Scorecard · falconbi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
 <style>
   :root{
-    --paper:#EEF1F5; --surface:#FFFFFF; --ink:#141B26; --ink-soft:#5A6672; --ink-faint:#8A94A1;
-    --line:#DCE1E8; --line-strong:#C3CBD6;
+    --paper:#fafaf9; --surface:#ffffff; --ink:#1c1917; --ink-soft:#57534e; --ink-faint:#a8a29e;
+    --line:#e7e5e4; --line-strong:#d6d3d1;
     --tm1:#0F62FE; --tm1-soft:rgba(15,98,254,.12);
     --pig:#6E45E8; --pig-soft:rgba(110,69,232,.12);
     --gold:#B8791A; --gold-soft:rgba(184,121,26,.14);
-    --shadow:0 1px 2px rgba(20,27,38,.04),0 8px 22px rgba(20,27,38,.07);
+    --shadow:0 1px 2px rgba(28,25,23,.04),0 8px 22px rgba(28,25,23,.07);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
   body{
     background:var(--paper); color:var(--ink);
-    font-family:'Archivo',system-ui,sans-serif; line-height:1.35; -webkit-font-smoothing:antialiased;
-    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:clamp(8px,1.6vw,16px);
+    font-family:'DM Sans',system-ui,sans-serif; line-height:1.35; -webkit-font-smoothing:antialiased;
+    min-height:100vh;
   }
-  .app{width:100%; max-width:1120px}
+  .app{width:100%; max-width:1120px; margin:0 auto; padding:1.5rem clamp(8px,1.6vw,16px) 3rem;}
 
   .head{display:flex; justify-content:space-between; align-items:flex-end; gap:14px; margin-bottom:10px; flex-wrap:wrap}
   .head h1{font-size:clamp(17px,2.5vw,24px); font-weight:800; letter-spacing:-.025em; line-height:1.03}
   .head h1 .vs{color:var(--ink-faint); font-weight:500}
   .head .thesis{font-size:11.5px; color:var(--ink-soft); max-width:48ch; margin-top:3px}
   .head .thesis b{color:var(--ink); font-weight:600}
-  .brand{font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.16em; text-transform:uppercase;
-    color:var(--ink-faint); display:flex; align-items:center; gap:6px; white-space:nowrap}
-  .brand .dot{width:5px;height:5px;border-radius:50%;background:var(--gold)}
 
   .grid{display:grid; grid-template-columns:minmax(0,0.78fr) minmax(0,1.22fr); gap:12px}
   .panel{background:var(--surface); border:1px solid var(--line); border-radius:13px; box-shadow:var(--shadow)}
   .p-pad{padding:clamp(11px,1.5vw,15px)}
 
   .vhead{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px}
-  .vhead .lbl{font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint)}
+  .vhead .lbl{font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint)}
   .vhead .lens-now{color:var(--ink); font-weight:700}
-  .vhead .scale{font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--ink-faint)}
+  .vhead .scale{font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--ink-faint)}
 
   .meter{margin-bottom:9px}
   .meter-top{display:flex; justify-content:space-between; align-items:center; gap:7px; margin-bottom:4px}
@@ -53,22 +51,22 @@
   .meter-name .nm{font-weight:700; font-size:12.5px; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .meter-name .sub{color:var(--ink-faint); font-size:10.5px; font-weight:500}
   .meter-right{display:flex; align-items:center; gap:8px; flex:none}
-  .leads{font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  .leads{font-family:'IBM Plex Mono',monospace; font-size:8px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
     color:var(--gold); background:var(--gold-soft); padding:2px 6px; border-radius:20px; opacity:0; transition:opacity .3s ease; white-space:nowrap}
   .leads.on{opacity:1}
-  .score-num{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:clamp(18px,2.6vw,23px);
+  .score-num{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:clamp(18px,2.6vw,23px);
     letter-spacing:-.01em; font-variant-numeric:tabular-nums; min-width:2.4ch; text-align:right}
   .track{height:9px; border-radius:6px; background:#EDF0F4; overflow:hidden}
   .fill{height:100%; border-radius:6px; width:0; transition:width .5s cubic-bezier(.22,.61,.36,1)}
   .fill.tm1{background:linear-gradient(90deg,#0F62FE,#4C8DFF)}
   .fill.pig{background:linear-gradient(90deg,#6E45E8,#9B7CFF)}
 
-  .lens-label{font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase;
+  .lens-label{font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase;
     color:var(--ink-faint); margin:12px 0 6px; display:flex; justify-content:space-between; align-items:center}
-  .lens-label .hint{text-transform:none; letter-spacing:0; color:var(--ink-faint); font-family:'Archivo',sans-serif; font-size:10px; font-weight:500}
+  .lens-label .hint{text-transform:none; letter-spacing:0; color:var(--ink-faint); font-family:'DM Sans',sans-serif; font-size:10px; font-weight:500}
   .lens-label .hint b{color:var(--gold); font-weight:700}
   .lenses{display:grid; grid-template-columns:repeat(4,1fr); gap:5px}
-  .lens-btn{font-family:'Archivo',sans-serif; font-size:11.5px; font-weight:600; color:var(--ink-soft);
+  .lens-btn{font-family:'DM Sans',sans-serif; font-size:11.5px; font-weight:600; color:var(--ink-soft);
     background:var(--surface); border:1px solid var(--line); border-radius:7px; padding:7px 4px; cursor:pointer; text-align:center;
     transition:border-color .16s,color .16s,background .16s}
   .lens-btn:hover{border-color:var(--line-strong); color:var(--ink)}
@@ -93,23 +91,23 @@
 
   .thead{display:grid; grid-template-columns:minmax(0,1fr) 34px 34px 116px; align-items:center; gap:9px;
     padding:0 3px 7px; border-bottom:1px solid var(--line); margin-bottom:2px;
-    font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint)}
+    font-family:'IBM Plex Mono',monospace; font-size:8.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint)}
   .thead .c{text-align:center} .thead .th-tm1{color:var(--tm1)} .thead .th-pig{color:var(--pig)} .thead .th-w{text-align:left}
   .trow{display:grid; grid-template-columns:minmax(0,1fr) 34px 34px 116px; align-items:center; gap:9px; padding:4px 3px}
   .trow + .trow{border-top:1px solid #F0F2F5}
   .trow.is-adopt{background:linear-gradient(90deg,var(--gold-soft),transparent); border-radius:7px}
   .dim-name{font-weight:600; font-size:12px; letter-spacing:-.005em; line-height:1.15; display:flex; align-items:center; flex-wrap:wrap; gap:2px}
-  .dim-name .key{font-family:'JetBrains Mono',monospace; font-size:7px; font-weight:700; letter-spacing:.08em; color:var(--gold);
+  .dim-name .key{font-family:'IBM Plex Mono',monospace; font-size:7px; font-weight:700; letter-spacing:.08em; color:var(--gold);
     background:var(--gold-soft); padding:1px 4px; border-radius:9px; vertical-align:middle}
   .dim-note{color:var(--ink-faint); font-size:9.5px; font-weight:400; margin-top:0}
   .info-btn{width:14px; height:14px; border-radius:50%; border:1px solid var(--line-strong); background:var(--surface);
-    color:var(--ink-faint); font-family:'JetBrains Mono',monospace; font-size:8.5px; font-weight:700; cursor:pointer;
+    color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; font-size:8.5px; font-weight:700; cursor:pointer;
     display:inline-flex; align-items:center; justify-content:center; line-height:1; padding:0; flex:none}
   .info-btn:hover{border-color:var(--ink-soft); color:var(--ink)}
   .info-btn:focus-visible{outline:2px solid var(--tm1); outline-offset:2px}
 
   .chip{justify-self:center; width:32px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:7px;
-    font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; font-variant-numeric:tabular-nums; position:relative}
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13px; font-variant-numeric:tabular-nums; position:relative}
   .chip.tm1{background:var(--tm1-soft); color:var(--tm1)} .chip.pig{background:var(--pig-soft); color:var(--pig)}
   .chip .tick{position:absolute; left:4px; right:4px; bottom:3px; height:2px; border-radius:2px; background:currentColor; opacity:.28; transform-origin:left}
 
@@ -117,11 +115,11 @@
   .w-slider{-webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:3px;
     background:linear-gradient(90deg,var(--gold) 0%,var(--gold) var(--pct,50%),#E3E7EC var(--pct,50%)); cursor:pointer}
   .w-slider::-webkit-slider-thumb{-webkit-appearance:none; width:13px; height:13px; border-radius:50%; background:#fff;
-    border:2px solid var(--gold); box-shadow:0 1px 2px rgba(20,27,38,.2); cursor:pointer}
+    border:2px solid var(--gold); box-shadow:0 1px 2px rgba(28,25,23,.2); cursor:pointer}
   .w-slider::-moz-range-thumb{width:13px; height:13px; border-radius:50%; background:#fff; border:2px solid var(--gold);
-    box-shadow:0 1px 2px rgba(20,27,38,.2); cursor:pointer}
+    box-shadow:0 1px 2px rgba(28,25,23,.2); cursor:pointer}
   .w-slider:focus-visible{outline:2px solid var(--tm1); outline-offset:3px}
-  .w-read{display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:8.5px; color:var(--ink-faint)}
+  .w-read{display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:8.5px; color:var(--ink-faint)}
   .w-read .pctv{color:var(--ink); font-weight:700}
 
   .caveat{margin-top:9px; font-size:9.5px; color:var(--ink-faint); line-height:1.45; text-align:center}
@@ -129,17 +127,24 @@
 
   /* rationale popover */
   #pop{position:fixed; z-index:60; max-width:272px; background:#fff; border:1px solid var(--line); border-radius:11px;
-    box-shadow:0 4px 10px rgba(20,27,38,.10),0 18px 42px rgba(20,27,38,.16); padding:12px 13px;
+    box-shadow:0 4px 10px rgba(28,25,23,.10),0 18px 42px rgba(28,25,23,.16); padding:12px 13px;
     opacity:0; pointer-events:none; transform:translateY(3px); transition:opacity .14s ease, transform .14s ease}
   #pop.on{opacity:1; pointer-events:auto; transform:translateY(0)}
   #pop .pop-title{font-weight:700; font-size:12px; letter-spacing:-.01em; margin-bottom:8px}
   #pop .pop-row{display:flex; gap:8px; margin-top:7px; align-items:flex-start}
-  #pop .pop-tag{font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; padding:2px 6px; border-radius:6px; flex:none; white-space:nowrap}
+  #pop .pop-tag{font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; padding:2px 6px; border-radius:6px; flex:none; white-space:nowrap}
   #pop .pop-tag.tm1{background:var(--tm1-soft); color:var(--tm1)} #pop .pop-tag.pig{background:var(--pig-soft); color:var(--pig)}
   #pop .pop-txt{font-size:11px; color:var(--ink-soft); line-height:1.4}
 
+
+  /* Reset falconbi.css class conflicts in the scorecard scope */
+  .app .track{display:block; flex-direction:unset; gap:0;}
+  .app .chip{padding:0; border:none; border-radius:7px;}
+  /* Scorecard brand line */
+  .sc-brand{font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--ink-faint); display:flex; align-items:center; gap:6px; white-space:nowrap}
+  .sc-brand .dot{width:5px;height:5px;border-radius:50%;background:var(--gold)}
   @media(max-width:780px){
-    body{align-items:flex-start}
     .grid{grid-template-columns:1fr}
   }
   @media(max-width:520px){
@@ -148,13 +153,24 @@
     .trow .dim-cell{grid-area:name} .trow .cell-tm1{grid-area:tm1; justify-self:start} .trow .cell-pig{grid-area:pig; justify-self:start} .trow .cell-w{grid-area:w}
     .chip{width:100%; height:30px; flex-direction:row; gap:6px}
     .chip.tm1::before{content:"TM1"} .chip.pig::before{content:"Pigment"}
-    .chip::before{font-family:'Archivo',sans-serif; font-weight:600; font-size:10.5px}
+    .chip::before{font-family:'DM Sans',sans-serif; font-weight:600; font-size:10.5px}
     .chip .tick{display:none}
   }
   @media(prefers-reduced-motion:reduce){ .fill,.leads,#pop{transition:none} }
 </style>
 </head>
 <body>
+<header class="topbar">
+  <a href="index.html" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right">
+    <span class="kicker">Platform comparison · Tool</span>
+    <a href="index.html">← articles</a>
+  </div>
+</header>
+
 <div class="app">
 
   <div class="head">
@@ -162,7 +178,7 @@
       <h1>IBM Planning Analytics <span class="vs">vs</span> Pigment</h1>
       <p class="thesis">Scores fixed; <b>weights are yours to move.</b> Switch lens or drag — the winner changes. <b>The weighting decides it.</b></p>
     </div>
-    <div class="brand"><a href="index.html" style="color:inherit;text-decoration:none"><span class="dot"></span>falconbi</a> · decision instrument</div>
+    <div class="sc-brand"><a href="index.html" style="color:inherit;text-decoration:none"><span class="dot"></span>falconbi</a> · decision instrument</div>
   </div>
 
   <div class="grid">
@@ -380,5 +396,20 @@
   sync(); render();
 })();
 </script>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open EPM methodology — platform comparison tool. Adjust weights to reflect your organisation's priorities.</p>
+      <span class="license">CC0 — public domain</span>
+    </div>
+    <div class="foot-meta">
+      IBM PA vs Pigment — Decision Scorecard<br>
+      <a href="index.html">← All articles</a><br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
 </body>
 </html>

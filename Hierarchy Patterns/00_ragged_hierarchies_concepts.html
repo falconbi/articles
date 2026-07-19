@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon.png" type="image/png">
+<title>Ragged Hierarchies in Pigment — Concepts &amp; Pattern Selection · falconbi</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../falconbi.css">
+<style>
+main {
+  max-width: 52rem; margin: 0 auto;
+  padding: 3rem var(--gutter) 6rem;
+}
+main h1 { max-width: none; border-bottom: 2px solid var(--border-s); padding-bottom: .85rem; margin-bottom: .75rem; }
+main h2 { margin-top: 3rem; }
+main h1 + h2 { border-top: none; margin-top: .75rem; }
+.masthead-sub { font-size: 1.1rem; color: var(--ink-muted); margin: .75rem 0 1.5rem; }
+.doc-meta { font-family: var(--mono); font-size: .72rem; color: var(--ink-faint); line-height: 1.9; }
+.doc-meta strong { color: var(--ink-soft); font-weight: 500; }
+.muted { color: var(--ink-muted); }
+.sub { color: var(--ink-muted); font-size: .95rem; }
+.card  { background: var(--navy-tint);   border: 1px solid color-mix(in srgb,var(--navy)  20%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.warn  { background: var(--sienna-tint); border: 1px solid color-mix(in srgb,var(--sienna) 25%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.ok    { background: var(--forest-tint); border: 1px solid color-mix(in srgb,var(--forest) 20%,transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+.card h3 { margin-top: 0; color: var(--navy);   }
+.warn h3 { margin-top: 0; color: var(--sienna); }
+.ok h3   { margin-top: 0; color: var(--forest); }
+.rule { background: var(--code-bg); color: var(--code-fg); border-radius: 8px; padding: 1rem 1.5rem; margin: 1.25rem 0; font-family: var(--mono); font-size: .88rem; line-height: 1.7; }
+.rule code { background: rgba(255,255,255,.1); color: var(--code-fg); }
+.glance { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1.5rem 0; font-size: .9rem; }
+.glance .row { display: grid; grid-template-columns: 9rem 1fr; border-bottom: 1px solid var(--border); }
+.glance .row:last-child { border-bottom: none; }
+.glance .k, .glance .key { background: var(--surface); padding: .55rem .85rem; font-family: var(--mono); font-size: .75rem; font-weight: 600; color: var(--ink-soft); border-right: 1px solid var(--border); }
+.glance .v, .glance .val { padding: .55rem .85rem; color: var(--ink-soft); }
+.glance .hdr { background: var(--border-s); font-family: var(--mono); font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); padding: .35rem .85rem; grid-column: 1 / -1; }
+.tree { font-family: var(--mono); font-size: .82rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; overflow-x: auto; line-height: 1.8; color: var(--ink-soft); white-space: pre; }
+tbody tr:hover td { background: var(--surface); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="../index.html" class="brand">
+    <img src="../favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right">
+    <span class="kicker">Pigment · Hierarchy Patterns</span>
+    <a href="../index.html">← articles</a>
+  </div>
+</header>
+
+<main>
+<header>
+  <p class="kicker">EPM Modelling Reference · Pigment</p>
+  <h1>Ragged Hierarchies in Pigment</h1>
+  <p class="sub">Concepts, failure modes, and how to choose between the two implementation patterns.</p>
+  <p class="meta">
+    <strong>Version:</strong> 1.0 &nbsp;·&nbsp; <strong>Author:</strong> James Lovering &nbsp;·&nbsp; <strong>Last Updated:</strong> July 2026<br>
+    <strong>Applies to:</strong> Any dimension list with a parent-child relationship of variable depth.<br>
+    <strong>Read this first.</strong> It explains the problem and the choice. The two companion documents implement it.
+  </p>
+</header>
+
+<div class="glance">
+  <div class="row"><div class="k">Problem</div><div class="v">Ragged hierarchies break level-based grouping. Shallow branches have no ancestor at deeper levels, so items silently vanish from <code>BY</code> aggregations — no error, totals short.</div></div>
+  <div class="row"><div class="k">Root cause</div><div class="v">Pigment’s formula language is a declarative DAG. No recursion, so hierarchy traversal must be unrolled to a fixed ceiling, and every level a node cannot reach is a blank.</div></div>
+  <div class="row"><div class="k">The necessity</div><div class="v">Every calculation grain needs a complete member set behind it. Both patterns satisfy this. They differ only in <em>when</em> completeness is built.</div></div>
+  <div class="row"><div class="k">Balanced</div><div class="v">Completeness built eagerly. Shallow nodes promote themselves at deeper levels. Nothing is ever blank. Safe by construction, hard to misuse.</div></div>
+  <div class="row"><div class="k">Lean</div><div class="v">Completeness built lazily. Level lists hold real members only. Safe as-built for leaf-grain work and all views. Level-grain metrics require a helper dimension — a rule that must be enforced.</div></div>
+  <div class="row"><div class="k">Choose by</div><div class="v">Who maintains the model. Balanced if you cannot guarantee everyone who touches it knows the rule. Lean if you can.</div></div>
+</div>
+
+<h2>1. What a ragged hierarchy is</h2>
+
+<p>A ragged (unbalanced, variable-depth) hierarchy is one where branches terminate at different depths. Some leaves sit three levels down, others five. Almost every real organisational structure is ragged — a chart of accounts, a cost centre tree, a product hierarchy.</p>
+
+<div class="tree">Marketing              Depth 0   root
+├── Digital Team       Depth 1   has children → a real Level 2 node
+│   ├── Digital AMER   Depth 2   leaf
+│   └── Digital EMEA   Depth 2   leaf
+├── AMER Marketing     Depth 1   no children → a <b>ragged leaf</b>
+└── Brand Development  Depth 1   no children → a <b>ragged leaf</b></div>
+
+<p><em>Digital AMER</em> reaches Level 3. <em>AMER Marketing</em> stops at Level 2 — it is a leaf that never reaches the depth its siblings’ children do. That is the raggedness, and it is not a data quality problem. It is the shape of the business.</p>
+
+<div class="card">
+  <h3>Three facts that govern everything downstream</h3>
+  <p><strong>Depth is measured from the root.</strong> It tells you how far down a node sits. It says nothing about what hangs below it.</p>
+  <p><strong>Leaf-ness is a downward question.</strong> “Does anything name me as its parent?” No upward test can answer it. In the tree above, <em>Digital Team</em> and <em>AMER Marketing</em> are both Depth 1 — one is a real node, one is a ragged leaf. Depth cannot tell them apart. This distinction is the hinge on which the whole pattern turns.</p>
+  <p style="margin-bottom:0"><strong>Frame is the height of a hierarchy</strong> — the depth of its deepest branch, and therefore the number of levels it occupies. A five-level Balance Sheet has a frame of 5; a three-level P&amp;L has a frame of 3. Frame is a property of the <em>tree</em>, where Depth is a property of a <em>node</em> within it. Distinguish it from the <strong>ceiling</strong> — the depth an implementation’s unrolled formulas support. A hierarchy with a frame of 3 sits comfortably under a ceiling of 7; tuning the ceiling means setting it to the frame, so that anything deeper fires as a data error.</p>
+</div>
+
+<h3>Frame, and hierarchies of different heights</h3>
+
+<p>Frame matters as soon as two hierarchies of different heights share one set of level dimensions — a chart of accounts where the Balance Sheet runs five levels and the P&amp;L runs three, both feeding <code>Level 1</code> … <code>Level 5</code>.</p>
+
+<p>Under the top-down numbering this library standardises on (Section 6), frame does <strong>not</strong> enter the placement arithmetic at all:</p>
+
+<div class="rule">
+  <strong>Level = Depth + 1</strong> &nbsp;·&nbsp; independent of frame
+</div>
+
+<p>Both roots sit at Level 1. Both second tiers sit at Level 2. The shallower hierarchy simply stops early — the P&amp;L populates Levels 1–3 and contributes no members to Levels 4 or 5. Frame tells you <em>which levels a hierarchy reaches</em>, and sets the ceiling the unrolled cascade must cover. It does no work in the formulas.</p>
+
+<p>Under bottom-up numbering, frame becomes load-bearing:</p>
+
+<div class="rule">
+  <strong>Level = Frame − Depth</strong> &nbsp;·&nbsp; every placement formula must know the frame
+</div>
+
+<p class="muted">Every level flag and every mapping property must then branch on which hierarchy an item belongs to before it can resolve a level, because the same Depth means different levels in each. That is a real and permanent cost, and it is a further argument for top-down — see Section 6.</p>
+
+<h2>2. Why Pigment forces the unroll</h2>
+
+<p>Pigment’s formula language is a <strong>declarative directed acyclic graph</strong>. Nodes are properties and metrics; an edge runs from A to B when B’s formula reads A. Nothing may depend on itself, however indirectly. You state what each property <em>equals</em>, not the order in which anything happens — the engine derives execution order by topological sort.</p>
+
+<p>Three things fall out of that guarantee:</p>
+<ul>
+  <li><strong>Incremental recalculation.</strong> Change one input, walk forward from that node. Only true dependents recompute.</li>
+  <li><strong>Parallelism and caching.</strong> Independent subgraphs evaluate concurrently; each node is a pure function of its inputs, so results memoise safely.</li>
+  <li><strong>Termination as a structural guarantee.</strong> No cycles means no infinite recalculation, no oscillation, no iteration limits. The model always settles, deterministically, in one pass.</li>
+</ul>
+
+<p>The price is exact and unavoidable. <strong>Recursion is a cycle.</strong> “My root is my parent’s root” is <code>f(x) = f(parent(x))</code>, and any honest graph of that has an edge from the property to itself. So the entire class of walk-until-terminating algorithms is not slow or awkward — it is <em>inexpressible</em>. Hierarchy traversal, transitive closure, ancestor resolution at arbitrary depth: none of it can be written.</p>
+
+<p>What you write instead is an unrolled cascade to a fixed ceiling, with a guard for data that exceeds it. That is not a hack. It is the honest encoding of a real constraint.</p>
+
+<div class="warn">
+  <h3>The circularity check is stricter than the mathematics</h3>
+  <p>A self-referencing <code>Root</code> property — <em>“inherit my parent’s Root; if my parent has none, my parent is the root”</em> — is acyclic at the <em>item</em> level. A root item never consults its parent; a Depth-1 item reads only the root’s value; the chain terminates.</p>
+  <p style="margin-bottom:0">Pigment rejects it anyway, because the check operates on the <strong>property</strong> graph, not the item graph. It sees <code>Root</code> depending on <code>Root</code> and refuses. It cannot prove termination — nothing in the type system prevents your source data containing a parent cycle. The check is conservative, and conservative is correct: self-parented rows and reused keys are common in real GL extracts.</p>
+</div>
+
+<h3>The permitted exception</h3>
+<p>Time-lagged self-reference is usually allowed. A closing balance at period <em>n</em> referencing the closing balance at <em>n−1</em> looks circular but is not: the time offset makes it a strictly ordered chain, and the graph is over <em>(property × period)</em> rather than over properties alone. This is why balance-sheet roll-forwards work while hierarchy recursion does not. The engine permits self-reference along an axis it can guarantee is well-ordered. Structural depth has no such guarantee — the data supplies the order, and the data can lie.</p>
+
+<h2>3. Structure versus formula — the fork with TM1</h2>
+
+<p>In TM1, consolidation is a property of the <strong>dimension</strong>. An N-level rollup requires no expression at any depth, ever. Element weights carry the sign: revenue rolls into Net Profit at +1, expenses at −1, and the consolidation applies them automatically. The hierarchy <em>is</em> the arithmetic. MDX’s <code>Ancestors()</code> sits on top of a storage engine that already knows the tree.</p>
+
+<p>In Pigment the dimension knows only that a property happens to point at the same list. Everything the edge would have carried — depth, level, ancestry, weight — must be reconstructed as data alongside it.</p>
+
+<table>
+  <tr><th></th><th>TM1</th><th>Pigment</th></tr>
+  <tr><td>Aggregation</td><td>Dimension structure</td><td>Mapping properties + <code>BY</code></td></tr>
+  <tr><td>Depth / level</td><td>Implicit in the tree</td><td>Computed property, unrolled cascade</td></tr>
+  <tr><td>Sign / weight</td><td>Element weight on the edge</td><td>Leaf property, multiplied in the metric</td></tr>
+  <tr><td>Extending depth</td><td>Free</td><td>One more branch per formula</td></tr>
+</table>
+
+<p>Anaplan carries the same constraint as Pigment, for the same reason. The comparison is not <em>recursive versus not</em> — it is <strong>structure-carries-meaning versus formulas-carry-meaning</strong>. Every artefact in these patterns exists because meaning had to leave the structure and become data.</p>
+
+<div class="card">
+  <h3>Practical consequence: the sign convention</h3>
+  <p style="margin-bottom:0">A P&amp;L rolls naturally to Net Profit After Tax with no subtraction anywhere — provided revenue is positive and expenses negative. Source the debit/credit indicator from the GL (do not infer it from the branch; contra accounts such as Accumulated Depreciation sit under Assets but are credit-natured). Derive a numeric <code>Sign</code> on the leaf and multiply in the metric: <code>[value] * Leaf.Sign</code>. Signs at the leaf, then aggregate — the hierarchy does the rest. Models that skip this end up hand-writing every subtotal.</p>
+</div>
+
+<h2>4. The failure mode</h2>
+
+<p>A ragged leaf has no ancestor at levels its branch never reaches. That level property is blank. What happens next is the single most important behaviour in this document.</p>
+
+<div class="rule">
+  A metric aggregated <code>[BY: …Level N]</code> <strong>silently excludes</strong> every item blank at Level N. No error. No null row. The total is simply short.
+</div>
+
+<p><strong>Empirically confirmed, July 2026.</strong> A four-item fixture — two items with a populated intermediate property, two blank, values totalling 28 — aggregated via <code>[BY: …]</code> to that property returned <strong>13</strong>. The two blank items vanished. The control, with a fully-populated property, returned 28.</p>
+
+<div class="ok">
+  <h3>Views behave differently — and correctly</h3>
+  <p style="margin-bottom:0">The same fixture, displayed in a <strong>view</strong> grouped by the same blank-bearing property, returned <strong>28</strong>. Views retain blank-mapped items under a blank header and total completely. Charts configured from views inherit this.</p>
+  <p class="muted" style="margin:10px 0 0"><em>This asymmetry is the trap. Every visual check passes. The hierarchy looks right, the drill-down looks right, the view totals are right. Only a metric taking a <code>BY</code> is wrong, and it is wrong silently.</em></p>
+</div>
+
+<h3>The verification test</h3>
+<p>Ten minutes, and it settles any argument about whether a model is losing items.</p>
+
+<pre><code>// Control — a metric on the leaf dimension. Grand total = leaf count.
+1
+
+// One per level — should return the same total as the control.
+'[control]'[BY: 'Leaf'.'Level 1']
+'[control]'[BY: 'Leaf'.'Level 2']
+'[control]'[BY: 'Leaf'.'Level 3']</code></pre>
+
+<p>Board the control and each level side by side. Every shortfall is the number of items that dropped. Two of these on one board — the control and the failing level — convert an unresolved design argument into a number that cannot be talked around.</p>
+
+<h2>5. The necessity, and the two answers</h2>
+
+<p>Strip away the implementations and one requirement remains:</p>
+
+<div class="rule">
+  Every calculation grain needs a <strong>complete member set</strong> behind it.
+</div>
+
+<p>Both patterns satisfy this. They differ in <em>when</em> completeness is built and <em>where</em> the members live.</p>
+
+<table>
+  <tr><th>Concern</th><th>Balanced</th><th>Lean</th></tr>
+  <tr><td>Calculation safety</td><td>Every level, by construction</td><td>Leaf / L1 / views safe as-built; level-grain metrics need a helper</td></tr>
+  <tr><td>When safety is paid for</td><td>Up front — promotion, per-level imports</td><td>On demand — helper built when a consumer appears</td></tr>
+  <tr><td>Level list contents</td><td>Real + promoted members</td><td>Real members only; synthetics confined to a Calc helper</td></tr>
+  <tr><td>View appearance</td><td>Shows promoted rows</td><td>Clean — real members only</td></tr>
+  <tr><td>Leaf detection</td><td><strong>Not required</strong> by the resolvers</td><td><strong>Required</strong> — every level gates on it</td></tr>
+  <tr><td>Hierarchy changes</td><td>Touch multiple lists via imports</td><td>Touch the Load List, re-import projections</td></tr>
+  <tr><td>Governance burden</td><td>None ongoing — structure enforces safety</td><td>One rule, enforced forever</td></tr>
+  <tr><td>Fails how, if misused</td><td>Hard to misuse</td><td><strong>Silently</strong>, if the rule is breached</td></tr>
+</table>
+
+<h3>Why balanced needs no leaf detection</h3>
+<p>This is the cleanest way to see the difference. At a level’s own depth, a blank-based resolver must distinguish a real node (which belongs there) from a ragged leaf (which does not). Both sit at the same Depth. Only a downward child-count separates them — so every level resolver must be gated on it.</p>
+
+<p>Promotion never makes that distinction. <em>“At your own depth, return yourself”</em> is correct for both: a real node returns itself legitimately, and a leaf returning itself <em>is</em> the intended promotion. The gate disappears, and with it an entire property.</p>
+
+<div class="card">
+  <h3>The lean build rule — non-negotiable</h3>
+  <p style="margin-bottom:0">Any metric dimensioned by a level, or using <code>BY</code> into a level, uses a <strong>Calc helper</strong> dimension: that level’s real members plus one synthetic member per root, so the mapping is never blank. Everything the helper needs already exists in the Load List resolvers — it is an import and one property, buildable at any time, zero rework. That is what makes deferral legitimate. <em>Knowing you needed one</em> is the hard part, and the reason this rule must be written into the model’s design notes rather than held in a maintainer’s head.</p>
+</div>
+
+<h2>6. Level numbering — top-down, leaf position-free</h2>
+
+<p>Number levels <strong>from the root</strong>. Level 1 is the root. Level 2 is the tier below it. Name the metric-facing leaf dimension without a position at all — <code>Cost Centre</code>, never <code>Cost Centre L3</code>.</p>
+
+<p>Two reasons, and they reinforce each other.</p>
+
+<p><strong>Stability.</strong> Hierarchies deepen at the <em>bottom</em>. You do not discover a new root above <em>Assets</em>; you discover that a leaf now has children. Under top-down numbering the root stays Level 1 forever, Level 2 stays Level 2, and the new level appends below. Nothing above it moves.</p>
+
+<p><strong>Intelligibility.</strong> Everyone reads a tree from the top. Level 1 is <em>Assets</em>, and no one needs to be told.</p>
+
+<div class="warn">
+  <h3>The bottom-up variant, and why it fails</h3>
+  <p>A bottom-up scheme — leaf = L0, L1 = one above the leaf, counting upward — appears to protect the leaf dimension from renaming when the hierarchy deepens. It does not.</p>
+  <ul>
+    <li><strong>It shifts every other label.</strong> New levels appear at the leaf end, so every existing leaf becomes L1, every L1 becomes L2, and every level dimension needs renaming. One rename avoided; a cascading rename introduced.</li>
+    <li><strong>The same label means different tiers.</strong> Where two hierarchies of different heights share level dimensions, “Level 1” sits at one depth in the first and another in the second. The roots land on different level numbers.</li>
+    <li><strong>Frame becomes load-bearing.</strong> Placement is <code>Level = Frame − Depth</code> rather than <code>Level = Depth + 1</code>, so every level flag and every mapping property must first branch on which hierarchy an item belongs to. Under top-down, frame never enters a formula (Section 1).</li>
+    <li><strong>The leaf name is better protected by not encoding position at all.</strong> Which costs nothing.</li>
+  </ul>
+  <p style="margin-bottom:0"><strong>The underlying fact:</strong> the root end is pinned; the leaf end is free. Raggedness lives there, new levels appear there, and labels anchored there move whenever the data does. Anchor at the root and everything above stays still.</p>
+</div>
+
+<h2>7. Leaf detection — two idioms</h2>
+
+<p>The downward question: <em>does anything name me as its parent?</em></p>
+
+<h3>MATCH — a List Property</h3>
+<pre><code>// Is_Leaf — nobody references this item's key as their Parent_ID.
+IF(ISBLANK(MATCH('Load'.Code, 'Load'.Parent_ID)), TRUE)</code></pre>
+<p>Self-contained on the list, no extra object. Requires a text <code>Parent_ID</code> (derived as <code>Parent.Code</code>), because <code>MATCH</code> cannot compare a dimension reference against text.</p>
+
+<h3>BY COUNT — a staging metric</h3>
+<pre><code>// Has_Children — TRUE if any item names this item as its parent.
+'Load'.Internal_ID [BY COUNT: 'Load'.Parent_Internal_ID] > 0
+
+// Is_Leaf — the inverse. NOT on a blank returns TRUE; no guard needed.
+NOT 'Load'.'Has_Children'</code></pre>
+<p><code>BY COUNT</code> cannot be expressed as a List Property — it must be a metric dimensioned by the Load List, sitting beside it and feeding back onto its classification. It groups on the dimension reference directly, in a single pass.</p>
+
+<div class="warn">
+  <h3>Choose by size</h3>
+  <p style="margin-bottom:0"><strong>MATCH</strong> is the cleaner default for small and moderate lists — one property, no metric. <strong>BY COUNT</strong> is the proven idiom at volume: it groups once, where MATCH searches a column per row. MATCH has not been benchmarked on large dimensions; test before committing on a list of tens of thousands of items.</p>
+</div>
+
+<h2>8. Data preconditions</h2>
+
+<p>Structural faults in the source break a self-referencing dimension before any formula runs. Check before building — all of these have been seen in production GL extracts:</p>
+
+<ul>
+  <li><strong>Non-unique keys.</strong> One code assigned to two different items. The identifier is rejected and the parent chain cannot resolve. Fix at source. Never fabricate a substitute code, and never break the source numbering scheme to force uniqueness.</li>
+  <li><strong>Self-parented rows.</strong> <code>Parent = self</code>. A circular dependency error on load.</li>
+  <li><strong>Duplicate rows under different parents.</strong> The same item under two parents — an asset in one row, a liability in another. This is an ownership question, not a technical one, and needs a human answer.</li>
+  <li><strong>A source level column that disagrees with the parent chain.</strong> Trust computed <code>Depth</code>, never a source <code>Level</code> label. They diverge more often than expected, and the label is the one that lies.</li>
+  <li><strong>Repeated names.</strong> A group and its posting account both called “Goodwill” is normal and correct. Key on the code, never the name.</li>
+</ul>
+
+<h2>9. Which pattern</h2>
+
+<div class="card">
+  <h3 style="margin-bottom:6px">The question is not which is better</h3>
+  <p style="margin-bottom:0">It is: <strong>do you trust everyone who will ever touch this model to know the rule?</strong></p>
+</div>
+
+<p><strong>Lean</strong> where a disciplined maintainer controls the model, clean member-only display matters, and the build rule can be relied upon. You get cheap hierarchy changes, no synthetic clutter, and you pay for completeness only when a consumer appears.</p>
+
+<p><strong>Balanced</strong> where data-loss safety must be guaranteed regardless of who touches the model next. A client model, handed to a team, after the author has left. Balanced makes the failure impossible rather than merely documented.</p>
+
+<p class="muted">The two are the same architecture with completeness built lazily versus eagerly. Neither is a compromise; both are correct. The choice is about governance, not about modelling.</p>
+
+<h2>10. A note on cost</h2>
+
+<p>Six kinds of artefact — staging list, depth property, level flags, level dimensions, imports, mapping properties — reproduce what a dimension in TM1 does for free. It is a great deal of scaffolding, and the instinct that it ought to be simpler is correct.</p>
+
+<p>But note what remains once <code>Depth</code> exists. Every artefact is deterministic given the flat list, the key, the parent, the ceiling, and the fill policy. The unrolling becomes <em>mechanical</em>: dispatch on a known depth, walk a known distance. Formula length grows linearly with depth — verbose, never structural.</p>
+
+<p>Contrast a three-role classification (leaf / intermediate / root), which is depth-agnostic but expresses only three states. It is sufficient for a three-level dimension and cannot distinguish Level 1 from Level 4. Extending it means redesigning the classification; extending a depth-based scheme means adding a branch.</p>
+
+<div class="rule">
+  <code>Depth</code> looks redundant in a three-level role-based design and is essential in an N-level depth-based one. That single property marks the fork between “works to three” and “works to any depth.”
+</div>
+
+<h2>Companion documents</h2>
+<p>Both files sit alongside this one. Links are relative, so the set can be copied or published as a folder.</p>
+<table>
+  <tr><th>Document</th><th>Use when</th><th>Contains</th></tr>
+  <tr>
+    <td><a href="balanced_hierarchy_pattern.html"><strong>Balanced Levels</strong></a><br><span class="muted"><code>balanced_hierarchy_pattern.html</code></span></td>
+    <td>Safety must be guaranteed by structure, regardless of who touches the model next.</td>
+    <td>Two-tier architecture · Load List property inventory · Level resolvers to 7 levels · Curated list imports · Extension guide · Stub activation · Validation checklist</td>
+  </tr>
+  <tr>
+    <td><a href="lean_hierarchy_pattern.html"><strong>Lean Single-Master</strong></a><br><span class="muted"><code>lean_hierarchy_pattern.html</code></span></td>
+    <td>A single disciplined maintainer, clean member-only display, completeness deferred.</td>
+    <td>Architecture · What is safe as-built · The known edge · The Calc helper bridge · The non-deferrable build rule · True-leaf instability on deepening · Maintenance profile</td>
+  </tr>
+</table>
+
+<div class="disc">
+  <strong>Disclaimer.</strong> Published as a working reference, not a guarantee of fitness for any particular model. Validate every formula and behaviour against your own environment before relying on it in production.
+  <ul style="margin:10px 0 0">
+    <li><strong>Platform behaviour can change.</strong> Formula and aggregation behaviour described here — including the <code>BY</code> blank-drop, the view/metric asymmetry, and the <code>BY COUNT</code> child-count idiom — was observed on Pigment as of July 2026. Re-test after platform updates; vendor behaviour may change without notice and is, in places, not officially documented.</li>
+    <li><strong>Assumptions.</strong> A unique key per item and a clean single-parent tree. Confirm both hold in your data.</li>
+    <li><strong>Empirical claims.</strong> Where results are marked <em>confirmed</em>, they were observed in a specific test fixture. Reproduce them in your own model rather than assuming they transfer.</li>
+    <li><strong>No professional advice.</strong> Nothing here is legal, financial, or accounting advice. Modelling choices with reporting or compliance consequences are yours to validate.</li>
+  </ul>
+  <p style="margin:10px 0 0">Provided as-is, without warranty of any kind. You are responsible for testing and validating to your own needs.</p>
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open EPM methodology — Pigment hierarchy patterns. Published freely for the practitioner community.</p>
+      <span class="license">CC0 — public domain</span>
+    </div>
+    <div class="foot-meta">
+      Pigment · Hierarchy Patterns<br>
+      <a href="../index.html">← All articles</a><br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+</body>
+</html>
