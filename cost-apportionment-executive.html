@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cost apportionment, explained — executive briefing · falconbi</title>
+<meta name="description" content="An executive briefing on a five-stage cost apportionment model: how shared overhead is attributed fairly and traceably to service lines, and why the result can be trusted for pricing, funding, and planning.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16181d;
+    --ink-2:#39414f;
+    --slate:#6b7280;
+    --paper:#fafafc;
+    --surface:#ffffff;
+    --surface-2:#f3f4f7;
+    --line:#e3e6ec;
+    --line-strong:#cdd2db;
+    --crimson:#b21e3a;
+    --crimson-deep:#8a1329;
+    --crimson-tint:#fbeef1;
+    --steel:#3e5c74;
+    --steel-tint:#eef2f6;
+    --ok:#1f7a4d;
+
+    --display:"Space Grotesk", system-ui, sans-serif;
+    --body:"IBM Plex Sans", system-ui, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, monospace;
+
+    --maxread:42rem;
+    --gutter:clamp(1.25rem, 4vw, 3rem);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--body);font-size:1.09rem;line-height:1.75;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  a{color:var(--crimson-deep);text-decoration:none}
+  a:hover{text-decoration:underline;text-underline-offset:2px}
+
+  /* top bar */
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    padding:.85rem var(--gutter);
+    background:color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line);
+  }
+  .wordmark{font-family:var(--mono);font-weight:500;font-size:.95rem;color:var(--ink)}
+  .wordmark b{color:var(--crimson)}
+  .topbar .kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
+  @media (max-width:640px){ .topbar .kicker{display:none} }
+
+  .wrap{max-width:52rem;margin:0 auto;padding:0 var(--gutter)}
+  main{padding-bottom:4rem}
+
+  /* hero */
+  .hero{padding:clamp(2.75rem,8vw,5.5rem) 0 1rem}
+  .eyebrow{
+    font-family:var(--mono);font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--crimson);display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;
+  }
+  .eyebrow span::after{content:"·";margin-left:.6rem;color:var(--line-strong)}
+  .eyebrow span:last-child::after{content:""}
+  h1{
+    font-family:var(--display);font-weight:700;
+    font-size:clamp(2.4rem,6.4vw,4.1rem);line-height:1.02;letter-spacing:-.02em;
+    margin:1.1rem 0 0;max-width:15ch;
+  }
+  .lede{
+    font-size:clamp(1.18rem,2.6vw,1.42rem);line-height:1.5;color:var(--ink-2);
+    max-width:34rem;margin:1.5rem 0 0;
+  }
+  .lede b{color:var(--ink);font-weight:600}
+  .meta-row{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.9rem}
+  .chip{
+    font-family:var(--mono);font-size:.76rem;padding:.32rem .7rem;border-radius:2rem;
+    background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2);
+  }
+
+  /* signature: flow spine */
+  .spine-wrap{
+    margin:3rem 0 1rem;
+    background:radial-gradient(120% 60% at 100% 0%, var(--crimson-tint) 0%, transparent 55%), var(--surface);
+    border:1px solid var(--line);border-radius:1rem;
+    padding:clamp(1.5rem,4vw,2.75rem);position:relative;overflow:hidden;
+  }
+  .spine-wrap .spine-title{
+    font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--slate);margin-bottom:1.5rem;
+  }
+  .spine{position:relative;padding-left:0}
+  @media (min-width:720px){ .spine{padding-left:8.5rem} }
+  .rail{display:none}
+  @media (min-width:720px){
+    .rail{
+      display:flex;align-items:center;justify-content:center;position:absolute;
+      left:0;top:5.2rem;bottom:4.6rem;width:6.5rem;
+      border:1px dashed var(--steel);border-right:none;border-radius:.9rem 0 0 .9rem;
+      background:linear-gradient(90deg, var(--steel-tint), transparent);
+    }
+    .rail span{writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--steel)}
+    .rail::after{content:"";position:absolute;right:-1px;bottom:-1px;width:1.5rem;height:1px;background:var(--steel)}
+  }
+  .rail-note{
+    font-family:var(--mono);font-size:.78rem;color:var(--steel);background:var(--steel-tint);
+    border:1px dashed var(--steel);border-radius:.6rem;padding:.7rem .85rem;margin-bottom:1.25rem;line-height:1.5;
+  }
+  @media (min-width:720px){ .rail-note{display:none} }
+  .track{display:flex;flex-direction:column;gap:0}
+  .node{
+    position:relative;background:var(--surface);border:1px solid var(--line);
+    border-radius:.7rem;padding:.85rem 1rem;display:flex;align-items:center;gap:.85rem;
+  }
+  .node + .node{margin-top:2.15rem}
+  .node:not(:last-child)::after{
+    content:"";position:absolute;left:50%;bottom:-2.15rem;width:2px;height:2.15rem;
+    transform:translateX(-50%);background:linear-gradient(var(--crimson), var(--crimson) 60%, transparent);
+  }
+  .node.recip:not(:last-child)::after{background:linear-gradient(var(--steel), var(--steel) 60%, transparent)}
+  .node .badge{
+    flex:0 0 auto;min-width:2.1rem;height:2.1rem;display:flex;align-items:center;justify-content:center;
+    border-radius:.5rem;font-family:var(--mono);font-weight:500;font-size:.9rem;background:var(--crimson);color:#fff;
+  }
+  .node.recip .badge{background:var(--steel)}
+  .node.endpoint .badge{background:var(--ink)}
+  .node .n-title{font-family:var(--display);font-weight:600;font-size:1rem;line-height:1.2}
+  .node .n-sub{font-size:.85rem;color:var(--slate);line-height:1.4;margin-top:.1rem}
+  .node .n-tag{
+    font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--steel);
+    margin-left:auto;flex:0 0 auto;border:1px solid var(--steel);border-radius:2rem;padding:.15rem .55rem;
+  }
+  @media (max-width:520px){ .node .n-tag{display:none} }
+
+  /* sections */
+  section{padding-top:3.75rem;scroll-margin-top:5rem}
+  .snum{font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--crimson);display:block;margin-bottom:.5rem}
+  h2{font-family:var(--display);font-weight:600;font-size:clamp(1.7rem,3.6vw,2.3rem);line-height:1.1;letter-spacing:-.015em;margin:0 0 .5rem;max-width:20ch}
+  h3{font-family:var(--display);font-weight:600;font-size:1.2rem;line-height:1.25;margin:2rem 0 .4rem}
+  p{margin:.95rem 0;max-width:var(--maxread)}
+  strong{font-weight:600}
+  .hr{height:1px;background:var(--line);border:none;margin:3.75rem 0 0}
+
+  /* pull statement */
+  .pull{
+    font-family:var(--display);font-weight:500;font-size:clamp(1.35rem,3.2vw,1.85rem);
+    line-height:1.32;letter-spacing:-.01em;color:var(--ink);
+    border-left:3px solid var(--crimson);padding-left:1.25rem;margin:2rem 0;max-width:32rem;
+  }
+
+  /* the journey (stepped stages) */
+  .journey{margin:1.75rem 0;border-top:1px solid var(--line)}
+  .step{
+    display:grid;grid-template-columns:3.4rem 1fr;gap:1.1rem;
+    padding:1.35rem 0;border-bottom:1px solid var(--line);align-items:start;
+  }
+  .step .sbadge{
+    font-family:var(--mono);font-weight:500;font-size:.95rem;
+    width:2.9rem;height:2.9rem;border-radius:.55rem;display:flex;align-items:center;justify-content:center;
+    background:var(--crimson);color:#fff;line-height:1;
+  }
+  .step.recip .sbadge{background:var(--steel)}
+  .step h3{margin:.15rem 0 .1rem;font-size:1.12rem}
+  .step .plain{color:var(--ink-2);margin:.2rem 0 0;max-width:34rem}
+  .step .role{
+    display:inline-block;font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--steel);border:1px solid var(--steel);border-radius:2rem;padding:.12rem .55rem;margin-top:.55rem;
+  }
+
+  /* assurance figures */
+  .figs{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:1px;
+    background:var(--line);border:1px solid var(--line);border-radius:.9rem;overflow:hidden;margin:1.75rem 0;
+  }
+  @media (min-width:640px){ .figs{grid-template-columns:repeat(4,1fr)} }
+  .fig{background:var(--surface);padding:1.4rem 1.25rem}
+  .fig .num{font-family:var(--display);font-weight:700;font-size:2rem;line-height:1;color:var(--crimson);letter-spacing:-.02em}
+  .fig .lbl{font-size:.86rem;color:var(--ink-2);margin-top:.5rem;line-height:1.35}
+
+  /* callouts */
+  .callout{border-left:3px solid var(--crimson);background:var(--crimson-tint);border-radius:0 .6rem .6rem 0;padding:1.05rem 1.2rem;margin:1.5rem 0;font-size:.98rem}
+  .callout.steel{border-left-color:var(--steel);background:var(--steel-tint)}
+  .callout.warn{border-left-color:#b8860b;background:#fdf6e3}
+  .callout .co-label{font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--crimson-deep);display:block;margin-bottom:.4rem}
+  .callout.steel .co-label{color:var(--steel)}
+  .callout.warn .co-label{color:#8a6d0b}
+  .callout p{margin:.4rem 0;max-width:none}
+  .callout p:first-of-type{margin-top:0}
+  .callout p:last-child{margin-bottom:0}
+
+  ul.clean{padding-left:0;list-style:none;max-width:var(--maxread)}
+  ul.clean li{position:relative;padding-left:1.5rem;margin:.7rem 0}
+  ul.clean li::before{content:"";position:absolute;left:0;top:.62rem;width:.45rem;height:.45rem;border-radius:50%;background:var(--crimson)}
+
+  /* footer */
+  footer{border-top:1px solid var(--line);margin-top:4rem;padding:3rem var(--gutter);background:var(--surface)}
+  .foot-inner{max-width:52rem;margin:0 auto;display:grid;gap:1.5rem}
+  @media (min-width:720px){ .foot-inner{grid-template-columns:1.4fr 1fr;align-items:end} }
+  .foot-mark{font-family:var(--mono);font-size:1.05rem;color:var(--ink)}
+  .foot-mark b{color:var(--crimson)}
+  .foot-inner p{margin:.5rem 0;color:var(--ink-2);font-size:.92rem;max-width:34rem}
+  .foot-meta{font-family:var(--mono);font-size:.78rem;color:var(--slate);line-height:1.7}
+  .foot-meta a{color:var(--ink-2)}
+  .license{display:inline-block;margin-top:.4rem;font-family:var(--mono);font-size:.74rem;color:var(--slate);border:1px solid var(--line);border-radius:2rem;padding:.25rem .7rem}
+
+  :focus-visible{outline:2px solid var(--crimson);outline-offset:2px;border-radius:2px}
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease, transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion: reduce){ .reveal{opacity:1;transform:none;transition:none} }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="wordmark">falcon<b>bi</b></span>
+  <span class="kicker">Executive briefing · EPM</span>
+</header>
+
+<div class="wrap">
+  <main>
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="eyebrow"><span>Executive briefing</span><span>Cost allocation</span><span>Reference model</span></div>
+      <h1>What each service really costs</h1>
+      <p class="lede">Every service an organisation delivers carries a share of shared overhead. This model attributes that overhead <b>fairly, traceably, and to the cent</b> — so cost per service line can be trusted for pricing, funding, and planning.</p>
+      <div class="meta-row">
+        <span class="chip">5-stage model</span>
+        <span class="chip">Built in Pigment</span>
+        <span class="chip">Reconciled end to end</span>
+      </div>
+
+      <!-- SIGNATURE: FLOW SPINE -->
+      <div class="spine-wrap reveal">
+        <div class="spine-title">How cost travels — ledger to service line</div>
+        <div class="spine">
+          <div class="rail" aria-hidden="true"><span>Direct costs</span></div>
+          <div class="rail-note"><strong>Direct costs —</strong> costs that belong to one service line skip the shared-overhead steps and post straight to it.</div>
+          <div class="track">
+            <div class="node endpoint">
+              <div class="badge">GL</div>
+              <div>
+                <div class="n-title">General Ledger</div>
+                <div class="n-sub">Where all cost starts — raw account balances</div>
+              </div>
+            </div>
+            <div class="node">
+              <div class="badge">1</div>
+              <div>
+                <div class="n-title">Into cost pools</div>
+                <div class="n-sub">Shared overhead grouped by fair-share drivers</div>
+              </div>
+            </div>
+            <div class="node recip">
+              <div class="badge">1b</div>
+              <div>
+                <div class="n-title">Pools settle with each other</div>
+                <div class="n-sub">Support functions that serve each other square up</div>
+              </div>
+              <div class="n-tag">settlement</div>
+            </div>
+            <div class="node">
+              <div class="badge">2</div>
+              <div>
+                <div class="n-title">Into activities</div>
+                <div class="n-sub">Cost flows to the work the organisation performs</div>
+              </div>
+            </div>
+            <div class="node recip">
+              <div class="badge">2b</div>
+              <div>
+                <div class="n-title">Activities settle with each other</div>
+                <div class="n-sub">Mutual support between activities squared up</div>
+              </div>
+              <div class="n-tag">settlement</div>
+            </div>
+            <div class="node">
+              <div class="badge">3</div>
+              <div>
+                <div class="n-title">Onto service lines</div>
+                <div class="n-sub">Overhead lands on the services that use it</div>
+              </div>
+            </div>
+            <div class="node endpoint">
+              <div class="badge">Σ</div>
+              <div>
+                <div class="n-title">Total cost per service line</div>
+                <div class="n-sub">Shared overhead + direct costs, combined</div>
+              </div>
+            </div>
+            <div class="node endpoint">
+              <div class="badge">✓</div>
+              <div>
+                <div class="n-title">Validation gate</div>
+                <div class="n-sub">Every check must pass before results are released</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 01 THE PROBLEM -->
+    <section>
+      <span class="snum">The problem it solves</span>
+      <h2>From a raw ledger to a number you can defend</h2>
+      <p>Most of what an organisation spends is shared. Facilities, IT, HR, finance and other support functions don't belong to any single service — yet their cost has to land <em>somewhere</em> if leaders are to know what each service line truly costs to run.</p>
+      <p>Done in spreadsheets, that attribution is slow, hard to audit, and easy to argue with. This model replaces it with a single, transparent engine: overhead enters as unstructured ledger balances and leaves as a fully reconciled cost per service line, with every step visible and every dollar accounted for.</p>
+      <div class="pull">Overhead goes in as a ledger. It comes out as a defensible cost per service.</div>
+    </section>
+
+    <hr class="hr">
+
+    <!-- 02 THE JOURNEY -->
+    <section>
+      <span class="snum">How it works</span>
+      <h2>The cost journey, in five steps</h2>
+      <p>Cost moves through five sequential steps. Two of them are <strong>settlements</strong> — moments where support functions that serve one another square up their mutual costs before the model moves on, so no one function is left carrying more or less than its fair share.</p>
+
+      <div class="journey">
+        <div class="step">
+          <div class="sbadge">1</div>
+          <div>
+            <h3>Into cost pools</h3>
+            <p class="plain">Shared overhead in the ledger is grouped into cost pools and spread using fair-share drivers — measures like headcount, floor space or FTE that reflect who actually consumes the cost. Costs that clearly belong to a single service line are set aside here and rejoin at the end.</p>
+          </div>
+        </div>
+        <div class="step recip">
+          <div class="sbadge">1b</div>
+          <div>
+            <h3>Pools settle with each other</h3>
+            <p class="plain">Some support pools serve other support pools — IT supports HR, HR supports IT. This step settles those mutual costs so each pool ends up carrying the right total before anything moves downstream.</p>
+            <span class="role">Settlement step</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sbadge">2</div>
+          <div>
+            <h3>Into activities</h3>
+            <p class="plain">Settled pool costs flow to the activities the organisation actually performs — again split by drivers that reflect real usage.</p>
+          </div>
+        </div>
+        <div class="step recip">
+          <div class="sbadge">2b</div>
+          <div>
+            <h3>Activities settle with each other</h3>
+            <p class="plain">The same settlement logic, one level down: activities that support one another square up their mutual costs before the final allocation.</p>
+            <span class="role">Settlement step</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sbadge">3</div>
+          <div>
+            <h3>Onto service lines</h3>
+            <p class="plain">Activity costs land on the service lines that draw on them. The direct costs set aside in step 1 rejoin here — giving a single, complete figure: total cost per service line.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="hr">
+
+    <!-- 03 ASSURANCE -->
+    <section>
+      <span class="snum">Why it can be trusted</span>
+      <h2>Reconciled at every step, not just at the end</h2>
+      <p>The value of a cost allocation is only as good as the confidence you can place in it. This model is built so that no money is quietly lost or created as cost moves through the chain — and so that a failure anywhere is caught before results are used.</p>
+
+      <div class="figs reveal">
+        <div class="fig"><div class="num">5</div><div class="lbl">sequential stages, each independently checked</div></div>
+        <div class="fig"><div class="num">13</div><div class="lbl">built-in reconciliation &amp; validation checks</div></div>
+        <div class="fig"><div class="num">$0.01</div><div class="lbl">the tolerance — totals must tie to the cent</div></div>
+        <div class="fig"><div class="num">1</div><div class="lbl">validation gate before any run is signed off</div></div>
+      </div>
+
+      <p>At every stage the model confirms that what went in equals what came out. The total overhead entering the chain must equal the total landing on service lines — checked at the pool level, the activity level, and again on the final result. Each check reports a plain <strong>pass or fail</strong> with the exact variance, so there is never any doubt about whether the numbers tie.</p>
+      <div class="callout">
+        <span class="co-label">The validation gate</span>
+        <p>Before a set of results is released, every check is consolidated onto a single sign-off dashboard. It is a deliberate control point: the run proceeds only when everything reads green. This is what turns a calculation into an <em>attestable</em> result.</p>
+      </div>
+    </section>
+
+    <hr class="hr">
+
+    <!-- 04 STATUS -->
+    <section>
+      <span class="snum">Where it stands</span>
+      <h2>Current status</h2>
+      <p>The model is complete and reconciling across all five stages. There is one known item on the roadmap, called out here in the interest of a straight picture.</p>
+      <div class="callout warn">
+        <span class="co-label">Open item · settlement automation</span>
+        <p>The two settlement steps (pools and activities squaring up mutual costs) are designed to run automatically once triggered. That automation is not yet switched on, so today those settlements are triggered manually. It does not affect the accuracy of the result — only the amount of hands-on effort to produce a run.</p>
+      </div>
+    </section>
+
+    <hr class="hr">
+
+    <!-- 05 PLATFORM -->
+    <section>
+      <span class="snum">What it's built on</span>
+      <h2>A connected model, not a spreadsheet</h2>
+      <p>The engine is built in <strong>Pigment</strong>, a cloud-native planning platform. That choice buys three things that matter at the executive level:</p>
+      <ul class="clean">
+        <li><strong>One source of truth.</strong> The whole allocation lives in a single connected model rather than a chain of linked spreadsheets, so there is one version of the numbers, not a dozen.</li>
+        <li><strong>Runs across planning cycles.</strong> The same engine handles Actual, Budget and Forecast, so cost-per-service can be compared consistently across what happened, what was planned, and what's expected.</li>
+        <li><strong>Open by design.</strong> The methodology is published in full — the logic is inspectable, not a black box, which is exactly what an auditor or a board wants to see behind a cost number.</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open EPM methodology — practical design for planning and cost models. The methodology is published in full; implementation is available.</p>
+      <span class="license">CC BY 4.0 · attribution appreciated</span>
+    </div>
+    <div class="foot-meta">
+      Cost apportionment — executive briefing<br>
+      Worked reference model<br>
+      <a href="https://falconbi.github.io">falconbi.github.io</a><br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els = document.querySelectorAll('.reveal');
+    if(reduce || !('IntersectionObserver' in window)){
+      els.forEach(function(e){e.classList.add('in')});
+    } else {
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+      }, {threshold:0.12, rootMargin:'0px 0px -8% 0px'});
+      els.forEach(function(e){io.observe(e)});
+    }
+  })();
+</script>
+
+</body>
+</html>
