@@ -9,45 +9,60 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         body {
-            margin: 0 auto;
-            max-width: 720px;
-            padding: 3rem 6%;
+            margin: 0;
             font-family: 'IBM Plex Sans', system-ui, sans-serif;
             line-height: 1.75;
             color: #1f252e;
             background: #fafafc;
         }
         header {
+            background: white;
+            padding: 3rem 5% 2.5rem;
             text-align: center;
-            padding-bottom: 2.5rem;
-            border-bottom: 1px solid #d4d9e0;
+            border-bottom: 1px solid #e2e8f0;
         }
         .wordmark {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 2.4rem;
+            font-size: 2.8rem;
             font-weight: 700;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.03em;
+        }
+        main {
+            max-width: 760px;
+            margin: 4rem auto;
+            padding: 0 5%;
         }
         h1 {
             font-family: 'Space Grotesk', sans-serif;
-            margin: 2.8rem 0 2rem;
-            font-size: 1.85rem;
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.4rem;
+            margin-top: 3.5rem;
+            margin-bottom: 1.2rem;
+            color: #334155;
         }
         ul {
             list-style: none;
             padding: 0;
         }
         li {
-            margin-bottom: 2rem;
+            padding: 1.4rem 0;
+            border-bottom: 1px solid #e2e8f0;
         }
+        li:last-child { border-bottom: none; }
         li h3 {
-            margin: 0 0 0.4rem;
-            font-size: 1.22rem;
+            margin: 0 0 0.5rem;
+            font-size: 1.25rem;
             font-family: 'Space Grotesk', sans-serif;
         }
         li p {
             margin: 0;
             color: #475569;
+            font-size: 0.98rem;
         }
         li a {
             color: #1f252e;
@@ -55,10 +70,10 @@
         }
         li a:hover { text-decoration: underline; }
         footer {
-            margin-top: 4rem;
             text-align: center;
+            padding: 4rem 5% 2rem;
             color: #64748b;
-            font-size: 0.9rem;
+            font-size: 0.92rem;
         }
     </style>
 </head>
@@ -68,38 +83,64 @@
     <div class="wordmark">falconbi</div>
 </header>
 
-<h1>Articles</h1>
+<main>
+    <h1>Articles</h1>
 
-<ul>
-    <li>
-        <h3><a href="planning-platform-scorecard.html">IBM Planning Analytics vs Pigment — Weighted Decision Scorecard</a></h3>
-        <p>Interactive scorecard for comparing the platforms.</p>
-    </li>
-    <li>
-        <h3><a href="cost-apportionment.html">Cost Apportionment in Pigment — a five-stage engine</a></h3>
-        <p>Technical reference: dimensions, reciprocal settlements, and full data flow.</p>
-    </li>
-    <li>
-        <h3><a href="cost-apportionment-executive.html">Cost apportionment, explained — executive briefing</a></h3>
-        <p>Five-stage model overview for decision-makers.</p>
-    </li>
-    <li>
-        <h3><a href="reciprocal-apportionment.html">Reciprocal apportionment — when cost flows both ways</a></h3>
-        <p>Mutual services, the three methods, worked example, and system handling.</p>
-    </li>
-    <li>
-        <h3><a href="https://falconbi.github.io/tm1_consolidation_design/">TM1 Consolidation Design</a></h3>
-        <p>Design notes for TM1/Planning Analytics consolidation.</p>
-    </li>
-    <li>
-        <h3><a href="https://falconbi.github.io/Cash-Flow-Direct-Method/">Forecast Cash Flow & Balance Sheet — Design</a></h3>
-        <p>Posting-engine approach for integrated cash flow and balance sheet forecasting.</p>
-    </li>
-    <li>
-        <h3><a href="https://falconbi.github.io/tm1_apportionment/">TM1 Apportionment</a></h3>
-        <p>TM1 cost apportionment design and implementation notes.</p>
-    </li>
-</ul>
+    <ul>
+        <li>
+            <h3><a href="planning-platform-scorecard.html">IBM Planning Analytics vs Pigment — Weighted Decision Scorecard</a></h3>
+            <p>Interactive scorecard for comparing the platforms.</p>
+        </li>
+        <li>
+            <h3><a href="cost-apportionment.html">Cost Apportionment in Pigment — a five-stage engine</a></h3>
+            <p>Technical reference: dimensions, reciprocal settlements, and full data flow.</p>
+        </li>
+        <li>
+            <h3><a href="cost-apportionment-executive.html">Cost apportionment, explained — executive briefing</a></h3>
+            <p>Five-stage model overview for decision-makers.</p>
+        </li>
+        <li>
+            <h3><a href="reciprocal-apportionment.html">Reciprocal apportionment — when cost flows both ways</a></h3>
+            <p>Mutual services, the three methods, worked example, and system handling.</p>
+        </li>
+        <li>
+            <h3><a href="https://falconbi.github.io/tm1_consolidation_design/">TM1 Consolidation Design</a></h3>
+            <p>Design notes for TM1/Planning Analytics consolidation.</p>
+        </li>
+        <li>
+            <h3><a href="https://falconbi.github.io/Cash-Flow-Direct-Method/">Forecast Cash Flow & Balance Sheet — Design</a></h3>
+            <p>Posting-engine approach for integrated cash flow and balance sheet forecasting.</p>
+        </li>
+        <li>
+            <h3><a href="https://falconbi.github.io/tm1_apportionment/">TM1 Apportionment</a></h3>
+            <p>TM1 cost apportionment design and implementation notes.</p>
+        </li>
+    </ul>
+
+    <h2>Tools & Apps</h2>
+    <ul>
+        <li>
+            <h3><a href="https://github.com/falconbi/tm1_apportionment">TM1 Apportionment</a></h3>
+            <p>Cost apportionment tooling and reference model.</p>
+        </li>
+        <li>
+            <h3><a href="https://github.com/falconbi/tm1_ide">TM1 IDE</a></h3>
+            <p>Visual MDX editor and development environment.</p>
+        </li>
+        <li>
+            <h3><a href="https://github.com/falconbi/tm1_cubemap">TM1 Cubemap</a></h3>
+            <p>Cube exploration and mapping tool.</p>
+        </li>
+        <li>
+            <h3><a href="https://github.com/falconbi/tm1_paw_tree">TM1 PAW Tree</a></h3>
+            <p>PAW dimension and hierarchy viewer.</p>
+        </li>
+        <li>
+            <h3><a href="https://github.com/falconbi/report-writer">Report Writer</a></h3>
+            <p>Advanced reporting utilities for TM1/PAW.</p>
+        </li>
+    </ul>
+</main>
 
 <footer>
     falconbi — independent EPM/FP&amp;A methodology<br>
