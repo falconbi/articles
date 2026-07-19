@@ -9,6 +9,30 @@
 <meta name="description" content="Open methodology: a five-stage sequential cost apportionment engine in Pigment that turns raw General Ledger balances into fully reconciled cost by service line. A worked reference model.">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="falconbi.css">
+<style>
+  .shell { display: grid; grid-template-columns: 15rem minmax(0,1fr); gap: 3.5rem;
+           max-width: 1100px; margin: 0 auto; padding: 0 var(--gutter); }
+  @media (max-width: 900px) { .shell { display: block; } }
+  nav.toc { display: none; }
+  @media (min-width: 1040px) {
+    nav.toc { display: block; position: sticky; top: 4.5rem; align-self: start;
+              padding-top: 2.5rem; }
+  }
+  .toc-label { font-family: var(--mono); font-size: .7rem; letter-spacing: .12em;
+               text-transform: uppercase; color: var(--ink-faint); margin-bottom: .75rem; }
+  .toc ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .1rem; }
+  .toc a { display: flex; align-items: baseline; gap: .6rem; font-size: .85rem;
+           color: var(--ink-muted); text-decoration: none; padding: .3rem .5rem;
+           border-radius: 4px; transition: color .12s; }
+  .toc a:hover { color: var(--teal); }
+  .toc .num { font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); flex-shrink: 0; }
+  main { padding-top: 2.5rem; }
+  .cst-screenshot { max-width: 100%; height: auto; border: 1px solid var(--border);
+                    border-radius: .75rem; margin: 1.75rem 0 .5rem; display: block;
+                    box-shadow: 0 10px 30px -10px rgba(0,0,0,.1); }
+  .cst-screenshot-caption { text-align: center; font-size: .85rem; color: var(--ink-faint);
+                             margin-top: .3rem; margin-bottom: 2rem; font-family: var(--mono); }
+</style>
 </head>
 <body>
 
@@ -17,8 +41,8 @@
     <img src="favicon.png" class="brand-eagle" alt="FalconBI">
     <span class="brand-word">falcon<b>bi</b></span>
   </a>
-  <div class="topbar-right"><span class="kicker">Open methodology · EPM design</span>
-    <a href="index.html">← articles</a></div>
+  <div class="topbar-right"><span class="kicker">Open methodology &nbsp;&middot;&nbsp; EPM design</span>
+    <a href="index.html">&larr; articles</a></div>
 </header>
 
 <div class="shell">
@@ -51,28 +75,191 @@
         <span class="chip">5 stages · 13 checks</span>
       </div>
 
-      <img src="cst-screenshots/home.png" alt="CST Home Board - Cost Apportionment" class="cst-screenshot">
-      <p class="cst-screenshot-caption">CST Home Board — Process overview and navigation to all stages</p>
+
+      <img src="cst-screenshots/Home.png" alt="CST Home Board — Cost Apportionment" class="cst-screenshot">
+      <p class="cst-screenshot-caption">CST Home Board — process overview and navigation to all stages</p>
 
       <!-- SIGNATURE: FLOW SPINE -->
       <div class="spine-wrap reveal">
-        <!-- existing spine content unchanged -->
         <div class="spine-title">The apportionment chain</div>
         <div class="spine">
           <div class="rail" aria-hidden="true"><span>Direct bypass</span></div>
           <div class="rail-note"><strong>Direct bypass —</strong> accounts classified <em>Direct</em> skip stages 1–3 and post straight to service lines, rejoining the total at the end.</div>
           <div class="track">
-            <!-- ... your existing nodes ... (unchanged) -->
+            <div class="node endpoint">
+              <div class="badge">GL</div>
+              <div class="n-body">
+                <div class="n-title">General Ledger</div>
+                <div class="n-sub">Raw account balances loaded from source systems</div>
+              </div>
+            </div>
+            <div class="node">
+              <div class="badge">1</div>
+              <div class="n-body">
+                <div class="n-title">Account → Pool</div>
+                <div class="n-sub">Indirect cost spread to pools by driver %</div>
+              </div>
+              <div class="n-tag">RC01</div>
+            </div>
+            <div class="node recip">
+              <div class="badge">1b</div>
+              <div class="n-body">
+                <div class="n-title">Pool → Pool</div>
+                <div class="n-sub">Reciprocal settlement between pools</div>
+              </div>
+              <div class="n-tag">external</div>
+            </div>
+            <div class="node">
+              <div class="badge">2</div>
+              <div class="n-body">
+                <div class="n-title">Pool → Activity</div>
+                <div class="n-sub">Settled pools split to business activities</div>
+              </div>
+              <div class="n-tag">RC03</div>
+            </div>
+            <div class="node recip">
+              <div class="badge">2b</div>
+              <div class="n-body">
+                <div class="n-title">Activity → Activity</div>
+                <div class="n-sub">Reciprocal settlement between activities</div>
+              </div>
+              <div class="n-tag">external</div>
+            </div>
+            <div class="node">
+              <div class="badge">3</div>
+              <div class="n-body">
+                <div class="n-title">Activity → Service Line</div>
+                <div class="n-sub">Terminal allocation to service lines</div>
+              </div>
+              <div class="n-tag">RC05</div>
+            </div>
+            <div class="node endpoint">
+              <div class="badge">Σ</div>
+              <div class="n-body">
+                <div class="n-title">Total cost by service line</div>
+                <div class="n-sub">Overhead chain + direct bypass, combined</div>
+              </div>
+            </div>
+            <div class="node endpoint">
+              <div class="badge">✓</div>
+              <div class="n-body">
+                <div class="n-title">Validation Gate</div>
+                <div class="n-sub">All checks pass before the run signs off</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 05 THE FIVE-STAGE CHAIN -->
+    <!-- 01 OVERVIEW -->
+    <section id="overview" class="prose">
+      <span class="snum">01 — Overview</span>
+      <h2>What the model does</h2>
+      <p>The application allocates overhead from raw General Ledger accounts through to service lines using a five-stage sequential apportionment engine. It transforms unstructured cost data into a fully reconciled service-line cost view — the terminal question being <em>"what does each service line actually cost, once every shared overhead has been fairly attributed?"</em></p>
+      <p>The apportionment module is self-contained. It lives inside a broader Pigment application that also covers demand planning and supply chain, among other domains, but sits in its own folder prefixed <code>9. CST Apportionment</code>, with every block prefixed <code>CST_</code> for easy identification. This write-up covers the cost module only.</p>
+      <p>Built in <strong>Pigment</strong> — a cloud-native business planning platform — the model leans on a handful of platform primitives. The next section defines them, so the rest reads cleanly whether or not you build in Pigment day to day.</p>
+    </section>
+
+    <hr class="hr">
+
+    <!-- 02 CONCEPTS -->
+    <section id="concepts" class="prose">
+      <span class="snum">02 — Building blocks</span>
+      <h2>Pigment concepts used</h2>
+      <p>Six primitives carry the whole model. Everything downstream is a composition of these.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Concept</th><th>What it is</th><th>Role in this model</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Dimension</strong></td><td>A master list of items — accounts, pools, activities</td><td>Structures all cost data</td></tr>
+            <tr><td><strong>Metric</strong></td><td>A multi-dimensional container of numeric or categorical values</td><td>Holds inputs, calculations, and outputs</td></tr>
+            <tr><td><strong>Transaction list</strong> <span class="m">TXN</span></td><td>A flat, row-based table — like a spreadsheet or import staging area</td><td>Loads raw data from external systems (ETL)</td></tr>
+            <tr><td><strong>Table</strong> <span class="m">TBL</span></td><td>A view combining several metrics into one grid</td><td>User-facing configuration and review screens</td></tr>
+            <tr><td><strong>Board</strong></td><td>A dashboard of widgets — tables, charts, text, buttons</td><td>The interface for each process stage</td></tr>
+            <tr><td><strong>Formula</strong></td><td>Pigment's native expression language</td><td>Every derived calculation in the model</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <hr class="hr">
+
+    <!-- 03 DIMENSIONS -->
+    <section id="dimensions" class="prose">
+      <span class="snum">03 — Structure</span>
+      <h2>The dimension model</h2>
+      <p>Dimensions are the axes that structure every piece of cost data. All twelve live in <code>/9.1 Dimensions</code>.</p>
+      <div class="table-wrap">
+        <table class="dim-list">
+          <thead><tr><th>Dimension</th><th style="text-align:right">Items</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><span class="m">CST_Account</span></td><td class="count">36</td><td>GL accounts — the source of all cost data. Properties: <em>Account_Description</em>, <em>Account_Type</em>.</td></tr>
+            <tr><td><span class="m">CST_CostCenter</span></td><td class="count">18</td><td>Organisational cost centres. Carries a <em>Cost Pool</em> property linking each centre to its source pool, and a calculated <em>Cost Pool (Dest)</em> that mirrors it to the destination axis.</td></tr>
+            <tr><td><span class="m">CST_CostPool</span></td><td class="count">10</td><td>Intermediate buckets that aggregate account cost before distributing to activities.</td></tr>
+            <tr><td><span class="m">CST_CostPoolDest</span></td><td class="count">10</td><td>A mirror of <span class="m">CST_CostPool</span> used as the destination axis in Pool-to-Pool settlement. This dual-dimension pattern avoids circular references.</td></tr>
+            <tr><td><span class="m">CST_Activity</span></td><td class="count">12</td><td>Business activities — the layer between pools and service lines.</td></tr>
+            <tr><td><span class="m">CST_ActivityDest</span></td><td class="count">12</td><td>Mirror of <span class="m">CST_Activity</span> used as the destination axis in Activity-to-Activity settlement.</td></tr>
+            <tr><td><span class="m">CST_ServiceLine</span></td><td class="count">9</td><td>Final cost destinations — the service lines that receive allocated overhead.</td></tr>
+            <tr><td><span class="m">CST_Driver</span></td><td class="count">11</td><td>Allocation drivers (headcount, FTE, floor space). Define how cost is split between pools, activities, or service lines.</td></tr>
+            <tr><td><span class="m">CST_ApportionmentType</span></td><td class="count">3</td><td>Classifies each account as Direct, Indirect, or other. Drives the branching at Stage 1.</td></tr>
+            <tr><td><span class="m">CST_ReconciliationCheck</span></td><td class="count">13</td><td>Named checks (RC01–RC06, VAL00–VAL05). The axis for all control reporting. Properties: <em>Check_Type</em>, <em>Check_Description</em>.</td></tr>
+            <tr><td><span class="m">CST_Version</span></td><td class="count">3</td><td>Planning versions — Actual, Budget, Forecast. Properties: <em>Start_Period</em>, <em>End_Period</em>, <em>Version_Type</em>.</td></tr>
+            <tr><td><span class="m">CST_Stage</span></td><td class="count">2</td><td>Flags the two sides of reciprocal settlement (Source / Destination).</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Two design patterns worth stealing</h3>
+      <div class="callout">
+        <span class="co-label">Pattern · Dual-dimension for reciprocal settlement</span>
+        <p><span class="m">CST_CostPool</span> / <span class="m">CST_CostPoolDest</span> and <span class="m">CST_Activity</span> / <span class="m">CST_ActivityDest</span> are identical in membership but represent the <strong>source</strong> and <strong>destination</strong> roles. This is the standard Pigment way to model many-to-many cost flows without creating circular formula dependencies.</p>
+      </div>
+      <div class="callout steel">
+        <span class="co-label">Pattern · Sentinel items</span>
+        <p>Several dimensions carry a special <span class="m">"Input"</span> item (for example in <span class="m">CST_ActivityDest</span> and <span class="m">CST_CostCenter</span>). This is a deliberate modelling sentinel: it stores a <em>pre-split total</em> at a known, addressable coordinate in the metric space, which the downstream formula then selects and redistributes via Pigment's <span class="m">SELECT</span> modifier — avoiding a set of separate staging metrics.</p>
+      </div>
+    </section>
+
+    <hr class="hr">
+
+    <!-- 04 TXN -->
+    <section id="txn" class="prose">
+      <span class="snum">04 — Ingestion</span>
+      <h2>The data ingestion layer</h2>
+      <p>Transaction lists are flat, row-based tables. The source ETL process writes raw data into them, and the model reads it back through formulas. All <span class="m">CST_TXN_</span> lists sit at the root of <code>/9. CST Apportionment</code>.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Transaction list</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><span class="m">CST_TXN_GL_Account</span></td><td>Raw GL account amounts loaded from source systems</td></tr>
+            <tr><td><span class="m">CST_TXN_Apportionment_Type</span></td><td>Maps each account to its apportionment type (Direct / Indirect)</td></tr>
+            <tr><td><span class="m">CST_TXN_Account_Pool_Pct</span></td><td>Driver percentage shares — how much of each account flows to each pool</td></tr>
+            <tr><td><span class="m">CST_TXN_Direct_Account_SL_Pct</span></td><td>Direct cost splits — how much of each direct account flows to each service line</td></tr>
+            <tr><td><span class="m">CST_TXN_P2P_Driver_Volumes</span></td><td>Driver volumes for pool-to-pool splits</td></tr>
+            <tr><td><span class="m">CST_TXN_P2P_Active_Pairs</span></td><td>Flags which pool-to-pool pairs are active for settlement</td></tr>
+            <tr><td><span class="m">CST_TXN_P2P_Final_Settlement</span></td><td>Final post-settlement pool amounts (written back by ETL / webhook)</td></tr>
+            <tr><td><span class="m">CST_TXN_P2P_Redistribution_Pct</span></td><td>Redistribution percentages for pool-to-pool flows</td></tr>
+            <tr><td><span class="m">CST_TXN_P2A_Driver_Volumes</span></td><td>Driver volumes for pool-to-activity splits</td></tr>
+            <tr><td><span class="m">CST_TXN_A2A_Driver_Volumes</span></td><td>Driver volumes for activity-to-activity splits</td></tr>
+            <tr><td><span class="m">CST_TXN_Activity_to_Activity_Drivers</span></td><td>A2A driver config, including active flags and redistribution %</td></tr>
+            <tr><td><span class="m">CST_TXN_A2A_Active_Pairs</span></td><td>Flags which activity-to-activity pairs are active</td></tr>
+            <tr><td><span class="m">CST_TXN_A2A_Final_Settlement</span></td><td>Final post-settlement activity amounts (written back by ETL / webhook)</td></tr>
+            <tr><td><span class="m">CST_TXN_A2A_Redistribution_Pct</span></td><td>Redistribution percentages for activity-to-activity flows</td></tr>
+            <tr><td><span class="m">CST_TXN_Activity_to_SL_Drivers</span></td><td>Driver volumes for activity-to-service-line splits</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <hr class="hr">
+
+    <!-- 05 CHAIN -->
     <section id="chain">
       <div class="prose">
         <span class="snum">05 — The engine</span>
         <h2>The five-stage apportionment chain</h2>
+        <p>Cost moves through five sequential stages. Each stage is a distinct Pigment calculation that feeds the next; two of them (1b and 2b) handle <strong>reciprocal settlement</strong> and are computed externally, because Pigment does not support native circular or iterative formulas.</p>
       </div>
 
       <!-- STAGE 1 -->
@@ -82,12 +269,31 @@
           <div>
             <h3>Account → Pool</h3>
             <div class="n-sub">Distribute raw account balances to cost pools</div>
-            <div class="board-tag"><b>Board</b> Stage 1 — Account to Pool</div>
+            <div class="board-tag"><b>Board</b> Stage 1 — Account to Pool &nbsp;·&nbsp; <b>Folder</b> 9.2 Config + 9.3 Calculation</div>
           </div>
         </div>
-        <img src="cst-screenshots/stage1-account-to-pool.png" alt="Stage 1 Account to Pool Board" class="cst-screenshot">
+        <img src="cst-screenshots/Stage 1-account-to-pool.png" alt="Stage 1 Board — Account to Pool" class="cst-screenshot">
         <p class="cst-screenshot-caption">Stage 1 Board — Account to Pool</p>
-        <!-- rest of your Stage 1 content -->
+
+        <p>Raw GL balances are distributed to cost pools using driver percentage shares. Accounts classified <strong>Indirect</strong> are spread proportionally across pools. Accounts classified <strong>Direct</strong> bypass the chain entirely and flow straight to service lines at the end.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Metric</th><th>Type</th><th>Dimensions</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td><span class="m">CST_Input_Account_Amount ($)</span></td><td>Manual input</td><td>Account, CostCenter, Version, Month</td><td>Raw GL amounts from <span class="m">CST_TXN_GL_Account</span></td></tr>
+              <tr><td><span class="m">CST_Input_Apportionment_Type</span></td><td>Manual input → dim</td><td>Account, Version</td><td>Tags each account Direct or Indirect</td></tr>
+              <tr><td><span class="m">CST_Input_Driver_Pct_Share (%)</span></td><td>Formula + override</td><td>Account, CostCenter, CostPool, Version, Month</td><td>Reads driver % from <span class="m">CST_TXN_Account_Pool_Pct</span></td></tr>
+              <tr><td><span class="m">CST_Input_Direct_Pct_Share (%)</span></td><td>Formula + override</td><td>Account, CostCenter, ServiceLine, Version, Month</td><td>Reads direct split % from <span class="m">CST_TXN_Direct_Account_SL_Pct</span></td></tr>
+              <tr><td><span class="m">CST_Calc_Account_to_Pool ($)</span></td><td>Formula</td><td>Account, CostCenter, CostPool, Version, Month</td><td>Indirect amount × driver % ÷ 100</td></tr>
+              <tr><td><span class="m">CST_Calc_Stage1_Pool_Amount</span></td><td>Formula</td><td>CostCenter, CostPool, Version, Month</td><td>Aggregates account-to-pool using the <span class="m">REMOVE</span> modifier</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <span class="co-label">Formula pattern</span>
+          <p><span class="m">SELECT</span> filters to Indirect accounts only before multiplying by driver percentage. <span class="m">REMOVE</span> then collapses the <span class="m">CST_Account</span> dimension to produce a clean per-pool total.</p>
+        </div>
+        <div class="rc">RC01 — total input overhead must equal total Stage&nbsp;1 pool output</div>
       </div>
 
       <!-- STAGE 1b -->
@@ -95,13 +301,38 @@
         <div class="stage-head">
           <div class="stage-badge">1b</div>
           <div>
-            <h3>Pool → Pool</h3>
+            <h3>Pool → Pool <span style="font-family:var(--mono);font-size:.7rem;color:var(--steel);text-transform:uppercase;letter-spacing:.1em">· reciprocal</span></h3>
             <div class="n-sub">Reciprocal settlement between cost pools</div>
             <div class="board-tag"><b>Board</b> Stage 1b — Pool to Pool</div>
           </div>
         </div>
-        <img src="cst-screenshots/stage1b-pool-to-pool.png" alt="Stage 1b Pool to Pool Board" class="cst-screenshot">
-        <p class="cst-screenshot-caption">Stage 1b Board — Pool to Pool Reciprocal Settlement</p>
+        <img src="cst-screenshots/stage1b-pool-to-pool.png" alt="Stage 1b Board — Pool to Pool Reciprocal" class="cst-screenshot">
+        <p class="cst-screenshot-caption">Stage 1b Board — Pool to Pool Reciprocal</p>
+
+        <p>Some pools serve other pools — an IT pool serving an HR pool, say. This stage performs <strong>reciprocal settlement</strong>: each pool redistributes a portion of its cost to the pools it serves, then receives back the cost of the pools that served it. It is an iterative calculation that converges to a stable allocation.</p>
+        <div class="callout steel">
+          <span class="co-label">How it works in Pigment</span>
+          <p>Because Pigment has no native circular or iterative formula, settlement is computed externally — via ETL / webhook — and written back into <span class="m">CST_TXN_P2P_Final_Settlement</span>. Pigment simply reads the settled amounts.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Metric</th><th>Type</th><th>Dimensions</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td><span class="m">CST_Input_P2P_Driver_Type</span></td><td>Manual input → dim</td><td>CostPool, Version</td><td>Assigns the driver used for P2P splits</td></tr>
+              <tr><td><span class="m">CST_Input_P2P_Is_Active</span></td><td>Formula + override</td><td>CostPool, CostPoolDest, Version, Month</td><td>Flags active pairs from <span class="m">CST_TXN_P2P_Active_Pairs</span></td></tr>
+              <tr><td><span class="m">CST_Input_CC_Driver_Value</span></td><td>Formula + override</td><td>CostCenter, Driver, Version, Month</td><td>Driver volumes from <span class="m">CST_TXN_P2P_Driver_Volumes</span></td></tr>
+              <tr><td><span class="m">CST_Calc_P2P_Normalised_Driver_Pct (%)</span></td><td>Formula</td><td>CostPool, CostPoolDest, Version, Month</td><td>Each destination pool's share of total active driver volume</td></tr>
+              <tr><td><span class="m">CST_Input_P2P_Redistribution_Pct (%)</span></td><td>Formula</td><td>CostPool, Version, Month</td><td>What % of this pool's cost flows out to others</td></tr>
+              <tr><td><span class="m">CST_Data_Pool_Settled_Amount ($)</span></td><td>Formula</td><td>CostCenter, CostPool, Version, Month</td><td>Final settled amount from <span class="m">CST_TXN_P2P_Final_Settlement</span></td></tr>
+              <tr><td><span class="m">CST_P2P_Final_Settlement ($)</span></td><td>Formula</td><td>CostPool, CostPoolDest, Version, Month</td><td>Settlement amounts after iterative redistribution</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout warn">
+          <span class="co-label">Current limitation</span>
+          <p>The recursion webhook that triggers iterative settlement is not yet active. Until it is, users trigger settlement manually.</p>
+        </div>
+        <div class="rc">RC02 — total pool cost pre-settlement must equal total post-settlement</div>
       </div>
 
       <!-- STAGE 2 -->
@@ -114,8 +345,27 @@
             <div class="board-tag"><b>Board</b> Stage 2 — Pool to Activity</div>
           </div>
         </div>
-        <img src="cst-screenshots/stage2-pool-to-activity.png" alt="Stage 2 Pool to Activity Board" class="cst-screenshot">
+        <img src="cst-screenshots/stage2-pool-to-activity.png" alt="Stage 2 Board — Pool to Activity" class="cst-screenshot">
         <p class="cst-screenshot-caption">Stage 2 Board — Pool to Activity</p>
+
+        <p>Settled pool amounts from Stage 1b are distributed to business activities using driver-based percentage splits.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Metric</th><th>Type</th><th>Dimensions</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td><span class="m">CST_Input_P2A_Driver_Type</span></td><td>Manual input → dim</td><td>CostPool, Version</td><td>Assigns the driver for P2A splits</td></tr>
+              <tr><td><span class="m">CST_Input_Activity_Driver_Volumes</span></td><td>Manual input</td><td>Activity, Driver, Version, Month</td><td>Raw driver volumes per activity</td></tr>
+              <tr><td><span class="m">CST_Calc_P2A_Driver_Value</span></td><td>Formula</td><td>CostPool, Activity, Version, Month</td><td>Driver values matched to each pool's chosen driver</td></tr>
+              <tr><td><span class="m">CST_Calc_P2A_Normalised_Driver_Pct (%)</span></td><td>Formula</td><td>CostPool, Activity, Version, Month</td><td>Each activity's % share of the pool's driver volume (<span class="m">REMOVE SUM</span>)</td></tr>
+              <tr><td><span class="m">CST_Calc_Pool_to_Activity ($)</span></td><td>Formula</td><td>CostCenter, CostPool, Activity, Version, Month</td><td>Settled pool amount × normalised P2A %, via the sentinel</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <span class="co-label">Formula pattern · the sentinel in action</span>
+          <p>The settled pool amount is stored at the <span class="m">Activity = "Input"</span> coordinate. The formula uses <span class="m">SELECT: CST_Activity.Name = "Input"</span> to isolate that total, then multiplies it by the normalised driver percentage across all real activities.</p>
+        </div>
+        <div class="rc">RC03 — total settled pool cost must equal total activity cost</div>
       </div>
 
       <!-- STAGE 2b -->
@@ -123,13 +373,31 @@
         <div class="stage-head">
           <div class="stage-badge">2b</div>
           <div>
-            <h3>Activity → Activity</h3>
+            <h3>Activity → Activity <span style="font-family:var(--mono);font-size:.7rem;color:var(--steel);text-transform:uppercase;letter-spacing:.1em">· reciprocal</span></h3>
             <div class="n-sub">Reciprocal settlement between activities</div>
             <div class="board-tag"><b>Board</b> Stage 2b — Activity to Activity</div>
           </div>
         </div>
-        <img src="cst-screenshots/stage2b-activity-to-activity.png" alt="Stage 2b Activity to Activity Board" class="cst-screenshot">
+        <img src="cst-screenshots/stage2b-activity-to-activity.png" alt="Stage 2b Board — Activity to Activity Reciprocal" class="cst-screenshot">
         <p class="cst-screenshot-caption">Stage 2b Board — Activity to Activity Reciprocal</p>
+
+        <p>Mirrors Stage 1b, one layer down. Some activities provide services to other activities, so iterative reciprocal settlement is needed before final service-line allocation. As with pools, the settlement is computed externally and read back from <span class="m">CST_TXN_A2A_Final_Settlement</span>.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Metric</th><th>Type</th><th>Dimensions</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td><span class="m">CST_Input_A2A_Driver_Type</span></td><td>Manual input → dim</td><td>Activity, Version</td><td>Driver used for A2A splits</td></tr>
+              <tr><td><span class="m">CST_Input_A2A_Is_Active</span></td><td>Formula + override</td><td>CostCenter, ActivityDest, Activity, Version, Month</td><td>Active flags from <span class="m">CST_TXN_Activity_to_Activity_Drivers</span></td></tr>
+              <tr><td><span class="m">CST_Calc_A2A_Driver_Value</span></td><td>Formula</td><td>ActivityDest, Activity, Version, Month</td><td>Driver values for active A2A pairs</td></tr>
+              <tr><td><span class="m">CST_Calc_A2A_Normalised_Driver_Pct (%)</span></td><td>Formula</td><td>ActivityDest, Activity, Version, Month</td><td>Destination activity's share of active driver volume (<span class="m">FILTER</span> + <span class="m">REMOVE SUM</span>)</td></tr>
+              <tr><td><span class="m">CST_Input_A2A_Redistribution_Pct (%)</span></td><td>Formula + override</td><td>CostCenter, ActivityDest, Activity, Version, Month</td><td>% of activity cost redistributed to others</td></tr>
+              <tr><td><span class="m">CST_Input_A2A_Base_Amount ($)</span></td><td>Formula</td><td>CostCenter, ActivityDest, Activity, Version, Month</td><td>Stage 2 output seeded at the <span class="m">"Input"</span> sentinels</td></tr>
+              <tr><td><span class="m">CST_Data_Activity_Settled_Amount ($)</span></td><td>Formula</td><td>CostCenter, Activity, Version, Month</td><td>Final settled amounts from <span class="m">CST_TXN_A2A_Final_Settlement</span></td></tr>
+              <tr><td><span class="m">CST_A2A_Final_Settlement ($)</span></td><td>Formula</td><td>Activity, Version, Month</td><td>Aggregated settlement — the input to Stage 3</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="rc">RC04 — total activity cost pre-settlement must equal post-settlement</div>
       </div>
 
       <!-- STAGE 3 -->
@@ -138,27 +406,187 @@
           <div class="stage-badge">3</div>
           <div>
             <h3>Activity → Service Line</h3>
-            <div class="n-sub">Terminal allocation to service lines</div>
+            <div class="n-sub">Terminal allocation, and the direct path rejoins</div>
             <div class="board-tag"><b>Board</b> Stage 3 — Activity to Service Line</div>
           </div>
         </div>
-        <img src="cst-screenshots/stage3-activity-to-service-line.png" alt="Stage 3 Activity to Service Line Board" class="cst-screenshot">
-        <p class="cst-screenshot-caption">Stage 3 Board — Final Allocation to Service Lines</p>
+        <img src="cst-screenshots/stage3-activity-to-service-line.png" alt="Stage 3 Board — Activity to Service Line" class="cst-screenshot">
+        <p class="cst-screenshot-caption">Stage 3 Board — Activity to Service Line</p>
+
+        <p>Final settled activity amounts are distributed to service lines — the terminal destination of all overhead. This stage also combines the overhead path with the <strong>direct path</strong> (the Stage 1 bypass) to produce total cost by service line.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Metric</th><th>Type</th><th>Dimensions</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td><span class="m">CST_Input_A2SL_Driver_Type</span></td><td>Manual input → dim</td><td>Activity, Version</td><td>Driver used for A2SL splits</td></tr>
+              <tr><td><span class="m">CST_Input_SL_Driver_Volumes</span></td><td>Manual input</td><td>ServiceLine, Driver, Version, Month</td><td>Raw driver volumes per service line</td></tr>
+              <tr><td><span class="m">CST_Calc_A2SL_Driver_Value</span></td><td>Formula</td><td>ServiceLine, Activity, Version, Month</td><td>Driver values matched to each activity's chosen driver</td></tr>
+              <tr><td><span class="m">CST_Calc_A2SL_Normalised_Driver_Pct (%)</span></td><td>Formula</td><td>ServiceLine, Activity, Version, Month</td><td>Each service line's % share of driver for this activity</td></tr>
+              <tr><td><span class="m">CST_Calc_Activity_to_Service_Line ($)</span></td><td>Formula</td><td>ServiceLine, Activity, Version, Month</td><td>A2A final settlement × normalised A2SL %</td></tr>
+              <tr><td><span class="m">CST_Calc_Direct_by_SL ($)</span></td><td>Formula</td><td>CostCenter, ServiceLine, Account, Version, Month</td><td>Direct cost (the Stage 1 bypass) allocated to service lines</td></tr>
+              <tr><td><span class="m">CST_Calc_Total_by_SL ($)</span></td><td>Formula</td><td>ServiceLine, Version, Month</td><td><strong>Final output</strong> — overhead (via the activity chain) + direct (bypass)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="rc">RC05 &amp; RC06 — overhead path, then total including direct, both must tie back to total input overhead</div>
       </div>
     </section>
 
-    <!-- The rest of your document (sections 06 to 09) remains unchanged -->
-    <!-- ... your existing control, boards, folders, flow sections ... -->
+    <hr class="hr">
+
+    <!-- 06 CONTROL -->
+    <section id="control" class="prose">
+      <span class="snum">06 — Control</span>
+      <h2>The control &amp; reconciliation layer</h2>
+      <p>All reconciliation logic is consolidated into a set of <span class="m">CST_Ctrl_</span> metrics structured by the <span class="m">CST_ReconciliationCheck</span> dimension. This gives one unified view across all 13 checks — RC01–RC06 plus VAL00–VAL05.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Metric</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td><span class="m">CST_Ctrl_Input_Total ($)</span></td><td>Sum of the RC and VAL input metrics — total expected input per check</td></tr>
+            <tr><td><span class="m">CST_Ctrl_Input_RC ($)</span></td><td>Handles RC-type checks only (isolated — see the design note)</td></tr>
+            <tr><td><span class="m">CST_Ctrl_Input_VAL ($)</span></td><td>Handles VAL-type checks only (same reason)</td></tr>
+            <tr><td><span class="m">CST_Ctrl_Output_Total ($)</span></td><td>Total expected output per check</td></tr>
+            <tr><td><span class="m">CST_Ctrl_Status</span></td><td><span class="m">"PASS"</span> if <span class="m">ABS(Input − Output) ≤ $0.01</span>, else <span class="m">"FAIL"</span></td></tr>
+            <tr><td><span class="m">CST_Ctrl_Message</span></td><td>Human-readable variance — <span class="m">"Variance: $X"</span></td></tr>
+            <tr><td><span class="m">CST_Ctrl_Total_Overhead ($)</span></td><td>Grand total overhead across all pools</td></tr>
+            <tr><td><span class="m">CST_Ctrl_Total_Direct ($)</span></td><td>Grand total direct cost</td></tr>
+            <tr><td><span class="m">CST_Ctrl_Total_Overhead_by_ActivityDest ($)</span></td><td>Overhead by ActivityDest — a wrapper enabling <span class="m">SELECT</span> on <span class="m">CST_ActivityDest</span> downstream</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Design note — the IF-formula scope trap</h3>
+      <p>This one is worth internalising, because it produces <em>silent</em> wrong numbers rather than an error.</p>
+      <div class="callout warn">
+        <span class="co-label">The behaviour</span>
+        <p><span class="m">CST_Ctrl_Input_Total ($)</span> began as a single metric with one <span class="m">IF</span> formula branching across RC and VAL check types. When an <span class="m">IF</span> references dimensions in <em>any</em> branch, Pigment eagerly expands the metric's calculation scope to include all referenced dimensions — even for rows where that branch is never evaluated. Aggregated back to a dimension the metric didn't natively hold, this produced silent value inflation.</p>
+        <p><strong>The fix:</strong> split the logic into two metrics — <span class="m">CST_Ctrl_Input_RC</span> and <span class="m">CST_Ctrl_Input_VAL</span> — each carrying only its own check type and dimensional context, then sum them in <span class="m">CST_Ctrl_Input_Total</span>. Isolating scope per metric eliminates the inflation.</p>
+      </div>
+    </section>
+
+    <hr class="hr">
+
+    <!-- 07 BOARDS -->
+    <section id="boards" class="prose">
+      <span class="snum">07 — Interface</span>
+      <h2>Boards &amp; navigation</h2>
+      <p>The interface is seven Pigment boards in a dedicated folder. Navigation is bidirectional — users move forward through the process from Home, and return home from any stage.</p>
+      <pre><span class="c-crim">CST Home — Cost Apportionment</span>  <span class="c-mut">[HOME]</span>
+    │
+    ├── Stage 1  — Account to Pool          <span class="c-mut">(RC01)</span>
+    ├── Stage 1b — Pool to Pool             <span class="c-steel">(RC02)</span>
+    ├── Stage 2  — Pool to Activity         <span class="c-mut">(RC03)</span>
+    ├── Stage 2b — Activity to Activity     <span class="c-steel">(RC04)</span>
+    ├── Stage 3  — Activity to Service Line <span class="c-mut">(RC05, RC06)</span>
+    │
+    └── <span class="c-ok">Validation Gate</span>  <span class="c-mut">[final sign-off]</span></pre>
+      <p><strong>Home</strong> carries a process overview, a warning banner that the recursion webhook is not yet active, navigation cards to each stage and the Validation Gate, and descriptive text for each step.</p>
+      <p><strong>Each stage board</strong> holds configuration tables (driver type, active-pair flags, driver volumes), a debug/review table of the calculated intermediates, a PASS/FAIL reconciliation result, and a back-to-Home button.</p>
+      <p><strong>The Validation Gate</strong> consolidates all RC and VAL checks into a single pre-flight dashboard — the launch point for the final apportionment run.</p>
+    </section>
+
+    <hr class="hr">
+
+    <!-- 08 FOLDERS -->
+    <section id="folders" class="prose">
+      <span class="snum">08 — Organisation</span>
+      <h2>Folder structure</h2>
+      <pre><span class="c-crim">/9. CST Apportionment/</span>
+    9.1 Dimensions/   <span class="c-mut">— all CST_ dimensions</span>
+    9.2 Config/       <span class="c-mut">— input &amp; config metrics (CST_Input_, CST_Calc_ driver %)</span>
+    9.3 Calculation/  <span class="c-mut">— core calculation metrics (CST_Calc_ stage results)</span>
+    9.4 Reporting/    <span class="c-mut">— control &amp; reconciliation metrics (CST_Ctrl_)</span></pre>
+      <p>Transaction lists sit in the root of <code>/9. CST Apportionment/</code>.</p>
+    </section>
+
+    <hr class="hr">
+
+    <!-- 09 FLOW -->
+    <section id="flow" class="prose">
+      <span class="snum">09 — End to end</span>
+      <h2>Data flow, start to finish</h2>
+      <p>The whole engine in one view — the indirect path cascading down the stages, the direct path running alongside it, and both meeting at total cost by service line before the Validation Gate.</p>
+      <pre><span class="c-mut">External System (GL)</span>
+        │
+        ▼
+<span class="c-crim">CST_TXN_GL_Account</span> ───────────────────────────────┐
+        │                                          │
+        ▼                                   <span class="c-steel">Direct path</span>
+  <span class="c-crim">[1]</span>  Account → Pool  <span class="c-mut">(indirect)</span>                      │
+        │                                          ▼
+        ▼                              <span class="c-steel">CST_Calc_Direct_by_SL ($)</span>
+  <span class="c-crim">[1b]</span> Pool → Pool     <span class="c-mut">(reciprocal · webhook)</span>            │
+        │                                          │
+        ▼                                          │
+  <span class="c-crim">[2]</span>  Pool → Activity                                │
+        │                                          │
+        ▼                                          │
+  <span class="c-crim">[2b]</span> Activity → Activity  <span class="c-mut">(reciprocal · webhook)</span>       │
+        │                                          │
+        ▼                                          │
+  <span class="c-crim">[3]</span>  Activity → Service Line                        │
+        │                                          │
+        └────────────►  <span class="c-crim">CST_Calc_Total_by_SL ($)</span>  ◄────────┘
+                                 │
+                                 ▼
+                    <span class="c-ok">[ Validation Gate — PASS / FAIL ]</span></pre>
+    </section>
 
   </main>
 </div>
 
 <footer>
-  <!-- your existing footer -->
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open EPM methodology — cost apportionment design and implementation reference for Pigment.</p>
+      <span class="license">CC0 &mdash; public domain</span>
+    </div>
+    <div class="foot-meta">
+      Cost Apportionment in Pigment<br>
+      Worked reference model<br>
+      <a href="index.html">&larr; All articles</a><br>
+      &copy; 2026 falconbi
+    </div>
+  </div>
 </footer>
 
 <script>
-  // your existing script
+  // scroll reveal
+  (function(){
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els = document.querySelectorAll('.reveal');
+    if(reduce || !('IntersectionObserver' in window)){
+      els.forEach(function(e){e.classList.add('in')});
+    } else {
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(en){
+          if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); }
+        });
+      }, {threshold:0.12, rootMargin:'0px 0px -8% 0px'});
+      els.forEach(function(e){io.observe(e)});
+    }
+  })();
+
+  // active TOC highlight
+  (function(){
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+    if(!links.length) return;
+    var map = {};
+    links.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+    var sections = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); }).filter(Boolean);
+    var spy = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){
+          links.forEach(function(l){l.classList.remove('active')});
+          var a = map[en.target.id];
+          if(a) a.classList.add('active');
+        }
+      });
+    }, {rootMargin:'-20% 0px -70% 0px', threshold:0});
+    sections.forEach(function(s){spy.observe(s)});
+  })();
 </script>
 
 </body>
