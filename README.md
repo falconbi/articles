@@ -27,6 +27,7 @@ Published via GitHub Pages: **https://falconbi.github.io/articles/**
 
 ### Platform Selection
 - **[IBM Planning Analytics vs Pigment — Weighted Decision Scorecard](https://falconbi.github.io/articles/planning-platform-scorecard.html)** — an interactive scorecard for the AI-era planning-platform choice. Adjust the weights, or switch lens, and watch the winner change.
+- **[Two kinds of governance](https://falconbi.github.io/articles/two-governances-combined.html)** — the trade-off every EPM platform makes against itself. Control governs form; proximity governs meaning — and the gate between them is the pivot, not a feature. Walks through the grid, the sweet spot, and why the open API is the only mechanism that lets you close the gap.
 
 ## About
 
