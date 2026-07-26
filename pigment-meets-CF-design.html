@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<title>Pigment &amp; the Posting-Engine Design — falconbi</title>
+<meta name="description" content="Mapping the Forecast Cash Flow & Balance Sheet posting-engine brief against what a Pigment build actually delivers — verdict, mechanism table, complexity, and estimate point.">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ok:#166534;
+    --ok-soft:#f0fdf4;
+    --build-soft:#eff6ff;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;font-size:16.5px;line-height:1.62;-webkit-font-smoothing:antialiased;}
+  a{color:var(--teal);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+
+  .shell{
+    max-width:1240px;margin:0 auto;
+    display:grid;grid-template-columns:15rem minmax(0,1fr);
+    gap:clamp(1.5rem,4vw,4rem);
+    padding:0 clamp(1.2rem,4vw,3rem);
+  }
+  nav.toc{position:sticky;top:6rem;align-self:start;height:max-content;padding-top:3rem;font-family:var(--mono);font-size:.78rem;line-height:1.5;}
+  nav.toc .toc-label{text-transform:uppercase;letter-spacing:.16em;color:var(--ink-faint);font-size:.66rem;margin-bottom:1rem;}
+  nav.toc ol{list-style:none;margin:0;padding:0;}
+  nav.toc li{margin:.15rem 0;}
+  nav.toc a{display:flex;gap:.6rem;color:var(--ink-muted);padding:.28rem .5rem;border-left:2px solid transparent;border-radius:0 3px 3px 0;transition:all .18s;}
+  nav.toc a .num{color:var(--ink-faint);}
+  nav.toc a:hover{background:var(--ground);text-decoration:none;color:var(--ink);}
+  nav.toc a.active{border-left-color:var(--teal);color:var(--teal);background:#f0fdfa;}
+  nav.toc a.active .num{color:var(--teal);}
+
+  main{padding:3rem 0 5rem;max-width:760px;}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin-bottom:1rem;}
+  h1{font-weight:700;letter-spacing:-.02em;line-height:1.08;font-size:clamp(2.1rem,5vw,3rem);margin:.2rem 0 1.1rem;}
+  .lede{font-size:1.15rem;color:var(--ink-muted);line-height:1.55;max-width:38em;}
+  .meta-row{display:flex;flex-wrap:wrap;gap:1.6rem;margin:1.8rem 0 0;padding:1rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:.74rem;}
+  .meta-row .k{color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em;display:block;font-size:.64rem;margin-bottom:.2rem;}
+  .meta-row .v{color:var(--ink);}
+
+  section{padding-top:3.4rem;}
+  .sec-head{display:flex;align-items:baseline;gap:1rem;margin-bottom:1.1rem;}
+  .sec-num{font-family:var(--mono);font-size:.82rem;color:var(--teal);font-weight:500;padding-top:.35rem;}
+  h2{font-weight:700;letter-spacing:-.015em;font-size:1.55rem;margin:0;line-height:1.15;}
+  h3{font-weight:600;font-size:1.08rem;margin:2rem 0 .5rem;letter-spacing:-.01em;}
+  p{margin:.9rem 0;}
+  code{font-family:var(--mono);font-size:.86em;background:var(--ground);border:1px solid var(--border);border-radius:4px;padding:.08em .38em;color:var(--navy);}
+
+  .thesis{border-left:3px solid var(--teal);background:#f0fdfa;padding:1.1rem 1.3rem;border-radius:0 6px 6px 0;margin:1.4rem 0;font-size:1.05rem;}
+  .thesis strong{color:#134e4a;}
+
+  .engine-line{font-family:var(--mono);font-size:.82rem;line-height:1.9;background:#1c1917;color:#e7e5e4;border-radius:8px;padding:1.2rem 1.4rem;margin:1.4rem 0;overflow-x:auto;}
+  .engine-line .arw{color:var(--teal);padding:0 .3rem;}
+
+  .map-wrap{margin:1.4rem 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:.9rem;}
+  thead th{background:var(--ground);text-align:left;font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);padding:.7rem .9rem;border-bottom:1px solid var(--border);font-weight:500;}
+  tbody td{padding:.7rem .9rem;border-bottom:1px solid var(--border);vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--ground);}
+  td.brief{font-weight:500;width:31%;}
+  td.mech{color:var(--ink-muted);font-size:.86rem;}
+  td.mech code{font-size:.82em;}
+  td.met{width:5rem;text-align:center;white-space:nowrap;}
+  .pill{font-family:var(--mono);font-size:.68rem;font-weight:600;padding:.18em .6em;border-radius:20px;letter-spacing:.03em;}
+  .pill.yes{background:var(--ok-soft);color:var(--ok);}
+  .pill.build{background:var(--build-soft);color:var(--navy);}
+  .note-inline{font-family:var(--mono);font-size:.6rem;color:var(--ink-faint);display:block;margin-top:.2rem;}
+
+  ul.clean{list-style:none;padding:0;margin:1rem 0;}
+  ul.clean li{position:relative;padding-left:1.4rem;margin:.7rem 0;}
+  ul.clean li::before{content:"";position:absolute;left:0;top:.62em;width:6px;height:6px;background:var(--teal);border-radius:50%;}
+  ul.clean li strong{color:var(--ink);}
+
+  .verdict{display:flex;gap:1rem;align-items:center;margin:1.4rem 0;padding:1rem 1.2rem;border:1px solid var(--border);border-radius:8px;background:var(--ground);}
+  .verdict .badge{font-weight:700;font-size:1.5rem;color:var(--teal);line-height:1;padding-right:1rem;border-right:1px solid var(--border);}
+  .verdict .badge small{display:block;font-family:var(--mono);font-size:.58rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-top:.3rem;}
+  .verdict .txt{font-size:.92rem;color:var(--ink-muted);}
+
+  figure.diagram{margin:1.6rem 0;}
+  figure.diagram svg{display:block;width:100%;height:auto;}
+  figure.diagram figcaption{font-family:var(--mono);font-size:.68rem;color:var(--ink-faint);margin-top:.5rem;text-align:center;letter-spacing:.04em;}
+
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease;}
+  .reveal.in{opacity:1;transform:none;}
+  @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none;}html{scroll-behavior:auto;}}
+  @media(max-width:1040px){.shell{grid-template-columns:1fr;}nav.toc{display:none;}main{padding-top:2rem;}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="index.html" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">Methodology &nbsp;&middot;&nbsp; Pigment</span>
+    <a href="index.html">&larr; articles</a></div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <div class="toc-label">Contents</div>
+    <ol>
+      <li><a href="#verdict"><span class="num">01</span><span>Verdict</span></a></li>
+      <li><a href="#engine"><span class="num">02</span><span>The shared engine</span></a></li>
+      <li><a href="#mapping"><span class="num">03</span><span>Brief → Pigment</span></a></li>
+      <li><a href="#complexity"><span class="num">04</span><span>Complexity</span></a></li>
+      <li><a href="#estimate"><span class="num">05</span><span>The estimate point</span></a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <div class="eyebrow">Posting-Engine Methodology · Pigment</div>
+    <h1>Does Pigment meet the design?</h1>
+    <p class="lede">Mapping the <em>Forecast Cash Flow &amp; Balance Sheet</em> posting-engine brief against what the Pigment build actually delivers.</p>
+
+    <div class="meta-row">
+      <div><span class="k">Pattern</span><span class="v">Posting engine / sub-ledger</span></div>
+      <div><span class="k">Platform</span><span class="v">Pigment</span></div>
+      <div><span class="k">Finding</span><span class="v">Engine met · edges are build effort</span></div>
+    </div>
+
+    <!-- 01 VERDICT -->
+    <section id="verdict">
+      <div class="sec-head"><span class="sec-num">01</span><h2>Verdict</h2></div>
+      <div class="thesis reveal">
+        Pigment <strong>meets the design</strong>. Cash is driven by per-account timing assumptions, those accounts are mapped to CF lines and BS contra accounts, the engine allows module overrides and postings from other applications, and balances accumulate from stored movements with reconciliation checks on top.
+      </div>
+      <p class="reveal">The calculation of cash is one engine, driven entirely by the account assumptions. Everything else — mapping, routing, controls — sits around it. The same drivers in produce the same cash out; nothing is reverse-engineered from a blind net-income figure.</p>
+    </section>
+
+    <!-- 02 ENGINE -->
+    <section id="engine">
+      <div class="sec-head"><span class="sec-num">02</span><h2>The shared engine</h2></div>
+      <p class="reveal">Per-account timing assumptions spread each account's amount into its cash month, account by account. Those cash movements map to CF lines and to BS contra accounts, accumulate into life-to-date balances, and blend with overrides and imported actuals. In one line:</p>
+      <div class="engine-line reveal">
+        account timing assumptions<span class="arw">→</span>cash by account<span class="arw">→</span>mapped to CF lines &amp; BS contras<span class="arw">→</span>accumulated into balances<span class="arw">→</span>blended with overrides &amp; external postings<span class="arw">→</span>checked to zero
+      </div>
+
+      <!-- Diagram 1: Engine pipeline -->
+      <figure class="diagram reveal">
+        <svg viewBox="0 0 712 108" role="img" aria-label="Six-stage posting engine pipeline from account timing through to the zero-balance check">
+          <defs>
+            <marker id="ar-t" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1 2L7.5 5L1 8" fill="none" stroke="#0f766e" stroke-width="1.8"/></marker>
+            <marker id="ar-n" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1 2L7.5 5L1 8" fill="none" stroke="#1e3a5f" stroke-width="1.8"/></marker>
+            <marker id="ar-g" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1 2L7.5 5L1 8" fill="none" stroke="#166534" stroke-width="1.8"/></marker>
+          </defs>
+
+          <!-- Stage 1: Account timing -->
+          <rect x="4" y="22" width="104" height="64" rx="7" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.2"/>
+          <text text-anchor="middle" font-family="inherit" font-size="9.5" font-weight="600" fill="#134e4a">
+            <tspan x="56" dy="46">Account</tspan>
+            <tspan x="56" dy="13">timing</tspan>
+          </text>
+          <text x="56" y="96" text-anchor="middle" font-family="inherit" font-size="8.5" fill="#0f766e">assumptions</text>
+
+          <!-- Arrow 1→2 -->
+          <line x1="108" y1="54" x2="120" y2="54" stroke="#0f766e" stroke-width="1.6" marker-end="url(#ar-t)"/>
+
+          <!-- Stage 2: Cash by account -->
+          <rect x="122" y="22" width="104" height="64" rx="7" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.2"/>
+          <text text-anchor="middle" font-family="inherit" font-size="9.5" font-weight="600" fill="#134e4a">
+            <tspan x="174" dy="46">Cash</tspan>
+            <tspan x="174" dy="13">by account</tspan>
+          </text>
+
+          <!-- Arrow 2→3 -->
+          <line x1="226" y1="54" x2="238" y2="54" stroke="#0f766e" stroke-width="1.6" marker-end="url(#ar-t)"/>
+
+          <!-- Stage 3: CF & BS mapping -->
+          <rect x="240" y="22" width="104" height="64" rx="7" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.2"/>
+          <text text-anchor="middle" font-family="inherit" font-size="9.5" font-weight="600" fill="#134e4a">
+            <tspan x="292" dy="39">CF line +</tspan>
+            <tspan x="292" dy="13">BS contra</tspan>
+          </text>
+          <text x="292" y="96" text-anchor="middle" font-family="inherit" font-size="8.5" fill="#0f766e">mapping</text>
+
+          <!-- Arrow 3→4 -->
+          <line x1="344" y1="54" x2="356" y2="54" stroke="#0f766e" stroke-width="1.6" marker-end="url(#ar-t)"/>
+
+          <!-- Stage 4: Accumulate balances -->
+          <rect x="358" y="22" width="104" height="64" rx="7" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.2"/>
+          <text text-anchor="middle" font-family="inherit" font-size="9.5" font-weight="600" fill="#134e4a">
+            <tspan x="410" dy="46">Accumulate</tspan>
+            <tspan x="410" dy="13">balances</tspan>
+          </text>
+
+          <!-- Arrow 4→5 -->
+          <line x1="462" y1="54" x2="474" y2="54" stroke="#1e3a5f" stroke-width="1.6" marker-end="url(#ar-n)"/>
+
+          <!-- Stage 5: Blend with overrides (navy — external input) -->
+          <rect x="476" y="22" width="104" height="64" rx="7" fill="#eff6ff" stroke="#1e3a5f" stroke-width="1.2"/>
+          <text text-anchor="middle" font-family="inherit" font-size="9.5" font-weight="600" fill="#1e3a5f">
+            <tspan x="528" dy="39">Blend +</tspan>
+            <tspan x="528" dy="13">overrides</tspan>
+          </text>
+          <text x="528" y="96" text-anchor="middle" font-family="inherit" font-size="8.5" fill="#1e3a5f">+ actuals</text>
+
+          <!-- Arrow 5→6 -->
+          <line x1="580" y1="54" x2="592" y2="54" stroke="#166534" stroke-width="1.6" marker-end="url(#ar-g)"/>
+
+          <!-- Stage 6: Check to zero (green — control) -->
+          <rect x="594" y="22" width="104" height="64" rx="7" fill="#f0fdf4" stroke="#166534" stroke-width="1.5"/>
+          <text text-anchor="middle" font-family="inherit" font-size="9.5" font-weight="600" fill="#166534">
+            <tspan x="646" dy="39">Check</tspan>
+            <tspan x="646" dy="13">to zero</tspan>
+          </text>
+          <text x="646" y="96" text-anchor="middle" font-family="inherit" font-size="13" fill="#166534">✓</text>
+        </svg>
+        <figcaption>Teal stages = core engine &nbsp;·&nbsp; Navy = external blend &nbsp;·&nbsp; Green = control check</figcaption>
+      </figure>
+
+      <p class="reveal">Reconciliation sits on top as a control — the check metrics confirm the CF statement ties to the balance-sheet cash movement every period. It verifies the engine; it is not how cash is calculated.</p>
+    </section>
+
+    <!-- 03 MAPPING -->
+    <section id="mapping">
+      <div class="sec-head"><span class="sec-num">03</span><h2>Brief → Pigment</h2></div>
+      <p class="reveal">Each requirement in the design brief against the mechanism that satisfies it. The key architectural point first: every account generates both a cash-flow entry and a balance-sheet movement simultaneously.</p>
+
+      <!-- Diagram 2: Account routing architecture -->
+      <figure class="diagram reveal">
+        <svg viewBox="0 0 560 306" role="img" aria-label="One P&amp;L account routes through a timing assumption to produce both a CF line entry and a BS contra entry simultaneously">
+          <defs>
+            <marker id="ar-d" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1 2L7.5 5L1 8" fill="none" stroke="#0f766e" stroke-width="1.8"/></marker>
+            <marker id="ar-n2" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1 2L7.5 5L1 8" fill="none" stroke="#1e3a5f" stroke-width="1.8"/></marker>
+            <marker id="ar-g2" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1 2L7.5 5L1 8" fill="none" stroke="#166534" stroke-width="1.8"/></marker>
+          </defs>
+
+          <!-- P&L Account box (top centre) -->
+          <rect x="180" y="10" width="200" height="56" rx="8" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.3"/>
+          <text x="280" y="34" text-anchor="middle" font-family="inherit" font-size="12" font-weight="700" fill="#134e4a">P&amp;L Account</text>
+          <text x="280" y="52" text-anchor="middle" font-family="inherit" font-size="10" fill="#0f766e">amount per period</text>
+
+          <!-- Down arrow + label -->
+          <line x1="280" y1="66" x2="280" y2="100" stroke="#0f766e" stroke-width="1.6" marker-end="url(#ar-d)"/>
+          <text x="290" y="87" font-family="inherit" font-size="9.5" fill="#888780" font-style="italic">timing assumption</text>
+          <text x="290" y="98" font-family="inherit" font-size="9" fill="#b4b2a9">delay · phasing · method</text>
+
+          <!-- Cash Movement box (middle) -->
+          <rect x="180" y="102" width="200" height="56" rx="8" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.3"/>
+          <text x="280" y="127" text-anchor="middle" font-family="inherit" font-size="12" font-weight="700" fill="#134e4a">Cash Movement</text>
+          <text x="280" y="145" text-anchor="middle" font-family="inherit" font-size="10" fill="#0f766e">amount shifted to cash date</text>
+
+          <!-- Branch Y: horizontal splitter -->
+          <line x1="280" y1="158" x2="280" y2="175" stroke="#888780" stroke-width="1.3"/>
+          <line x1="120" y1="175" x2="440" y2="175" stroke="#888780" stroke-width="1.3"/>
+
+          <!-- Left branch arrow -->
+          <line x1="120" y1="175" x2="120" y2="210" stroke="#0f766e" stroke-width="1.6" marker-end="url(#ar-d)"/>
+          <!-- Right branch arrow -->
+          <line x1="440" y1="175" x2="440" y2="210" stroke="#1e3a5f" stroke-width="1.6" marker-end="url(#ar-n2)"/>
+
+          <!-- CF Line box (bottom left) -->
+          <rect x="20" y="212" width="200" height="56" rx="8" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.3"/>
+          <text x="120" y="237" text-anchor="middle" font-family="inherit" font-size="12" font-weight="700" fill="#134e4a">CF Line</text>
+          <text x="120" y="255" text-anchor="middle" font-family="inherit" font-size="10" fill="#0f766e">direct method cash flow</text>
+
+          <!-- BS Contra box (bottom right) -->
+          <rect x="340" y="212" width="200" height="56" rx="8" fill="#eff6ff" stroke="#1e3a5f" stroke-width="1.3"/>
+          <text x="440" y="237" text-anchor="middle" font-family="inherit" font-size="12" font-weight="700" fill="#1e3a5f">BS Contra</text>
+          <text x="440" y="255" text-anchor="middle" font-family="inherit" font-size="10" fill="#1e3a5f">AR · AP · accruals</text>
+
+          <!-- Nexus / override note -->
+          <rect x="190" y="278" width="180" height="24" rx="5" fill="#faeeda" stroke="#ba7517" stroke-width="1"/>
+          <text x="280" y="294" text-anchor="middle" font-family="inherit" font-size="9.5" fill="#7c2d12" font-weight="600">+ Nexus overlay &amp; module overrides</text>
+
+          <!-- Label: both boxes generated simultaneously -->
+          <text x="280" y="196" text-anchor="middle" font-family="inherit" font-size="9" fill="#888780" font-style="italic">generated simultaneously per account</text>
+        </svg>
+        <figcaption>Every P&amp;L account generates both outputs — the same engine, every account, same logic</figcaption>
+      </figure>
+
+      <div class="map-wrap reveal">
+        <table>
+          <thead><tr><th>Design brief</th><th>Pigment mechanism</th><th>Met</th></tr></thead>
+          <tbody>
+            <tr><td class="brief">Tie to P&amp;L by construction</td><td class="mech">One Account dimension; CF / BS / P&amp;L are views over the same postings</td><td class="met"><span class="pill yes">Yes</span></td></tr>
+            <tr><td class="brief">Method parameter set per account</td><td class="mech"><code>CF_Cash Impact_Input_Delay</code>, <code>CF_Rev_Input_Phasing %</code>, <code>Set_CF Line Items</code></td><td class="met"><span class="pill yes">Yes</span></td></tr>
+            <tr><td class="brief">Cash driven from account timing</td><td class="mech"><code>Calc_Payment Delay</code> / <code>Calc_Phased Revenue</code> — spreads each account into its cash month</td><td class="met"><span class="pill yes">Yes</span></td></tr>
+            <tr><td class="brief">Account → CF line mapping</td><td class="mech"><code>Set_CF Line Items</code> — CF_Category tag × Operator</td><td class="met"><span class="pill yes">Yes</span></td></tr>
+            <tr><td class="brief">Account → BS contra</td><td class="mech">Contra tag per account (Revenue → AR, Supplies → AP…)</td><td class="met"><span class="pill yes">Yes</span></td></tr>
+            <tr><td class="brief">Module overrides</td><td class="mech"><code>Set_</code> switches route to external OPEX / Revenue app cash schedules</td><td class="met"><span class="pill yes">Yes</span></td></tr>
+            <tr><td class="brief">Postings from other applications</td><td class="mech">Nexus blends cash-timed plan with imported actuals (<code>CF_Nexus_99</code>)</td><td class="met"><span class="pill yes">Yes</span></td></tr>
+            <tr><td class="brief">Balance = accumulation of movements</td><td class="mech">Cumulating metric along Time; BS life-to-date, carried across year-ends</td><td class="met"><span class="pill yes">Yes</span></td></tr>
+            <tr><td class="brief">Source-module isolation</td><td class="mech">Source Module dimension; each source balances in its own slice</td><td class="met"><span class="pill yes">Yes</span></td></tr>
+            <tr><td class="brief">Currency / FX<span class="note-inline">local-currency engine + translation overlay</span></td><td class="mech">Engine runs local; translation is an overlay; FX gain/loss is the residual</td><td class="met"><span class="pill build">Build</span></td></tr>
+            <tr><td class="brief">Edge-case accounts<span class="note-inline">deferred rev, capex, debt, tax, IC, inventory</span></td><td class="mech">Bespoke methods per account via treatment flag; deferred revenue the key override</td><td class="met"><span class="pill build">Build</span></td></tr>
+            <tr><td class="brief">Actual / forecast boundary</td><td class="mech">Actuals as own source; true-up resets modelled contras to actual opening</td><td class="met"><span class="pill yes">Yes</span></td></tr>
+            <tr><td class="brief">Validation &amp; controls</td><td class="mech"><code>Check_Activities</code> / <code>Check_Ending Balance</code> to zero; per-module balance check</td><td class="met"><span class="pill yes">Yes</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="reveal"><span class="pill yes">Yes</span> — met by the engine as built. <span class="pill build">Build</span> — supported by the pattern, but a build effort scoped to the specific chart of accounts and currency profile.</p>
+    </section>
+
+    <!-- 04 COMPLEXITY -->
+    <section id="complexity">
+      <div class="sec-head"><span class="sec-num">04</span><h2>Complexity</h2></div>
+      <div class="verdict reveal">
+        <div class="badge">High<small>front-loaded into discovery</small></div>
+        <div class="txt">Conceptually demanding, mechanically tractable, and dominated by discovery — not by build speed.</div>
+      </div>
+
+      <!-- Diagram 3: 80/20 complexity profile -->
+      <figure class="diagram reveal">
+        <svg viewBox="0 0 580 190" role="img" aria-label="Accounts split 80 percent grouped methods versus 20 percent bespoke edge cases, but the bespoke tail carries the majority of project effort">
+          <defs>
+            <marker id="ar-c" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1 2L7.5 5L1 8" fill="none" stroke="#888780" stroke-width="1.5"/></marker>
+          </defs>
+
+          <!-- Row labels -->
+          <text x="68" y="45" text-anchor="end" font-family="inherit" font-size="9" font-weight="600" fill="#888780" text-transform="uppercase" letter-spacing=".06em">ACCOUNTS</text>
+          <text x="68" y="118" text-anchor="end" font-family="inherit" font-size="9" font-weight="600" fill="#888780">EFFORT</text>
+
+          <!-- Accounts bar -->
+          <!-- 80% teal -->
+          <rect x="76" y="24" width="384" height="38" rx="5" fill="#f0fdfa" stroke="#0f766e" stroke-width="1"/>
+          <text x="268" y="39" text-anchor="middle" font-family="inherit" font-size="10" font-weight="700" fill="#134e4a">80%</text>
+          <text x="268" y="54" text-anchor="middle" font-family="inherit" font-size="9" fill="#0f766e">Grouped methods — repetitive, predictable</text>
+          <!-- 20% amber -->
+          <rect x="464" y="24" width="96" height="38" rx="5" fill="#faeeda" stroke="#ba7517" stroke-width="1"/>
+          <text x="512" y="39" text-anchor="middle" font-family="inherit" font-size="10" font-weight="700" fill="#7c2d12">20%</text>
+          <text x="512" y="54" text-anchor="middle" font-family="inherit" font-size="9" fill="#7c2d12">Edge cases</text>
+
+          <!-- Effort bar -->
+          <!-- 40% teal (easy accounts, lower effort) -->
+          <rect x="76" y="97" width="192" height="38" rx="5" fill="#f0fdfa" stroke="#0f766e" stroke-width="1"/>
+          <text x="172" y="112" text-anchor="middle" font-family="inherit" font-size="10" font-weight="700" fill="#134e4a">~40%</text>
+          <text x="172" y="127" text-anchor="middle" font-family="inherit" font-size="9" fill="#0f766e">Cheap to add</text>
+          <!-- 60% amber (bespoke tail, higher effort) -->
+          <rect x="272" y="97" width="288" height="38" rx="5" fill="#faeeda" stroke="#ba7517" stroke-width="1.3"/>
+          <text x="416" y="112" text-anchor="middle" font-family="inherit" font-size="10" font-weight="700" fill="#7c2d12">~60%</text>
+          <text x="416" y="127" text-anchor="middle" font-family="inherit" font-size="9" fill="#7c2d12">Discovery-heavy: FX · debt circularity · deferred rev · IC</text>
+
+          <!-- Axis ticks -->
+          <line x1="76" y1="70" x2="76" y2="90" stroke="#d9d7cd" stroke-width="1"/>
+          <line x1="560" y1="70" x2="560" y2="90" stroke="#d9d7cd" stroke-width="1"/>
+          <line x1="76" y1="80" x2="560" y2="80" stroke="#d9d7cd" stroke-width="1"/>
+          <text x="76" y="77" text-anchor="middle" font-family="inherit" font-size="8.5" fill="#b4b2a9">0%</text>
+          <text x="560" y="77" text-anchor="middle" font-family="inherit" font-size="8.5" fill="#b4b2a9">100%</text>
+
+          <!-- Insight callout -->
+          <rect x="76" y="148" width="484" height="32" rx="5" fill="none" stroke="#e0ded4" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="318" y="163" text-anchor="middle" font-family="inherit" font-size="9.5" fill="#5f5e5a">The bespoke 20% carries the majority of effort — but it's</text>
+          <text x="318" y="175" text-anchor="middle" font-family="inherit" font-size="9.5" fill="#5f5e5a" font-weight="600">isolated, not smeared. That containment is the design's main achievement.</text>
+        </svg>
+        <figcaption>Effort is front-loaded into the discovery of which accounts fall into the 20%</figcaption>
+      </figure>
+
+      <p class="reveal">The mechanical complexity is moderate and repetitive: one generic engine, a handful of grouped methods covering ~80% of accounts, then per-account parameters. Once the pattern is set, adding an account is cheap. Where the real complexity lives:</p>
+      <ul class="clean reveal">
+        <li><strong>The edge cases carry disproportionate weight.</strong> Deferred revenue running backwards, debt introducing circularity, FX gain/loss as a translation residual — each is its own problem, and none is knowable from the chart of accounts. The expensive part is discovery: the week-six "oh, except for that one."</li>
+        <li><strong>Circularity is the one genuine step-up.</strong> It moves from "hard to get right" to "won't compute in a single pass." Interest-on-opening-balance is the correct dodge, but knowing to make that choice, and defending it, is senior judgment — not configuration.</li>
+        <li><strong>The integrity model earns the complexity.</strong> Source-module isolation and balance-by-construction are more rules to author, but they turn debugging from an unbounded hunt into a localised lookup — up-front rule proliferation traded against far cheaper lifetime maintenance.</li>
+      </ul>
+      <p class="reveal">What makes it manageable is that the hard parts are isolated: the 80% flow through grouped methods and stay boring, so the difficulty is quarantined in the bespoke tail rather than smeared across the whole model. That is the design's main achievement — not removing complexity, but containing it.</p>
+    </section>
+
+    <!-- 05 ESTIMATE -->
+    <section id="estimate">
+      <div class="sec-head"><span class="sec-num">05</span><h2>The estimate point</h2></div>
+      <p class="reveal">The trade is justified for a recurring, audited, multi-year planning model; harder to justify for a small or short-lived one. A configuration-only estimate prices the build and implicitly assumes requirements are known and data fits — and so misses exactly the discovery-led part that dominates the effort.</p>
+      <div class="thesis reveal">
+        Pigment carries the pattern. It does not remove the <strong>discovery</strong> — the per-account timing assumptions and special-account treatment surface through workshops, not from the chart of accounts.
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open, vendor-agnostic notes on enterprise planning and EPM.</p>
+      <span class="license">CC0 — public domain</span>
+    </div>
+    <div class="foot-meta">
+      <strong>Does Pigment meet the design?</strong><br>
+      <a href="pigment-meets-CF-design.html">falconbi.github.io/articles/</a><br>
+      &copy; 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+<script>
+  const links = [...document.querySelectorAll('nav.toc a')];
+  const map = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if(e.isIntersecting){
+        links.forEach(l => l.classList.remove('active'));
+        const a = map.get(e.target.id);
+        if(a) a.classList.add('active');
+      }
+    });
+  }, {rootMargin:'-45% 0px -50% 0px', threshold:0});
+  document.querySelectorAll('section[id]').forEach(s => io.observe(s));
+
+  const rio = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); rio.unobserve(e.target); } });
+  }, {threshold:0.12});
+  document.querySelectorAll('.reveal').forEach(el => rio.observe(el));
+</script>
+</body>
+</html>

@@ -17,6 +17,7 @@ Published via GitHub Pages: **https://falconbi.github.io/articles/**
 
 ### Cash Flow
 - **[Forecast Cash Flow & Balance Sheet — Design](https://falconbi.github.io/Cash-Flow-Direct-Method/)** — a posting-engine approach for integrated direct-method cash flow and balance sheet forecasting. Platform-agnostic design with TM1 implementation notes.
+- **[Does Pigment meet the design?](https://falconbi.github.io/articles/pigment-meets-CF-design.html)** — maps the posting-engine brief requirement-by-requirement against what a Pigment build delivers. Verdict, engine pipeline diagram, account routing architecture, 80/20 complexity profile, and where discovery effort dominates.
 
 ### Pigment Patterns & Hierarchy Design
 - **[IF() Dimensional Scope Contamination — Case Study](https://falconbi.github.io/articles/pigment-if-scope.html)** — a 13-branch IF formula silently inflated reconciliation totals by exactly 12×. How eager evaluation, dimension alignment, and default aggregation combine to produce a silent multiplier.
