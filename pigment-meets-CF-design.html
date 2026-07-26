@@ -92,6 +92,37 @@
   .reveal.in{opacity:1;transform:none;}
   @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none;}html{scroll-behavior:auto;}}
   @media(max-width:1040px){.shell{grid-template-columns:1fr;}nav.toc{display:none;}main{padding-top:2rem;}}
+
+  /* ---- dark mode overrides ---- */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ok: #86efac;
+      --ok-soft: rgba(134,239,172,.14);
+      --build-soft: rgba(147,197,253,.1);
+    }
+    .thesis { background: rgba(15,118,110,.16); }
+    .thesis strong { color: #5eead4; }
+    .pill.build { color: #93c5fd; }
+    nav.toc a.active { background: rgba(15,118,110,.18); }
+  }
+  :root[data-theme="dark"] {
+    --ok: #86efac;
+    --ok-soft: rgba(134,239,172,.14);
+    --build-soft: rgba(147,197,253,.1);
+  }
+  :root[data-theme="dark"] .thesis { background: rgba(15,118,110,.16); }
+  :root[data-theme="dark"] .thesis strong { color: #5eead4; }
+  :root[data-theme="dark"] .pill.build { color: #93c5fd; }
+  :root[data-theme="dark"] nav.toc a.active { background: rgba(15,118,110,.18); }
+  :root[data-theme="light"] {
+    --ok: #166534;
+    --ok-soft: #f0fdf4;
+    --build-soft: #eff6ff;
+  }
+  :root[data-theme="light"] .thesis { background: #f0fdfa; }
+  :root[data-theme="light"] .thesis strong { color: #134e4a; }
+  :root[data-theme="light"] .pill.build { color: var(--navy); }
+  :root[data-theme="light"] nav.toc a.active { background: #f0fdfa; }
 </style>
 </head>
 <body>
