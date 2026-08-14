@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<title>Pigment and TM1 — matching the engine to the work · falconbi</title>
+<meta name="description" content="A plain-language comparison of the Pigment and TM1 calculation engines: how each scales, how each handles a calculation that depends on its own result, how data is brought in, and where each fits.">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  /* page-local: fit table cost badges + flexibility mirror (built on house tokens) */
+  .cost{ display:inline-block; font-family:var(--mono); font-weight:500; font-size:.7rem;
+    letter-spacing:.04em; padding:.15rem .55rem; border-radius:2rem; margin-bottom:.35rem; }
+  .cost.lo{ background:var(--forest-tint); color:var(--forest); border:1px solid color-mix(in srgb, var(--forest) 22%, transparent); }
+  .cost.mid{ background:var(--surface); color:var(--ink-muted); border:1px solid var(--border-s); }
+  .cost.hi{ background:var(--sienna-tint); color:var(--sienna); border:1px solid color-mix(in srgb, var(--sienna) 22%, transparent); }
+  .why{ display:block; font-size:.82rem; color:var(--ink-muted); line-height:1.45; }
+  td .win{ font-weight:600; white-space:nowrap; }
+  .win.p{ color:var(--violet); } .win.t{ color:var(--navy); }
+  .forks{ display:grid; gap:1rem; margin:1.75rem 0; }
+  .fork{ background:var(--surface); border:1px solid var(--border); border-radius:.7rem; padding:1.1rem 1.25rem 1.25rem; }
+  .fork h4{ font-size:1rem; font-weight:600; color:var(--ink); margin:0 0 .25rem; }
+  .fork .q{ font-family:var(--mono); font-size:.8rem; color:var(--teal); margin:0 0 .6rem; }
+  .fork p{ font-size:.92rem; margin:0; }
+  .t-nm{ color:var(--navy); font-weight:600; } .p-nm{ color:var(--violet); font-weight:600; }
+
+  .mirror{ margin:.25rem 0 0; }
+  .mirror-head,.mirror-row{ display:grid; grid-template-columns:132px 1fr 132px; gap:12px; align-items:center; }
+  .mirror-row{ margin-top:.5rem; }
+  .mh{ font-family:var(--mono); font-size:.68rem; letter-spacing:.07em; text-transform:uppercase; text-align:center; }
+  .mh.tm1{ color:var(--navy); } .mh.pig{ color:var(--violet); } .mh.mid{ color:var(--ink-muted); }
+  .mlabel{ text-align:center; font-size:.9rem; color:var(--ink); }
+  .cell{ width:100%; font:inherit; font-weight:600; font-size:.78rem; padding:.42rem .4rem; border-radius:8px;
+    cursor:pointer; border:1px solid transparent; transition:transform .08s ease, box-shadow .12s ease; }
+  .cell.lo{ background:var(--forest-tint); color:var(--forest); border-color:color-mix(in srgb,var(--forest) 25%,transparent); }
+  .cell.mid{ background:var(--surface); color:var(--ink-muted); border-color:var(--border-s); }
+  .cell.hi{ background:var(--sienna-tint); color:var(--sienna); border-color:color-mix(in srgb,var(--sienna) 25%,transparent); }
+  .cell:hover,.cell:focus-visible{ transform:translateY(-1px); outline:none; box-shadow:0 0 0 2px var(--surface-2),0 0 0 3px currentColor; }
+  .cell.active{ box-shadow:0 0 0 2px var(--surface-2),0 0 0 3px currentColor; }
+  .mirror-why{ margin-top:1rem; padding-top:.8rem; border-top:1px solid var(--line);
+    font-size:.9rem; line-height:1.55; color:var(--ink-soft); min-height:3.4em; }
+  .mirror-why b{ color:var(--ink); font-weight:600; }
+  .mirror-why .mw-t{ color:var(--navy); font-weight:600; } .mirror-why .mw-p{ color:var(--violet); font-weight:600; }
+  .mirror-legend{ display:flex; gap:1.1rem; margin-top:.9rem; font-size:.78rem; color:var(--ink-muted); align-items:center; flex-wrap:wrap; }
+  .mirror-legend span{ display:inline-flex; align-items:center; gap:.4rem; }
+  .sw{ width:13px; height:13px; border-radius:3px; display:inline-block; }
+  .sw.lo{ background:var(--forest-tint); border:1px solid var(--forest); }
+  .sw.mid{ background:var(--surface); border:1px solid var(--border-s); }
+  .sw.hi{ background:var(--sienna-tint); border:1px solid var(--sienna); }
+  @media (max-width:520px){ .mirror-head,.mirror-row{ grid-template-columns:92px 1fr 92px; gap:8px; } .mlabel{ font-size:.8rem; } .cell{ font-size:.72rem; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="index.html" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">Concept note · Platform selection</span>
+    <a href="index.html">← articles</a></div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="On this page">
+    <div class="toc-label">On this page</div>
+    <ol>
+      <li><a href="#scale"><span class="num">01</span>How each engine scales</a></li>
+      <li><a href="#feedback"><span class="num">02</span>Calculations that feed themselves</a></li>
+      <li><a href="#cycle"><span class="num">03</span>When passes are not enough</a></li>
+      <li><a href="#data"><span class="num">04</span>How data is brought in</a></li>
+      <li><a href="#fit"><span class="num">05</span>Which one fits</a></li>
+      <li><a href="#point"><span class="num">—</span>Choosing</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <div class="eyebrow"><span>Open methodology</span><span>Concept note</span><span>Pigment and TM1</span></div>
+      <h1>Pigment and TM1: matching the engine to the work</h1>
+      <p class="lede">Both engines are fast enough for almost every planning team. The differences that matter concern the shape of the work: how it is divided across machines, and what happens when a calculation depends on its own result. In broad terms, each engine is inexpensive to change in the areas where the other is expensive. The summary below states the whole comparison; the sections after it explain why it takes this shape.</p>
+      <div class="meta-row">
+        <span class="chip navy">TM1 / Planning Analytics</span>
+        <span class="chip violet">Pigment</span>
+        <span class="chip">~9 min read</span>
+      </div>
+
+    <figure class="reveal">
+      <div class="fig-frame">
+        <div class="fig-title">Cost of change in each engine — hover a cell for the reason</div>
+        <div class="mirror">
+        <div class="mirror-head"><span class="mh tm1">TM1</span><span class="mh mid">the change</span><span class="mh pig">Pigment</span></div>
+        <div class="mirror-row"><button class="cell lo" data-why="&lt;span class=&quot;mw-t&quot;&gt;TM1&lt;/span&gt; · &lt;b&gt;Low&lt;/b&gt; — TM1 reads each tree on demand, so reshuffles of uneven-depth structures just work. Reorganising is an edit, not a rebuild.">Low</button><span class="mlabel">Reshape a hierarchy</span><button class="cell mid" data-why="&lt;span class=&quot;mw-p&quot;&gt;Pigment&lt;/span&gt; · &lt;b&gt;Moderate&lt;/b&gt; — Pigment&#x27;s fixed levels need tidying when the shape moves, so a reorg takes some care. Manageable, but not free.">Moderate</button></div>
+        <div class="mirror-row"><button class="cell mid" data-why="&lt;span class=&quot;mw-t&quot;&gt;TM1&lt;/span&gt; · &lt;b&gt;Moderate&lt;/b&gt; — New logic usually drags along extra bookkeeping that can go wrong in two directions. Powerful, but the upkeep comes with it.">Moderate</button><span class="mlabel">Change the logic</span><button class="cell lo" data-why="&lt;span class=&quot;mw-p&quot;&gt;Pigment&lt;/span&gt; · &lt;b&gt;Low&lt;/b&gt; — Change a formula and everything downstream updates, and you can see exactly what it touched. Fast to try things.">Low</button></div>
+        <div class="mirror-row"><button class="cell hi" data-why="&lt;span class=&quot;mw-t&quot;&gt;TM1&lt;/span&gt; · &lt;b&gt;High&lt;/b&gt; — The whole model sits on one machine, so growth means a bigger machine and eventually a ceiling. You scale up, not out.">High</button><span class="mlabel">Grow bigger</span><button class="cell lo" data-why="&lt;span class=&quot;mw-p&quot;&gt;Pigment&lt;/span&gt; · &lt;b&gt;Low&lt;/b&gt; — Pigment adds machines as load grows and pushes heavy jobs across many of them. Growth is adding capacity, not hitting a wall.">Low</button></div>
+        <div class="mirror-row"><button class="cell hi" data-why="&lt;span class=&quot;mw-t&quot;&gt;TM1&lt;/span&gt; · &lt;b&gt;High&lt;/b&gt; — Sharing between separate apps means copies and feeds that slowly drift apart. Keeping them aligned is constant work.">High</button><span class="mlabel">Share across apps</span><button class="cell lo" data-why="&lt;span class=&quot;mw-p&quot;&gt;Pigment&lt;/span&gt; · &lt;b&gt;Low&lt;/b&gt; — Define something once and every app uses the same live copy. Change it in one place and all of them update.">Low</button></div>
+        <div class="mirror-row"><button class="cell lo" data-why="&lt;span class=&quot;mw-t&quot;&gt;TM1&lt;/span&gt; · &lt;b&gt;Low&lt;/b&gt; — TM1 can loop the same numbers until they settle, however many rounds it takes. It&#x27;s the one thing it does that Pigment can&#x27;t.">Low</button><span class="mlabel">Circular logic</span><button class="cell hi" data-why="&lt;span class=&quot;mw-p&quot;&gt;Pigment&lt;/span&gt; · &lt;b&gt;High&lt;/b&gt; — Pigment can&#x27;t loop back on itself, so a real cross-charge must be bounded or solved outside and fed back. There&#x27;s no built-in solver that runs to settled.">High</button></div>
+        <div class="mirror-row"><button class="cell mid" data-why="&lt;span class=&quot;mw-t&quot;&gt;TM1&lt;/span&gt; · &lt;b&gt;Moderate&lt;/b&gt; — TM1 can reshape incoming data itself, but that mixes data cleaning with planning. Flexible, at the cost of tangling the two.">Moderate</button><span class="mlabel">Source-data change</span><button class="cell lo" data-why="&lt;span class=&quot;mw-p&quot;&gt;Pigment&lt;/span&gt; · &lt;b&gt;Low&lt;/b&gt; — Data is cleaned before it arrives, so the model just uses tidy inputs. The trade is that another team owns that step.">Low</button></div>
+        <div class="mirror-why">Hover a cell (or tap on mobile) to see why that change is cheap or costly in each engine.</div>
+        <div class="mirror-legend"><span><i class="sw lo"></i>cheap</span><span><i class="sw mid"></i>moderate</span><span><i class="sw hi"></i>costly</span></div>
+        </div>
+      </div>
+      <figcaption>TM1's low-cost changes line up with Pigment's high-cost changes, and the reverse. Structure and circular calculations favour TM1; scale, sharing and logic change favour Pigment.</figcaption>
+    </figure>
+    </div>
+  <script>
+  (function(){
+    document.querySelectorAll('.mirror').forEach(function(m){
+      var why=m.querySelector('.mirror-why'); var def=why.innerHTML;
+      var cells=m.querySelectorAll('.cell');
+      function show(c){ why.innerHTML=c.getAttribute('data-why'); cells.forEach(function(x){x.classList.remove('active')}); c.classList.add('active'); }
+      cells.forEach(function(c){
+        c.addEventListener('mouseenter',function(){show(c)});
+        c.addEventListener('focus',function(){show(c)});
+        c.addEventListener('click',function(){show(c)});
+      });
+      m.addEventListener('mouseleave',function(){ why.innerHTML=def; cells.forEach(function(x){x.classList.remove('active')}); });
+    });
+  })();
+  </script>
+
+
+    <hr class="hr">
+
+    <section id="scale" class="prose">
+      <span class="snum">01 — How each engine scales</span>
+      <h2>How each engine scales</h2>
+      <p>Pigment knows the size and shape of a calculation before it runs, so it can divide the work across several machines and add more machines as models grow.</p>
+      <p>TM1 holds the whole model in one machine's memory and computes each figure on demand. This makes live editing feel immediate, but it ties the model to a single machine, so it grows by using a larger machine rather than more of them. The property that makes TM1 quick to edit is the same one that fixes it to one machine; the property that lets Pigment use many machines is the same one that can make a heavy report pause when first opened.</p>
+    </section>
+    <figure class="reveal">
+      <div class="fig-frame">
+        <div class="fig-title">One job divided across machines</div>
+        <svg viewBox="0 0 720 240" role="img" aria-label="One large calculation, its size known in advance, split into slices that run on several machines at the same time.">
+          <defs><marker id="ah-t1" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--teal)"/></marker></defs>
+          <rect x="16" y="86" width="234" height="86" rx="12" fill="var(--teal-tint)" stroke="var(--teal)" stroke-width="1.5"/>
+          <text x="34" y="116" font-size="15" font-weight="600" fill="var(--ink)">One big calculation</text>
+          <text x="34" y="139" font-size="12.5" fill="var(--ink-muted)">Revenue — every product,</text>
+          <text x="34" y="157" font-size="12.5" fill="var(--ink-muted)">entity and month</text>
+          <text x="16" y="72" font-size="11" font-family="var(--mono)" fill="var(--ink-muted)">SIZE KNOWN UP FRONT</text>
+          <path d="M 250 129 H 336" fill="none" stroke="var(--teal)" stroke-width="2" marker-end="url(#ah-t1)"/>
+          <text x="293" y="120" text-anchor="middle" font-size="12" fill="var(--ink-muted)">split</text>
+          <text x="360" y="72" font-size="11" font-family="var(--mono)" fill="var(--ink-muted)">DONE AT THE SAME TIME</text>
+          <rect x="360" y="82" width="112" height="44" rx="9" fill="var(--surface)" stroke="var(--teal)" stroke-width="1.4"/><text x="416" y="109" text-anchor="middle" font-size="12.5" fill="var(--ink)">Machine 1</text>
+          <rect x="486" y="82" width="112" height="44" rx="9" fill="var(--surface)" stroke="var(--teal)" stroke-width="1.4"/><text x="542" y="109" text-anchor="middle" font-size="12.5" fill="var(--ink)">Machine 2</text>
+          <rect x="612" y="82" width="96" height="44" rx="9" fill="var(--surface)" stroke="var(--teal)" stroke-width="1.4"/><text x="660" y="109" text-anchor="middle" font-size="12.5" fill="var(--ink)">Machine 3</text>
+          <rect x="424" y="146" width="112" height="44" rx="9" fill="var(--surface)" stroke="var(--teal)" stroke-width="1.4"/><text x="480" y="173" text-anchor="middle" font-size="12.5" fill="var(--ink)">…and more</text>
+          <path d="M 416 126 V 146 M 542 126 V 137 M 660 126 V 137" fill="none" stroke="var(--teal)" stroke-width="1.4" opacity="0.5"/>
+        </svg>
+      </div>
+      <figcaption>Because the size of the job is known in advance, it can be divided across several machines running at the same time. This is how larger models are handled.</figcaption>
+    </figure>
+
+    <hr class="hr">
+    <figure class="reveal">
+      <div class="fig-frame">
+        <div class="fig-title">Two ways to grow</div>
+        <svg viewBox="0 0 720 220" role="img" aria-label="TM1 grows by buying a bigger single machine; Pigment grows by adding more machines.">
+          <defs>
+            <marker id="ah-n" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--navy)"/></marker>
+            <marker id="ah-v2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--violet)"/></marker>
+          </defs>
+          <line x1="360" y1="18" x2="360" y2="202" stroke="var(--border-s)" stroke-width="1" stroke-dasharray="3 4"/>
+          <text x="24" y="34" font-size="12.5" font-weight="600" fill="var(--navy)">TM1 · grows up</text>
+          <rect x="70" y="120" width="92" height="60" rx="9" fill="var(--navy-tint)" stroke="var(--navy)" stroke-width="1.5"/>
+          <rect x="60" y="84" width="112" height="96" rx="9" fill="none" stroke="var(--navy)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <path d="M 116 84 V 62" fill="none" stroke="var(--navy)" stroke-width="1.6" marker-end="url(#ah-n)"/>
+          <text x="200" y="120" font-size="12.5" fill="var(--ink-muted)">everything in</text>
+          <text x="200" y="140" font-size="12.5" fill="var(--ink-muted)">one place →</text>
+          <text x="200" y="160" font-size="12.5" fill="var(--ink-muted)">buy a bigger box</text>
+          <text x="392" y="34" font-size="12.5" font-weight="600" fill="var(--violet)">Pigment · grows out</text>
+          <rect x="392" y="120" width="62" height="46" rx="8" fill="var(--violet-tint)" stroke="var(--violet)" stroke-width="1.4"/>
+          <rect x="466" y="120" width="62" height="46" rx="8" fill="var(--violet-tint)" stroke="var(--violet)" stroke-width="1.4"/>
+          <rect x="540" y="120" width="62" height="46" rx="8" fill="var(--violet-tint)" stroke="var(--violet)" stroke-width="1.4"/>
+          <rect x="614" y="120" width="62" height="46" rx="8" fill="none" stroke="var(--violet)" stroke-width="1.4" stroke-dasharray="5 4"/>
+          <text x="645" y="149" text-anchor="middle" font-size="20" fill="var(--violet)">+</text>
+          <text x="392" y="100" font-size="12.5" fill="var(--ink-muted)">add more boxes →</text>
+        </svg>
+      </div>
+      <figcaption>The design that makes TM1 quick to edit also fixes it to one machine. The design that lets Pigment use many machines is also what can make a heavy report pause when it is first opened.</figcaption>
+    </figure>
+
+    <hr class="hr">
+
+    <section id="feedback" class="prose">
+      <span class="snum">02 — Calculations that feed themselves</span>
+      <h2>Calculations that feed themselves</h2>
+      <p>Some calculations depend on their own result. A running balance is the mild case: this period's closing figure is last period's closing plus the movement, so the calculation refers back to itself. The harder case is cross-charging between departments — one department bills another and is billed in return — where each department's cost depends on the other's.</p>
+      <p>No planning tool allows a calculation to depend on itself directly. Pigment handles this by laying the repetitions out in order — period by period, or pass by pass — so each step reads the previous one and nothing refers back to itself.</p>
+    </section>
+    <figure class="reveal">
+        <div class="fig-frame">
+          <div class="fig-title">A circular calculation, laid out in order</div>
+          <svg viewBox="0 0 720 300" role="img" aria-label="A calculation that feeds itself forms a circle, which is not allowed; straightened into a row of steps, each reading the one before it, it becomes fine.">
+            <defs>
+              <marker id="ah-v" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--violet)"/></marker>
+              <marker id="ah-si" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--sienna)"/></marker>
+            </defs>
+            <!-- circle -->
+            <text x="95" y="40" font-size="12" font-family="var(--mono)" fill="var(--ink-muted)">NOT ALLOWED</text>
+            <circle cx="105" cy="120" r="46" fill="var(--sienna-tint)" stroke="var(--sienna)" stroke-width="1.8"/>
+            <path d="M 143 96 A 48 48 0 1 1 66 92" fill="none" stroke="var(--sienna)" stroke-width="2.2" marker-end="url(#ah-si)"/>
+            <text x="105" y="126" text-anchor="middle" font-size="15" font-weight="600" fill="var(--ink)">feeds</text>
+            <text x="105" y="196" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--sienna)">a circle — chases its tail</text>
+            <text x="250" y="126" font-size="26" fill="var(--ink-faint)">→</text>
+            <!-- row -->
+            <text x="300" y="40" font-size="12" font-family="var(--mono)" fill="var(--ink-muted)">ALLOWED — LAID OUT IN A ROW</text>
+            <g>
+              <rect x="300" y="66" width="72" height="50" rx="10" fill="var(--violet-tint)" stroke="var(--violet)" stroke-width="1.6"/><text x="336" y="97" text-anchor="middle" font-size="14" fill="var(--ink)">Jan</text>
+              <rect x="402" y="66" width="72" height="50" rx="10" fill="var(--violet-tint)" stroke="var(--violet)" stroke-width="1.6"/><text x="438" y="97" text-anchor="middle" font-size="14" fill="var(--ink)">Feb</text>
+              <rect x="504" y="66" width="72" height="50" rx="10" fill="var(--violet-tint)" stroke="var(--violet)" stroke-width="1.6"/><text x="540" y="97" text-anchor="middle" font-size="14" fill="var(--ink)">Mar</text>
+              <rect x="606" y="66" width="72" height="50" rx="10" fill="var(--surface)" stroke="var(--violet)" stroke-width="1.6" stroke-dasharray="4 4"/><text x="642" y="97" text-anchor="middle" font-size="14" fill="var(--ink-muted)">…</text>
+            </g>
+            <path d="M 374 91 H 400 M 476 91 H 502 M 578 91 H 604" fill="none" stroke="var(--violet)" stroke-width="2.2" marker-end="url(#ah-v)"/>
+            <text x="490" y="150" text-anchor="middle" font-size="12.5" fill="var(--ink-muted)">a running balance — each month reads the one before it</text>
+            <!-- iteration -->
+            <g>
+              <rect x="300" y="188" width="90" height="50" rx="10" fill="var(--violet-tint)" stroke="var(--violet)" stroke-width="1.6"/><text x="345" y="210" text-anchor="middle" font-size="13" fill="var(--ink)">Pass 1</text><text x="345" y="227" text-anchor="middle" font-size="10.5" fill="var(--ink-muted)">first estimate</text>
+              <rect x="420" y="188" width="90" height="50" rx="10" fill="var(--violet-tint)" stroke="var(--violet)" stroke-width="1.6"/><text x="465" y="210" text-anchor="middle" font-size="13" fill="var(--ink)">Pass 2</text><text x="465" y="227" text-anchor="middle" font-size="10.5" fill="var(--ink-muted)">closer</text>
+              <rect x="540" y="188" width="90" height="50" rx="10" fill="var(--violet-tint)" stroke="var(--violet)" stroke-width="1.6"/><text x="585" y="210" text-anchor="middle" font-size="13" fill="var(--ink)">Pass 3</text><text x="585" y="227" text-anchor="middle" font-size="10.5" fill="var(--ink-muted)">closer still</text>
+            </g>
+            <path d="M 390 213 H 418 M 510 213 H 538" fill="none" stroke="var(--violet)" stroke-width="2.2" marker-end="url(#ah-v)"/>
+            <path d="M 630 213 H 654" fill="none" stroke="var(--violet)" stroke-width="2" stroke-dasharray="4 4"/><text x="668" y="218" font-size="15" fill="var(--ink-muted)">…</text>
+            <text x="465" y="270" text-anchor="middle" font-size="12.5" fill="var(--ink-muted)">cross-charging — each pass a better estimate than the last</text>
+          </svg>
+        </div>
+        <figcaption>A calculation cannot depend on its own result. Laid out as an ordered sequence, each step reads the one before it, so nothing refers back to itself.</figcaption>
+      </figure>
+
+    <hr class="hr">
+
+    <section id="cycle" class="prose">
+      <span class="snum">03 — When passes are not enough</span>
+      <h2>When passes are not enough</h2>
+      <p>Pigment's sequence of passes has a fixed length. For a running balance this is sufficient. For cross-charging that only settles after many rounds, a fixed number of passes may stop before the figures settle.</p>
+      <p>TM1 can continue until the figures settle, however many rounds it takes, but only on one machine. For cross-charging at scale, the reliable approach is to solve the calculation in the data warehouse, which can resolve it in a single step, and return the result to the planning tool.</p>
+    </section>
+    <figure class="reveal">
+      <div class="fig-frame">
+        <div class="fig-title">Three ways to resolve a circular calculation</div>
+        <svg viewBox="0 0 720 236" role="img" aria-label="Three approaches to circular cross-charging: Pigment's fixed passes may stop short; TM1 grinds until settled on one machine; solving it in the warehouse and reading the answer back is the reliable route.">
+          <defs>
+            <marker id="ah-si2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--sienna)"/></marker>
+            <marker id="ah-n3" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--navy)"/></marker>
+            <marker id="ah-t2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--teal)"/></marker>
+          </defs>
+          <rect x="16" y="24" width="216" height="188" rx="13" fill="var(--sienna-tint)" stroke="var(--sienna)" stroke-width="1.4"/>
+          <text x="34" y="50" font-size="13" font-weight="600" fill="var(--sienna)">Pigment · fixed passes</text>
+          <text x="34" y="74" font-size="12.5" fill="var(--ink)">stops after N rounds</text>
+          <g fill="var(--surface)" stroke="var(--sienna)" stroke-width="1.1"><rect x="34" y="86" width="180" height="20" rx="5"/><rect x="34" y="112" width="180" height="20" rx="5"/><rect x="34" y="138" width="180" height="20" rx="5"/></g>
+          <text x="42" y="100" font-size="10.5" fill="var(--ink-muted)">pass 1 … pass N, then stop</text>
+          <text x="42" y="126" font-size="10.5" fill="var(--ink-muted)">may stop just short</text>
+          <text x="42" y="152" font-size="10.5" fill="var(--ink-muted)">good for gentle cases</text>
+          <text x="34" y="190" font-size="12" font-weight="600" fill="var(--sienna)">"close," not always "done"</text>
+          <rect x="252" y="24" width="216" height="188" rx="13" fill="var(--navy-tint)" stroke="var(--navy)" stroke-width="1.4"/>
+          <text x="270" y="50" font-size="13" font-weight="600" fill="var(--navy)">TM1 · keeps going</text>
+          <text x="270" y="74" font-size="12.5" fill="var(--ink)">runs until it settles</text>
+          <circle cx="360" cy="140" r="42" fill="none" stroke="var(--navy)" stroke-width="1.6"/>
+          <path d="M 360 98 A 42 42 0 1 1 324 120" fill="none" stroke="var(--navy)" stroke-width="1.8" marker-end="url(#ah-n3)"/>
+          <text x="360" y="145" text-anchor="middle" font-size="11.5" fill="var(--ink)">until settled</text>
+          <text x="270" y="204" font-size="12" font-weight="600" fill="var(--navy)">settles — on one machine</text>
+          <rect x="486" y="24" width="216" height="188" rx="13" fill="var(--teal-tint)" stroke="var(--teal)" stroke-width="1.4"/>
+          <text x="504" y="50" font-size="13" font-weight="600" fill="var(--teal)">Solve it outside</text>
+          <text x="504" y="74" font-size="12.5" fill="var(--ink)">the data warehouse</text>
+          <rect x="504" y="86" width="180" height="30" rx="6" fill="var(--surface)" stroke="var(--teal)" stroke-width="1.2"/>
+          <text x="594" y="106" text-anchor="middle" font-size="12" fill="var(--ink)">solves the whole circle</text>
+          <path d="M 594 116 V 138" fill="none" stroke="var(--teal)" stroke-width="1.7" marker-end="url(#ah-t2)"/>
+          <rect x="504" y="146" width="180" height="30" rx="6" fill="var(--surface)" stroke="var(--teal)" stroke-width="1.2"/>
+          <text x="594" y="166" text-anchor="middle" font-size="12" fill="var(--ink)">answer sent back in</text>
+          <text x="504" y="200" font-size="12" font-weight="600" fill="var(--forest)">the reliable route</text>
+        </svg>
+      </div>
+      <figcaption>Pigment's fixed passes are quick but may stop short of the settled figure. TM1 can run until it settles, on one machine. Solving in the warehouse and returning the result handles the difficult cases.</figcaption>
+    </figure>
+
+    <div class="callout warn">
+      <span class="co-label">Caveat</span>
+      <p>Solving the calculation outside the planning tool only helps if that outside layer is a governed data platform — one that tracks history, versions and where each figure came from. A set of loose files behind a connector provides none of that, and the case for moving the work there is weaker.</p>
+    </div>
+
+    <hr class="hr">
+
+    <section id="data" class="prose">
+      <span class="snum">04 — How data is brought in</span>
+      <h2>How data is brought in</h2>
+      <p>TM1 includes a tool that both loads and cleans data and runs planning steps such as allocations and version copies. Pigment has no equivalent, by design.</p>
+      <p>Loading and cleaning move upstream, to the data warehouse or source system. The planning steps stay inside Pigment, written as formulas the finance team can read and change. So the absence of that tool means two things at once: the data preparation moves out, and the planning stays in.</p>
+    </section>
+    <figure class="reveal">
+      <div class="fig-frame">
+        <div class="fig-title">Where data work and planning sit</div>
+        <svg viewBox="0 0 720 240" role="img" aria-label="TM1's built-in tool did two jobs; Pigment splits them — data loading moves upstream, planning steps stay inside as formulas.">
+          <defs><marker id="ah-n2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--navy)"/></marker></defs>
+          <rect x="280" y="18" width="160" height="52" rx="10" fill="var(--navy-tint)" stroke="var(--navy)" stroke-width="1.5"/>
+          <text x="360" y="41" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--ink)">TM1's tool did both</text>
+          <text x="360" y="59" text-anchor="middle" font-size="11.5" fill="var(--ink-muted)">Pigment splits them apart</text>
+          <path d="M 305 70 C 270 102, 210 106, 185 134" fill="none" stroke="var(--navy)" stroke-width="1.6" marker-end="url(#ah-n2)"/>
+          <path d="M 415 70 C 450 102, 510 106, 535 134" fill="none" stroke="var(--navy)" stroke-width="1.6" marker-end="url(#ah-n2)"/>
+          <rect x="26" y="134" width="290" height="90" rx="11" fill="var(--surface)" stroke="var(--teal)" stroke-width="1.3"/>
+          <text x="44" y="160" font-size="13.5" font-weight="600" fill="var(--ink)">Bring in &amp; clean data</text>
+          <text x="44" y="182" font-size="12.5" fill="var(--ink-muted)">→ moves upstream to the</text>
+          <text x="44" y="200" font-size="12.5" fill="var(--ink-muted)">data warehouse / source system</text>
+          <rect x="404" y="134" width="290" height="90" rx="11" fill="var(--surface)" stroke="var(--violet)" stroke-width="1.3"/>
+          <text x="422" y="160" font-size="13.5" font-weight="600" fill="var(--ink)">Run planning steps</text>
+          <text x="422" y="182" font-size="12.5" fill="var(--ink-muted)">→ stays inside Pigment as</text>
+          <text x="422" y="200" font-size="12.5" fill="var(--ink-muted)">formulas finance can read &amp; edit</text>
+        </svg>
+      </div>
+      <figcaption>Data cleaning moves to the layer built for it; the planning steps stay inside the tool as formulas. These are two separate changes, not one.</figcaption>
+    </figure>
+
+    <hr class="hr">
+
+    <section id="fit" class="prose">
+      <span class="snum">05 — Which one fits</span>
+      <h2>Which one fits</h2>
+      <p>Some situations point clearly to one tool.</p>
+    </section>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Your situation</th><th>Better fit</th><th>Why — in one line</th></tr></thead>
+        <tbody>
+          <tr><td>Planners in a room all day, nudging drivers and watching everything recalc</td><td><span class="win t">TM1</span></td><td>Everything's held close in one machine, so the live back-and-forth feels instant.</td></tr>
+          <tr><td>A group with many entities and products, and models that keep getting bigger</td><td><span class="win p">Pigment</span></td><td>It spreads the work across machines — no single-box ceiling to hit.</td></tr>
+          <tr><td>Dozens of separate planning apps sharing the same product list, org tree and rates</td><td><span class="win p">Pigment</span></td><td>One shared definition; change it once and every app sees it, live.</td></tr>
+          <tr><td>An org and cost-centre structure reorganised every quarter, uneven in depth</td><td><span class="win t">TM1</span></td><td>It handles trees that change shape without rebuilding the plumbing each time.</td></tr>
+          <tr><td>A brand-new model still changing shape week to week as the business decides</td><td><span class="win p">Pigment</span></td><td>Quick to build and reshape; you're not paying setup cost on a moving target.</td></tr>
+          <tr><td>One large, self-contained model, one team, and no data warehouse to lean on</td><td><span class="win t">TM1</span></td><td>It can do its own data loading and keep everything in one place.</td></tr>
+          <tr><td>Already warehouse-first (Databricks, Snowflake), wanting planning as a layer on top</td><td><span class="win p">Pigment</span></td><td>It's built to sit over the warehouse rather than replace it.</td></tr>
+          <tr><td>Regulated — must run on your own premises, data can't leave the boundary</td><td><span class="win t">TM1</span></td><td>It runs on-premises; Pigment is cloud-only.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <h3>Cases that depend on a second question</h3>
+      <p>Some situations do not resolve until one further question is answered. Each looks like a single choice but turns on the detail underneath.</p>
+    </div>
+
+    <div class="forks">
+      <div class="fork">
+        <h4>Large-scale apportionment</h4>
+        <p class="q">Does the cost flow one way, or in a circle?</p>
+        <p>One-way apportionment — spreading a single pool across thousands of cost-centre-by-product lines — favours <span class="p-nm">Pigment</span>, because each line is independent and the work divides across machines. Apportionment in a circle, where departments cross-charge until the figures settle, is different: solve it in the warehouse and return the result. If it must stay inside one tool, <span class="t-nm">TM1</span> can run a circular calculation until it settles. The same term covers two different problems.</p>
+      </div>
+      <div class="fork">
+        <h4>Many interconnected applications</h4>
+        <p class="q">Interconnected by sharing, or by calculation?</p>
+        <p>If the applications share the same structure and data — one master list feeding many business units — that favours <span class="p-nm">Pigment</span>, where a shared object is defined once and used live by every application. If instead the applications calculate through each other, with most figures depending on most others, holding it all in <span class="t-nm">TM1</span>'s single shared memory is simpler than connecting many applications. Sharing points to Pigment; a single interwoven calculation points to TM1.</p>
+      </div>
+      <div class="fork">
+        <h4>Models in constant change</h4>
+        <p class="q">Is the structure changing, or the logic?</p>
+        <p>If the structure changes — hierarchies reorganised, levels added or removed, trees of uneven depth — <span class="t-nm">TM1</span> absorbs it with the least rework. If the logic changes — new drivers, new calculations — <span class="p-nm">Pigment</span> is quicker to change and to see the result. Structural change favours TM1; logic change favours Pigment.</p>
+      </div>
+    </div>
+
+    <div class="callout navy">
+      <span class="co-label">Scope of this comparison</span>
+      <p>Every point above concerns the calculation engine only. For most buyers the decision is settled by adoption and day-to-day usability, which is a separate comparison from this one.</p>
+    </div>
+
+    <hr class="hr">
+
+    <section id="point" class="prose">
+      <span class="snum">Choosing</span>
+      <h2>Choosing</h2>
+      <p>The decision is rarely about speed; both engines are fast enough for almost every team. It concerns the shape of the work. TM1 makes structural change and self-referential calculation inexpensive, and pays for it in scale and cross-application sharing. Pigment makes scale, sharing and logic change inexpensive, and pays for it in reshaping hierarchies and resolving circular calculations. Choose the tool whose inexpensive changes match the changes made most often.</p>
+      <div class="seealso">
+        <a class="card" href="planning-platform-scorecard.html">
+          <span class="ct">Companion · Interactive</span>
+          <span class="ch">IBM Planning Analytics vs Pigment — weighted scorecard</span>
+          <p>The adoption-and-usability half of the decision: adjust the weights, switch lens, and watch the winner change.</p>
+        </a>
+        <a class="card" href="reciprocal-apportionment.html">
+          <span class="ct">Companion · Concept</span>
+          <span class="ch">Reciprocal apportionment — when cost flows both ways</span>
+          <p>The circular cross-charging problem in full: the three methods, its Leontief origins, and how modern systems solve it.</p>
+        </a>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open EPM methodology — practical design for planning and cost models. The methodology is published in full; implementation is available.</p>
+      <span class="license">CC0 — public domain</span>
+    </div>
+    <div class="foot-meta">
+      Concept note — Pigment vs TM1, plainly<br>
+      Part of the platform-selection series<br>
+      <a href="index.html">← All articles</a><br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els = document.querySelectorAll('.reveal');
+    if(reduce || !('IntersectionObserver' in window)){ els.forEach(function(e){e.classList.add('in')}); }
+    else{
+      var io = new IntersectionObserver(function(en){ en.forEach(function(x){ if(x.isIntersecting){ x.target.classList.add('in'); io.unobserve(x.target);} }); }, {threshold:0.1, rootMargin:'0px 0px -8% 0px'});
+      els.forEach(function(e){io.observe(e)});
+    }
+  })();
+  (function(){
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+    if(!links.length) return;
+    var map = {}; links.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+    var secs = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); }).filter(Boolean);
+    var spy = new IntersectionObserver(function(en){ en.forEach(function(x){ if(x.isIntersecting){ links.forEach(function(l){l.classList.remove('active')}); var a=map[x.target.id]; if(a)a.classList.add('active'); } }); }, {rootMargin:'-20% 0px -70% 0px'});
+    secs.forEach(function(s){spy.observe(s)});
+  })();
+</script>
+
+</body>
+</html>
