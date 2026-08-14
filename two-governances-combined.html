@@ -63,8 +63,9 @@
   <p class="kicker">falconbi · method</p>
   <h1>Two kinds of governance</h1>
   <p class="dek">The trade-off every EPM platform makes against itself — and the one thing that decides whether you can close it.</p>
+  <p style="font-size:13px;color:var(--ink-muted);margin:10px 0 0;font-family:var(--mono)">Published 14 March 2025</p>
 
-  <p class="lead">Ask whether an EPM platform can be "governed" and two people will argue past each other. The word hides two different things.</p>
+  <p class="lead">The word "governance" covers two distinct things in EPM. They are not interchangeable, and each is blind to what the other catches.</p>
 
   <h2>One word, two meanings</h2>
   <p>Control governs the <em>form</em> of a change. Proximity governs its <em>meaning</em>. Each is blind to what the other catches.</p>
@@ -228,12 +229,12 @@
       <p>Understands it perfectly. Nobody checks the work.</p>
     </div>
   </div>
-  <p>An open ecosystem lets you buy back control; downstream checks claw some more. Neither fully closes the gap — but one thing decides whether a tool can close it <em>at all</em>.</p>
+  <p>An open ecosystem and downstream checks recover some of that control. Neither fully closes the gap — but one thing determines whether the gap can be closed at all.</p>
 
   <hr>
 
   <h2>The mechanism</h2>
-  <p>Governance doesn't ship from the vendor. It gets built <em>around</em> the product. That needs an open API. No surface, no ecosystem, no fix.</p>
+  <p>Governance is built around the product, not shipped with it. That requires an open API — without one, there is no ecosystem and no mechanism to close the gap.</p>
   <figure>
     <svg viewBox="0 0 680 250" role="img" aria-label="Two paths. Open API leads to tools emerging, gaps getting filled (versioning, PR review, tests), and the sweet spot becoming reachable. Closed API leads to no ecosystem and gaps that stay open.">
       <rect x="24" y="52" width="104" height="50" rx="9" fill="#f0fdfa" stroke="#0f766e" stroke-width="1"/>
@@ -310,15 +311,15 @@
   </figure>
   <p>TM1's logic is text — rules and TI serialize to files. TM1py pulls them out; the REST API pushes them back. Git sits in the middle as the source of truth, and the whole PR loop is assemblable.</p>
   <div class="note">
-    <p>The limit: assemblable isn't shipped.</p>
-    <p>Noisy serialization to normalise, deploy ordering to respect, live-edit drift to fence off — and it takes someone fluent in TM1py, REST, Git and CI. The hybrid. Rare.</p>
+    <p>The limit: assemblable is not the same as shipped.</p>
+    <p>Practical blockers include noisy serialization, deploy ordering, and live-edit drift. Building and maintaining this pipeline requires someone fluent in TM1py, REST, Git, and CI — a combination that is uncommon in most finance teams.</p>
   </div>
-  <p>So TM1's tick on governance means <em>buildable</em>, not turnkey. Still worlds past Pigment — where the closed surface means it can't be attempted at all, by you or anyone but the vendor.</p>
+  <p>TM1's governance score is <em>buildable</em>, not turnkey. Pigment's closed surface means the same pipeline cannot be assembled at all — not by the customer, and not by a third party.</p>
 
   <h2>The catch</h2>
   <div class="catch">
-    <p>TM1's price is its face.</p>
-    <p>Dated UX, steep complexity, an implementation lift that pushes the very finance users it should empower back toward specialists. That's why it only half-ticks factors 1 and 2. The open surface makes governance <em>buildable</em>; the interface makes proximity <em>hard-won</em>.</p>
+    <p>TM1's cost is its interface.</p>
+    <p>Dated UX and steep implementation complexity push finance users back toward specialists — the opposite of the proximity it is trying to restore. That is why it only half-ticks factors 1 and 2. The open surface makes governance <em>buildable</em>; the interface makes proximity <em>hard-won</em>.</p>
   </div>
 
   <h2>The walled garden cuts both ways</h2>
@@ -346,7 +347,7 @@
     </div>
   </div>
 
-  <p class="close">Which failure you can least afford decides the corner you start in. The open API decides whether you can climb out of it — extreme flexibility for competent teams, at a cost; a walled garden's comfort for everyone else. Pick the failure you can live with, and the tool mostly follows.</p>
+  <p class="close">Which failure an organisation can least afford determines the starting point. The open API determines whether moving toward the sweet spot is possible — it offers significant flexibility for teams with the skills to use it, and a stable boundary for those without. The failure mode to avoid is the primary input to the decision.</p>
 
 </div>
 

@@ -152,6 +152,7 @@
     <div class="eyebrow">Posting-Engine Methodology · Pigment</div>
     <h1>Does Pigment meet the design?</h1>
     <p class="lede">Mapping the <em>Forecast Cash Flow &amp; Balance Sheet</em> posting-engine brief against what the Pigment build actually delivers.</p>
+    <p style="font-family:var(--mono);font-size:.72rem;color:var(--ink-faint);margin:.8rem 0 0">Published 12 June 2025</p>
 
     <div class="meta-row">
       <div><span class="k">Pattern</span><span class="v">Posting engine / sub-ledger</span></div>
@@ -389,11 +390,11 @@
 
       <p class="reveal">The mechanical complexity is moderate and repetitive: one generic engine, a handful of grouped methods covering ~80% of accounts, then per-account parameters. Once the pattern is set, adding an account is cheap. Where the real complexity lives:</p>
       <ul class="clean reveal">
-        <li><strong>The edge cases carry disproportionate weight.</strong> Deferred revenue running backwards, debt introducing circularity, FX gain/loss as a translation residual — each is its own problem, and none is knowable from the chart of accounts. The expensive part is discovery: the week-six "oh, except for that one."</li>
+        <li><strong>The edge cases carry disproportionate weight.</strong> Deferred revenue running backwards, debt introducing circularity, FX gain/loss as a translation residual — each is its own problem, and none is predictable from the chart of accounts. The treatment for each account only becomes clear through workshops with the finance team.</li>
         <li><strong>Circularity is the one genuine step-up.</strong> It moves from "hard to get right" to "won't compute in a single pass." Interest-on-opening-balance is the correct dodge, but knowing to make that choice, and defending it, is senior judgment — not configuration.</li>
         <li><strong>The integrity model earns the complexity.</strong> Source-module isolation and balance-by-construction are more rules to author, but they turn debugging from an unbounded hunt into a localised lookup — up-front rule proliferation traded against far cheaper lifetime maintenance.</li>
       </ul>
-      <p class="reveal">What makes it manageable is that the hard parts are isolated: the 80% flow through grouped methods and stay boring, so the difficulty is quarantined in the bespoke tail rather than smeared across the whole model. That is the design's main achievement — not removing complexity, but containing it.</p>
+      <p class="reveal">What makes it manageable is that the hard parts are isolated: the 80% flow through grouped methods without variation, so the difficulty is quarantined in the bespoke tail rather than smeared across the whole model. That is the design's main achievement — not removing complexity, but containing it.</p>
     </section>
 
     <!-- 05 ESTIMATE -->

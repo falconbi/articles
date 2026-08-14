@@ -68,12 +68,13 @@
     <div class="hero">
       <div class="eyebrow"><span>Open methodology</span><span>Pigment</span><span>Cost allocation</span></div>
       <h1>Cost apportionment in Pigment</h1>
-      <p class="lede">A five-stage sequential engine that turns raw General Ledger balances into <b>fully reconciled cost by service line</b> — routed through cost pools and activities, settled reciprocally, and checked at every step.</p>
+      <p class="lede">A five-stage sequential engine that routes raw General Ledger balances through cost pools and activities, settles reciprocal dependencies, and produces a fully reconciled cost by service line — checked at every stage.</p>
       <div class="meta-row">
         <span class="chip">Worked reference model</span>
         <span class="chip">Overhead → service line</span>
         <span class="chip">5 stages · 13 checks</span>
       </div>
+      <p style="font-size:13px;color:var(--ink-muted);margin:10px 0 0;font-family:var(--mono)">Published 5 March 2025</p>
 
 
       <img src="cst-screenshots/Home.png" alt="CST Home Board — Cost Apportionment" class="cst-screenshot">
@@ -156,7 +157,7 @@
     <section id="overview" class="prose">
       <span class="snum">01 — Overview</span>
       <h2>What the model does</h2>
-      <p>The application allocates overhead from raw General Ledger accounts through to service lines using a five-stage sequential apportionment engine. It transforms unstructured cost data into a fully reconciled service-line cost view — the terminal question being <em>"what does each service line actually cost, once every shared overhead has been fairly attributed?"</em></p>
+      <p>The application allocates overhead from raw General Ledger accounts through to service lines using a five-stage sequential apportionment engine. It produces a fully reconciled service-line cost view — the attributed cost of each service line, incorporating all shared overhead.</p>
       <p>The apportionment module is self-contained. It lives inside a broader Pigment application that also covers demand planning and supply chain, among other domains, but sits in its own folder prefixed <code>9. CST Apportionment</code>, with every block prefixed <code>CST_</code> for easy identification. This write-up covers the cost module only.</p>
       <p>Built in <strong>Pigment</strong> — a cloud-native business planning platform — the model leans on a handful of platform primitives. The next section defines them, so the rest reads cleanly whether or not you build in Pigment day to day.</p>
     </section>
@@ -210,7 +211,7 @@
         </table>
       </div>
 
-      <h3>Two design patterns worth stealing</h3>
+      <h3>Two design patterns</h3>
       <div class="callout">
         <span class="co-label">Pattern · Dual-dimension for reciprocal settlement</span>
         <p><span class="m">CST_CostPool</span> / <span class="m">CST_CostPoolDest</span> and <span class="m">CST_Activity</span> / <span class="m">CST_ActivityDest</span> are identical in membership but represent the <strong>source</strong> and <strong>destination</strong> roles. This is the standard Pigment way to model many-to-many cost flows without creating circular formula dependencies.</p>
@@ -456,8 +457,8 @@
         </table>
       </div>
 
-      <h3>Design note — the IF-formula scope trap</h3>
-      <p>This one is worth internalising, because it produces <em>silent</em> wrong numbers rather than an error.</p>
+      <h3>Design note — IF-formula scope expansion</h3>
+      <p>This behaviour produces incorrect numbers silently, with no error raised.</p>
       <div class="callout warn">
         <span class="co-label">The behaviour</span>
         <p><span class="m">CST_Ctrl_Input_Total ($)</span> began as a single metric with one <span class="m">IF</span> formula branching across RC and VAL check types. When an <span class="m">IF</span> references dimensions in <em>any</em> branch, Pigment eagerly expands the metric's calculation scope to include all referenced dimensions — even for rows where that branch is never evaluated. Aggregated back to a dimension the metric didn't natively hold, this produced silent value inflation.</p>

@@ -53,6 +53,7 @@
     <span class="chip">Cost apportionment model</span>
     <span class="chip">July 2026</span>
   </div>
+  <p style="font-family:var(--mono);font-size:.72rem;color:var(--ink-faint);margin:.8rem 0 0">Published 18 July 2026</p>
 </div>
 
 <!-- PLAIN ENGLISH INTRO -->
@@ -147,7 +148,7 @@ IF(CST_ReconciliationCheck.Name = <span class="c-steel">"VAL06"</span>,
     <p>RC01 and RC06 returned <strong>~$1.55B/month</strong> instead of the expected <strong>~$129M/month</strong>.</p>
   </div>
   <div class="callout warn">
-    <span class="co-label">The smoking number</span>
+    <span class="co-label">Exact ratio</span>
     <p>$1.55B ÷ $129M = <strong>exactly 12</strong>. An exact integer ratio is the tell: the value has been multiplied by a dimension's member count.</p>
   </div>
   <div class="prose">
@@ -173,7 +174,7 @@ IF(CST_ReconciliationCheck.Name = <span class="c-steel">"VAL06"</span>,
 <!-- 04 MECHANISM -->
 <section id="mechanism" class="reveal">
   <span class="snum">04 — What Pigment did</span>
-  <h2>What Pigment actually did</h2>
+  <h2>What Pigment did</h2>
   <div class="prose">
     <p>Pigment's <code>IF()</code> uses <strong>eager evaluation</strong>: before selecting the winning branch, it evaluates the whole expression in the <strong>union of every dimension referenced anywhere across all branches</strong>. Because RC04 and VAL04 reference metrics dimensioned by <code>CST_ActivityDest</code>, that dimension enters the evaluation scope of the entire formula — including the RC01 and RC06 branches, which never mention it.</p>
     <h3>Step 1 — Scope determination</h3>
