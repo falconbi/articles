@@ -100,14 +100,119 @@
     </table>
   </div>
 
-  <div class="tree">BS frame (max depth 5)           PL frame (max depth 3)
+<figure style="margin:1.25rem 0 1.75rem">
+<svg viewBox="0 0 780 402" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Side-by-side depth matrix for BS and P&amp;L frames, showing tier labels L0–L4 at their respective absolute depths">
+<defs><style>
+.fm-dl{font:600 10px "SF Mono",Consolas,monospace;fill:#6b7a8e}
+.fm-pt{font:700 11px "SF Mono",Consolas,monospace;letter-spacing:1.5px}
+.fm-tl{font:800 14px "SF Mono",Consolas,monospace}
+.fm-ds{font:400 10.5px "Segoe UI",Arial,sans-serif;fill:#46586f}
+.fm-em{font:400 10px "SF Mono",Consolas,monospace;fill:#b0bac4}
+.fm-ln{stroke:#e4ebf3;stroke-width:1}
+.fm-ar{stroke:#b0bac4;stroke-width:1.4;fill:none;marker-end:url(#fmah)}
+</style>
+<marker id="fmah" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L6,3.5 L0,7 Z" fill="#b0bac4"/></marker>
+</defs>
+<!-- panel titles -->
+<text class="fm-pt" x="282" y="20" text-anchor="middle" fill="#257d6f">BALANCE SHEET</text>
+<text class="fm-pt" x="622" y="20" text-anchor="middle" fill="#b7791f">PROFIT &amp; LOSS</text>
+<!-- depth row labels -->
+<text class="fm-dl" x="62" y="58" text-anchor="end">depth 0</text>
+<text class="fm-dl" x="62" y="118" text-anchor="end">depth 1</text>
+<text class="fm-dl" x="62" y="178" text-anchor="end">depth 2</text>
+<text class="fm-dl" x="62" y="238" text-anchor="end">depth 3</text>
+<text class="fm-dl" x="62" y="298" text-anchor="end">depth 4</text>
+<text class="fm-dl" x="62" y="358" text-anchor="end">depth 5</text>
+<!-- row guides -->
+<line class="fm-ln" x1="66" y1="32" x2="776" y2="32"/>
+<line class="fm-ln" x1="66" y1="92" x2="776" y2="92"/>
+<line class="fm-ln" x1="66" y1="152" x2="776" y2="152"/>
+<line class="fm-ln" x1="66" y1="212" x2="776" y2="212"/>
+<line class="fm-ln" x1="66" y1="272" x2="776" y2="272"/>
+<line class="fm-ln" x1="66" y1="332" x2="776" y2="332"/>
+<!-- divider -->
+<line x1="450" y1="28" x2="450" y2="394" stroke="#d5dde5" stroke-width="1.2" stroke-dasharray="3 4"/>
 
-L4 · depth 1 — root              L3 · depth 0 — root
-└── L3 · depth 2                 └── L2 · depth 1
-    └── L2 · depth 3                 └── L1 · depth 2
-        └── L1 · depth 4                 └── L0 · depth 3
-            └── L0 · depth 5                  (leaf / posting account)
-                 (leaf / posting account)</div>
+<!-- ===== BS FRAME ===== -->
+<!-- D0: above BS root → empty -->
+<rect x="70" y="36" width="372" height="46" rx="8" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1"/>
+<text class="fm-em" x="256" y="62" text-anchor="middle">— BS frame begins at depth 1 —</text>
+<!-- D1: L4 (navy) BS root -->
+<rect x="70" y="96" width="372" height="46" rx="8" fill="#eef2f8" stroke="#1e3a5f" stroke-width="1.8"/>
+<rect x="78" y="104" width="50" height="30" rx="5" fill="#1e3a5f"/>
+<text class="fm-tl" x="103" y="124" text-anchor="middle" fill="#fff">L4</text>
+<text class="fm-ds" x="140" y="114">Balance Sheet root</text>
+<text class="fm-ds" x="140" y="128" fill="#8a9ab0">Assets · Liabilities · Equity</text>
+<!-- D2: L3 (violet) -->
+<rect x="70" y="156" width="372" height="46" rx="8" fill="#f3effb" stroke="#4c1d95" stroke-width="1.5"/>
+<rect x="78" y="164" width="50" height="30" rx="5" fill="#4c1d95"/>
+<text class="fm-tl" x="103" y="184" text-anchor="middle" fill="#fff">L3</text>
+<text class="fm-ds" x="140" y="174">major grouping</text>
+<text class="fm-ds" x="140" y="188" fill="#8a9ab0">Current Assets · Fixed Assets …</text>
+<!-- D3: L2 (amber) -->
+<rect x="70" y="216" width="372" height="46" rx="8" fill="#fef9ec" stroke="#92400e" stroke-width="1.5"/>
+<rect x="78" y="224" width="50" height="30" rx="5" fill="#92400e"/>
+<text class="fm-tl" x="103" y="244" text-anchor="middle" fill="#fff">L2</text>
+<text class="fm-ds" x="140" y="234">sub-grouping</text>
+<text class="fm-ds" x="140" y="248" fill="#8a9ab0">Cash &amp; Equivalents · Inventory …</text>
+<!-- D4: L1 (teal) -->
+<rect x="70" y="276" width="372" height="46" rx="8" fill="#e6f4f3" stroke="#0f766e" stroke-width="1.5"/>
+<rect x="78" y="284" width="50" height="30" rx="5" fill="#0f766e"/>
+<text class="fm-tl" x="103" y="304" text-anchor="middle" fill="#fff">L1</text>
+<text class="fm-ds" x="140" y="294">parent bucket</text>
+<text class="fm-ds" x="140" y="308" fill="#8a9ab0">immediate parent of posting account</text>
+<!-- D5: L0 (forest) leaf -->
+<rect x="70" y="336" width="372" height="46" rx="8" fill="#dcfce7" stroke="#166534" stroke-width="2"/>
+<rect x="78" y="344" width="50" height="30" rx="5" fill="#166534"/>
+<text class="fm-tl" x="103" y="364" text-anchor="middle" fill="#fff">L0</text>
+<text class="fm-ds" x="140" y="354">posting account · leaf</text>
+<text class="fm-ds" x="140" y="368" fill="#8a9ab0">never has children · the metric grain</text>
+<!-- BS edges D1→D2→D3→D4→D5 -->
+<line class="fm-ar" x1="256" y1="142" x2="256" y2="153"/>
+<line class="fm-ar" x1="256" y1="202" x2="256" y2="213"/>
+<line class="fm-ar" x1="256" y1="262" x2="256" y2="273"/>
+<line class="fm-ar" x1="256" y1="322" x2="256" y2="333"/>
+
+<!-- ===== PL FRAME ===== -->
+<!-- D0: L3 (violet) PL root -->
+<rect x="458" y="36" width="314" height="46" rx="8" fill="#f3effb" stroke="#4c1d95" stroke-width="1.8"/>
+<rect x="466" y="44" width="50" height="30" rx="5" fill="#4c1d95"/>
+<text class="fm-tl" x="491" y="64" text-anchor="middle" fill="#fff">L3</text>
+<text class="fm-ds" x="528" y="54">P&amp;L root</text>
+<text class="fm-ds" x="528" y="68" fill="#8a9ab0">Revenue · Expenses</text>
+<!-- D1: L2 (amber) -->
+<rect x="458" y="96" width="314" height="46" rx="8" fill="#fef9ec" stroke="#92400e" stroke-width="1.5"/>
+<rect x="466" y="104" width="50" height="30" rx="5" fill="#92400e"/>
+<text class="fm-tl" x="491" y="124" text-anchor="middle" fill="#fff">L2</text>
+<text class="fm-ds" x="528" y="114">sub-grouping</text>
+<text class="fm-ds" x="528" y="128" fill="#8a9ab0">Cost of Revenue · OpEx …</text>
+<!-- D2: L1 (teal) -->
+<rect x="458" y="156" width="314" height="46" rx="8" fill="#e6f4f3" stroke="#0f766e" stroke-width="1.5"/>
+<rect x="466" y="164" width="50" height="30" rx="5" fill="#0f766e"/>
+<text class="fm-tl" x="491" y="184" text-anchor="middle" fill="#fff">L1</text>
+<text class="fm-ds" x="528" y="174">parent bucket</text>
+<text class="fm-ds" x="528" y="188" fill="#8a9ab0">immediate parent of posting account</text>
+<!-- D3: L0 (forest) leaf -->
+<rect x="458" y="216" width="314" height="46" rx="8" fill="#dcfce7" stroke="#166534" stroke-width="2"/>
+<rect x="466" y="224" width="50" height="30" rx="5" fill="#166534"/>
+<text class="fm-tl" x="491" y="244" text-anchor="middle" fill="#fff">L0</text>
+<text class="fm-ds" x="528" y="234">posting account · leaf</text>
+<text class="fm-ds" x="528" y="248" fill="#8a9ab0">never has children · the metric grain</text>
+<!-- D4: empty PL -->
+<rect x="458" y="276" width="314" height="46" rx="8" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1"/>
+<text class="fm-em" x="615" y="302" text-anchor="middle">— P&amp;L has no L4 tier —</text>
+<!-- D5: empty PL -->
+<rect x="458" y="336" width="314" height="46" rx="8" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1"/>
+<text class="fm-em" x="615" y="362" text-anchor="middle">— P&amp;L stops at depth 3 —</text>
+<!-- PL edges D0→D1→D2→D3 -->
+<line class="fm-ar" x1="615" y1="82" x2="615" y2="93"/>
+<line class="fm-ar" x1="615" y1="142" x2="615" y2="153"/>
+<line class="fm-ar" x1="615" y1="202" x2="615" y2="213"/>
+<!-- tier colour legend -->
+<text class="fm-dl" x="70" y="394">Tier colour is consistent across both frames — L2 in amber, L1 in teal, L0 (leaf) in green — regardless of which depth they occupy.</text>
+</svg>
+<figcaption style="font-size:13px;color:#46586f;margin-top:6px;font-family:var(--mono);">Fig. 1 — The same tier labels (L0–L4) map to different absolute depths in each frame. L0 is always the posting account. The BS frame is 5 tiers deep; P&amp;L is 4. The equation <code>depth(Lk, frame) = maxDepth(frame) − k</code> governs every placement in this document.</figcaption>
+</figure>
 
   <div class="prose">
     <h3>The one equation that governs everything</h3>
@@ -169,15 +274,66 @@ L4 · depth 1 — root              L3 · depth 0 — root
   <span class="snum">03 — Architecture</span>
   <h2>Architecture</h2>
 
-  <div class="tree">ERP export (flat, self-referencing)
-        ↓
-Flat list  ←  Parent input + all derived properties
-  ├── L0 rows  →  Level 0 dimension  (leaves)
-  ├── L1 rows  →  Level 1 dimension
-  ├── L2 rows  →  Level 2 dimension
-  ├── L3 rows  →  Level 3 dimension
-  ├── L4 rows  →  Level 4 dimension
-  └── All rows →  Validation checks → KPI metrics → boards</div>
+<figure style="margin:1.25rem 0 1.75rem">
+<svg viewBox="0 0 740 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Architecture flow: ERP export feeds A.0 Flat list, which fans into Level 0–4 dimensions via a one-time import gate and into validation checks that produce KPI count metrics">
+<defs><style>
+.arf-ht{font:700 12px "Segoe UI",Arial,sans-serif;fill:#17263c}
+.arf-sub{font:400 10.5px "Segoe UI",Arial,sans-serif;fill:#46586f}
+.arf-lb{font:700 9.5px "SF Mono",Consolas,monospace;letter-spacing:.5px}
+.arf-e{stroke:#8a9ab0;stroke-width:1.4;fill:none;marker-end:url(#arfah)}
+.arf-eg{stroke:#b7791f;stroke-width:1.3;fill:none;marker-end:url(#arfahg)}
+</style>
+<marker id="arfah" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L6,3.5 L0,7 Z" fill="#8a9ab0"/></marker>
+<marker id="arfahg" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L6,3.5 L0,7 Z" fill="#b7791f"/></marker>
+</defs>
+<!-- SOURCE -->
+<rect x="190" y="16" width="360" height="48" rx="8" fill="#f5f7fa" stroke="#8a9ab0" stroke-width="1.5"/>
+<text class="arf-ht" x="370" y="36" text-anchor="middle">ERP source export</text>
+<text class="arf-sub" x="370" y="52" text-anchor="middle">flat, self-referencing · one Parent property per row · no pre-computed levels</text>
+<line class="arf-e" x1="370" y1="64" x2="370" y2="77"/>
+<!-- FLAT LIST -->
+<rect x="42" y="78" width="650" height="60" rx="8" fill="#eef2f8" stroke="#1e3a5f" stroke-width="2"/>
+<text class="arf-ht" x="196" y="100" text-anchor="middle">A.0 Flat list</text>
+<text class="arf-sub" x="196" y="116" text-anchor="middle">Parent input · Depth · L0–L4 flags</text>
+<text class="arf-ht" x="554" y="100" text-anchor="middle">Mapping + Validation</text>
+<text class="arf-sub" x="554" y="116" text-anchor="middle">Level 0–4 mapping props · integrity checks</text>
+<line x1="376" y1="84" x2="376" y2="132" stroke="#3d5a80" stroke-width="1" stroke-dasharray="3 3" opacity=".35"/>
+<!-- IMPORT GATE pill -->
+<rect x="42" y="150" width="452" height="18" rx="9" fill="#fef3c7" stroke="#b7791f" stroke-width="1.2"/>
+<text class="arf-lb" x="268" y="163" text-anchor="middle" fill="#b7791f">one-time bulk import per tier · not a live link</text>
+<!-- LEVEL DIMENSION BOXES (y=184..228) -->
+<rect x="42" y="184" width="82" height="44" rx="7" fill="#dcfce7" stroke="#166534" stroke-width="1.5"/>
+<text class="arf-lb" x="83" y="204" text-anchor="middle" fill="#166534">Level 0</text>
+<text class="arf-sub" x="83" y="220" text-anchor="middle">leaves</text>
+<rect x="136" y="184" width="82" height="44" rx="7" fill="#e6f4f3" stroke="#0f766e" stroke-width="1.5"/>
+<text class="arf-lb" x="177" y="208" text-anchor="middle" fill="#0f766e">Level 1</text>
+<rect x="230" y="184" width="82" height="44" rx="7" fill="#fef9ec" stroke="#92400e" stroke-width="1.5"/>
+<text class="arf-lb" x="271" y="208" text-anchor="middle" fill="#92400e">Level 2</text>
+<rect x="324" y="184" width="82" height="44" rx="7" fill="#f3effb" stroke="#4c1d95" stroke-width="1.5"/>
+<text class="arf-lb" x="365" y="208" text-anchor="middle" fill="#4c1d95">Level 3</text>
+<rect x="418" y="184" width="76" height="44" rx="7" fill="#eef2f8" stroke="#1e3a5f" stroke-width="1.5"/>
+<text class="arf-lb" x="456" y="204" text-anchor="middle" fill="#1e3a5f">Level 4</text>
+<text class="arf-sub" x="456" y="220" text-anchor="middle">BS only</text>
+<!-- Arrows Flat → Level dims (pass through gate) -->
+<line class="arf-eg" x1="83" y1="138" x2="83" y2="182"/>
+<line class="arf-eg" x1="177" y1="138" x2="177" y2="182"/>
+<line class="arf-eg" x1="271" y1="138" x2="271" y2="182"/>
+<line class="arf-eg" x1="365" y1="138" x2="365" y2="182"/>
+<line class="arf-eg" x1="456" y1="138" x2="456" y2="182"/>
+<!-- VALIDATION BOX -->
+<rect x="514" y="168" width="178" height="68" rx="8" fill="#f8f9fb" stroke="#7c2d12" stroke-width="1.5"/>
+<text class="arf-ht" x="603" y="190" text-anchor="middle">Validation</text>
+<text class="arf-sub" x="603" y="207" text-anchor="middle">Self-reference · Cycle · Ceiling</text>
+<text class="arf-sub" x="603" y="222" text-anchor="middle">Missing Level N (per tier)</text>
+<line class="arf-e" x1="580" y1="138" x2="580" y2="166"/>
+<!-- KPI BOX -->
+<rect x="514" y="252" width="178" height="38" rx="7" fill="#fef9ec" stroke="#b7791f" stroke-width="1.2"/>
+<text class="arf-lb" x="603" y="269" text-anchor="middle" fill="#b7791f">KPI count metrics</text>
+<text class="arf-sub" x="603" y="283" text-anchor="middle">COA maintenance boards</text>
+<line class="arf-e" x1="603" y1="236" x2="603" y2="250"/>
+</svg>
+<figcaption style="font-size:13px;color:#46586f;margin-top:6px;font-family:var(--mono);">Fig. 2 — All hierarchy intelligence lives in the Flat list. Level 0–4 standalone dimensions are populated from it by a one-time import per tier (amber gate). Validation checks run against the same Flat rows and roll into KPI count metrics surfaced on maintenance boards.</figcaption>
+</figure>
 
   <div class="prose">
     <p>Three components do all the work.</p>
@@ -370,6 +526,76 @@ IF(ISBLANK(Flat.L0)
   <div class="prose">
     <p>A grouping node at tier L(k−1) is always one level below its tier-k parent — so exactly 1 hop, regardless of frame or depth. A normal leaf at depth <code>maxDepth</code> reaching tier k (depth <code>maxDepth − k</code>) needs <code>maxDepth − (maxDepth − k) = k</code> hops — so k hops, no branching on frame. A shallow leaf sits above the normal leaf depth; it maps with fewer hops, or resolves to BLANK where it legitimately sits at or above the target tier.</p>
     <p>Only leaves need the depth/statement branching, because leaves can appear at multiple depths. Grouping nodes at a given tier are always one hop from their parent tier.</p>
+  </div>
+
+<figure style="margin:1.25rem 0 1.75rem">
+<svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three resolution cases for Level 2 mapping: L1 grouper uses 1 hop; normal BS leaf uses 2 hops; PL shallow leaf uses 1 hop">
+<defs><style>
+.rm-ct{font:700 9.5px "SF Mono",Consolas,monospace;fill:#6b7a8e;letter-spacing:1px}
+.rm-n{font:700 12px "Segoe UI",Arial,sans-serif;fill:#17263c}
+.rm-s{font:400 10px "Segoe UI",Arial,sans-serif;fill:#46586f}
+.rm-e{stroke:#8a9ab0;stroke-width:1.5;fill:none;marker-end:url(#rmah)}
+.rm-hop{font:700 11px "SF Mono",Consolas,monospace;fill:#92400e}
+</style>
+<marker id="rmah" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L6,3.5 L0,7 Z" fill="#8a9ab0"/></marker>
+</defs>
+<!-- Column dividers -->
+<line x1="238" y1="12" x2="238" y2="272" stroke="#e4ebf3" stroke-width="1"/>
+<line x1="478" y1="12" x2="478" y2="272" stroke="#e4ebf3" stroke-width="1"/>
+
+<!-- ===== CASE 1: L1 grouper ===== -->
+<text class="rm-ct" x="119" y="16" text-anchor="middle">CASE 1 · L1 GROUPER</text>
+<rect x="14" y="24" width="210" height="42" rx="7" fill="#fef9ec" stroke="#92400e" stroke-width="1.5"/>
+<text class="rm-n" x="119" y="44" text-anchor="middle">Level 2</text>
+<text class="rm-s" x="119" y="58" text-anchor="middle">target dimension</text>
+<line class="rm-e" x1="119" y1="194" x2="119" y2="69"/>
+<text class="rm-hop" x="129" y="138" text-anchor="start">1 hop</text>
+<text class="rm-s" x="129" y="151" text-anchor="start">ITEM(Parent.Code, …)</text>
+<rect x="14" y="196" width="210" height="56" rx="7" fill="#e6f4f3" stroke="#0f766e" stroke-width="1.5"/>
+<text class="rm-n" x="119" y="218" text-anchor="middle">L1 grouper</text>
+<text class="rm-s" x="119" y="232" text-anchor="middle">BS depth 4 · not a leaf</text>
+<text class="rm-s" x="119" y="247" text-anchor="middle">parent is the L2 node</text>
+<text class="rm-s" x="119" y="260" text-anchor="middle" font-style="italic">no depth branching needed</text>
+
+<!-- ===== CASE 2: Normal BS leaf ===== -->
+<text class="rm-ct" x="358" y="16" text-anchor="middle">CASE 2 · NORMAL LEAF</text>
+<rect x="252" y="24" width="212" height="42" rx="7" fill="#fef9ec" stroke="#92400e" stroke-width="1.5"/>
+<text class="rm-n" x="358" y="44" text-anchor="middle">Level 2</text>
+<text class="rm-s" x="358" y="58" text-anchor="middle">target dimension</text>
+<rect x="252" y="108" width="212" height="38" rx="7" fill="#e6f4f3" stroke="#0f766e" stroke-width="1.2" stroke-dasharray="5 3"/>
+<text class="rm-n" x="358" y="126" text-anchor="middle">L1 parent (walk-through)</text>
+<text class="rm-s" x="358" y="140" text-anchor="middle">BS depth 4 · hop 1 of 2</text>
+<line class="rm-e" x1="358" y1="107" x2="358" y2="69"/>
+<line class="rm-e" x1="358" y1="194" x2="358" y2="149"/>
+<text class="rm-hop" x="368" y="92" text-anchor="start">1st hop</text>
+<text class="rm-hop" x="368" y="176" text-anchor="start">2nd hop</text>
+<rect x="252" y="196" width="212" height="56" rx="7" fill="#dcfce7" stroke="#166534" stroke-width="1.5"/>
+<text class="rm-n" x="358" y="218" text-anchor="middle">Normal leaf</text>
+<text class="rm-s" x="358" y="232" text-anchor="middle">BS depth 5 · L0 = true</text>
+<text class="rm-s" x="358" y="247" text-anchor="middle">ITEM(Parent.Parent.Code, …)</text>
+<text class="rm-s" x="358" y="260" text-anchor="middle" font-style="italic">k = 2 hops for Level 2</text>
+
+<!-- ===== CASE 3: PL shallow leaf ===== -->
+<text class="rm-ct" x="601" y="16" text-anchor="middle">CASE 3 · SHALLOW LEAF</text>
+<rect x="490" y="24" width="222" height="42" rx="7" fill="#fef9ec" stroke="#92400e" stroke-width="1.5"/>
+<text class="rm-n" x="601" y="44" text-anchor="middle">Level 2</text>
+<text class="rm-s" x="601" y="58" text-anchor="middle">target dimension</text>
+<rect x="490" y="108" width="222" height="38" rx="7" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1" stroke-dasharray="4 3"/>
+<text class="rm-s" x="601" y="126" text-anchor="middle" font-style="italic">L1 tier absent in this branch</text>
+<text class="rm-s" x="601" y="140" text-anchor="middle">PL depth 2 has no L1 bucket</text>
+<line class="rm-e" x1="601" y1="194" x2="601" y2="69"/>
+<text class="rm-hop" x="611" y="138" text-anchor="start">1 hop</text>
+<text class="rm-s" x="611" y="151" text-anchor="start">ITEM(Parent.Code, …)</text>
+<rect x="490" y="196" width="222" height="56" rx="7" fill="#dcfce7" stroke="#166534" stroke-width="1.8" stroke-dasharray="6 3"/>
+<text class="rm-n" x="601" y="218" text-anchor="middle">PL shallow leaf</text>
+<text class="rm-s" x="601" y="232" text-anchor="middle">PL depth 2 · L0 = true</text>
+<text class="rm-s" x="601" y="247" text-anchor="middle">parent is already the L2 node</text>
+<text class="rm-s" x="601" y="260" text-anchor="middle" font-style="italic">Missing L1 by design — correct</text>
+</svg>
+<figcaption style="font-size:13px;color:#46586f;margin-top:6px;font-family:var(--mono);">Fig. 3 — The three resolution cases for Level 2. L1 groupers always use 1 hop (parent is the L2 node by definition). Normal BS leaves at depth 5 use k=2 hops. PL shallow leaves at depth 2 also use 1 hop but for a different reason: their branch has no L1 tier, so the parent is the L2 node directly. The Missing L1 gap is intentional, not a data error.</figcaption>
+</figure>
+
+  <div class="prose">
     <h3>Generic template</h3>
   </div>
 
@@ -433,12 +659,74 @@ IF(Flat.Statement = Statement."BS",
     </table>
   </div>
 
-  <div class="tree">Level 0 dimension
-
-  Level 1  ←  INPUT (bulk import from Flat)
-  Level 2  =  Level1.Level2        (chained formula)
-  Level 3  =  Level2.Level3        (chained formula)
-  Level 4  =  Level3.Level4        (chained formula)</div>
+<figure style="margin:1.25rem 0 1.75rem">
+<svg viewBox="0 0 740 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Composite dimension property chain: Flat imports Level 1 as an input property; Level 2, 3, 4 are live chained formulas walking the chain">
+<defs><style>
+.cd-ht{font:700 11.5px "Segoe UI",Arial,sans-serif;fill:#17263c}
+.cd-sub{font:400 10px "Segoe UI",Arial,sans-serif;fill:#46586f}
+.cd-lb{font:700 9.5px "SF Mono",Consolas,monospace;letter-spacing:.5px}
+.cd-e{stroke:#8a9ab0;stroke-width:1.5;fill:none;marker-end:url(#cdah)}
+.cd-eg{stroke:#b7791f;stroke-width:1.5;fill:none;marker-end:url(#cdahg)}
+</style>
+<marker id="cdah" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L6,3.5 L0,7 Z" fill="#8a9ab0"/></marker>
+<marker id="cdahg" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L6,3.5 L0,7 Z" fill="#b7791f"/></marker>
+</defs>
+<!-- Title -->
+<text class="cd-lb" x="370" y="14" text-anchor="middle" fill="#6b7a8e" letter-spacing="1">LEVEL 0 DIMENSION — PROPERTIES</text>
+<!-- FLAT box -->
+<rect x="4" y="24" width="96" height="100" rx="8" fill="#eef2f8" stroke="#1e3a5f" stroke-width="2"/>
+<text class="cd-ht" x="52" y="50" text-anchor="middle">Flat</text>
+<text class="cd-sub" x="52" y="66" text-anchor="middle">A.0 source list</text>
+<text class="cd-sub" x="52" y="82" text-anchor="middle">Level 1 mapping</text>
+<text class="cd-sub" x="52" y="96" text-anchor="middle">property on each</text>
+<text class="cd-sub" x="52" y="110" text-anchor="middle">L0 leaf row</text>
+<!-- IMPORT arrow Flat → Level 1 -->
+<line class="cd-eg" x1="100" y1="74" x2="122" y2="74"/>
+<rect x="98" y="58" width="28" height="18" rx="9" fill="#fef3c7" stroke="#b7791f" stroke-width="1"/>
+<text class="cd-lb" x="112" y="71" text-anchor="middle" fill="#b7791f">IN</text>
+<!-- LEVEL 1 INPUT box (amber — imported) -->
+<rect x="124" y="24" width="136" height="100" rx="8" fill="#fef9ec" stroke="#b7791f" stroke-width="2"/>
+<text class="cd-ht" x="192" y="52" text-anchor="middle">Level 1</text>
+<text class="cd-lb" x="192" y="70" text-anchor="middle" fill="#b7791f">INPUT property</text>
+<text class="cd-sub" x="192" y="86" text-anchor="middle">bulk import from Flat</text>
+<text class="cd-sub" x="192" y="100" text-anchor="middle">one-time · not live</text>
+<text class="cd-sub" x="192" y="114" text-anchor="middle">corrected by re-import</text>
+<!-- Chain arrow Level 1 → Level 2 -->
+<line class="cd-e" x1="260" y1="74" x2="280" y2="74"/>
+<!-- LEVEL 2 formula box (teal) -->
+<rect x="282" y="24" width="136" height="100" rx="8" fill="#e6f4f3" stroke="#0f766e" stroke-width="1.5"/>
+<text class="cd-ht" x="350" y="52" text-anchor="middle">Level 2</text>
+<text class="cd-lb" x="350" y="70" text-anchor="middle" fill="#0f766e">FORMULA</text>
+<text class="cd-sub" x="350" y="86" text-anchor="middle">= Level1.'Level 2'</text>
+<text class="cd-sub" x="350" y="100" text-anchor="middle">live · re-resolves if</text>
+<text class="cd-sub" x="350" y="114" text-anchor="middle">Level 1 import changes</text>
+<!-- Chain arrow Level 2 → Level 3 -->
+<line class="cd-e" x1="418" y1="74" x2="438" y2="74"/>
+<!-- LEVEL 3 formula box -->
+<rect x="440" y="24" width="136" height="100" rx="8" fill="#e6f4f3" stroke="#0f766e" stroke-width="1.5" opacity=".85"/>
+<text class="cd-ht" x="508" y="52" text-anchor="middle">Level 3</text>
+<text class="cd-lb" x="508" y="70" text-anchor="middle" fill="#0f766e">FORMULA</text>
+<text class="cd-sub" x="508" y="86" text-anchor="middle">= Level2.'Level 3'</text>
+<text class="cd-sub" x="508" y="100" text-anchor="middle">walks the chain</text>
+<text class="cd-sub" x="508" y="114" text-anchor="middle">one hop further</text>
+<!-- Chain arrow Level 3 → Level 4 -->
+<line class="cd-e" x1="576" y1="74" x2="596" y2="74"/>
+<!-- LEVEL 4 formula box -->
+<rect x="598" y="24" width="136" height="100" rx="8" fill="#e6f4f3" stroke="#0f766e" stroke-width="1.5" opacity=".7"/>
+<text class="cd-ht" x="666" y="52" text-anchor="middle">Level 4</text>
+<text class="cd-lb" x="666" y="70" text-anchor="middle" fill="#0f766e">FORMULA</text>
+<text class="cd-sub" x="666" y="86" text-anchor="middle">= Level3.'Level 4'</text>
+<text class="cd-sub" x="666" y="100" text-anchor="middle">BS only (no PL L4)</text>
+<!-- Legend row -->
+<rect x="4" y="148" width="16" height="12" rx="3" fill="#fef9ec" stroke="#b7791f" stroke-width="1.5"/>
+<text class="cd-sub" x="24" y="159" fill="#46586f">input property — set once by bulk import from Flat; does not auto-update</text>
+<rect x="4" y="170" width="16" height="12" rx="3" fill="#e6f4f3" stroke="#0f766e" stroke-width="1.5"/>
+<text class="cd-sub" x="24" y="181" fill="#46586f">formula property — live; re-resolves automatically when the imported input changes</text>
+<!-- Note -->
+<text class="cd-sub" x="4" y="210" fill="#6b7a8e" font-style="italic">This pattern repeats for Level 1, Level 2, and Level 3 dimensions — each imports its own immediate-parent tier and derives the rest as chained formulas.</text>
+</svg>
+<figcaption style="font-size:13px;color:#46586f;margin-top:6px;font-family:var(--mono);">Fig. 4 — Level 0 dimension properties. Only the immediate-parent link (Level 1) is ever imported. Every hop above it is a live formula that walks the chain — so correcting one import propagates upward automatically. Never hand-populate the upper tiers.</figcaption>
+</figure>
 
   <div class="prose">
     <p>Only the immediate parent link per tier is ever imported. Every hop above it is a live chained formula that re-resolves automatically if a lower import is later corrected. You never hand-populate the upper tiers — they walk the chain.</p>
@@ -462,14 +750,70 @@ IF(Flat.Statement = Statement."BS",
     <p>All checks return <code>1</code> (problem) or <code>BLANK</code> (OK) so they sum into count-based KPIs.</p>
   </div>
 
-  <div class="tree">Mapping checks              Integrity checks
-├── Missing L0              ├── Self-reference
-├── Missing L1              ├── Ancestor cycle
-├── Missing L2              └── Depth ceiling
-├── Missing L3 (BS only)             ↓
-└── Missing L4 (BS only)       Hierarchy Warning
-          ↓                       (combined flag)
-    KPI count metrics → monitoring boards</div>
+<figure style="margin:1.25rem 0 1.75rem">
+<svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-track validation: mapping checks (Missing L0-L4) on the left feed per-level SUMOF KPIs; integrity checks (self-reference, cycle, ceiling) on the right combine into Hierarchy Warning then COUNTALLOF KPI. Both surface on monitoring boards.">
+<defs><style>
+.vl-ht{font:700 11.5px "Segoe UI",Arial,sans-serif;fill:#17263c}
+.vl-sub{font:400 10px "Segoe UI",Arial,sans-serif;fill:#46586f}
+.vl-lb{font:700 9.5px "SF Mono",Consolas,monospace;letter-spacing:.5px}
+.vl-e{stroke:#8a9ab0;stroke-width:1.4;fill:none;marker-end:url(#vlah)}
+.vl-er{stroke:#7c2d12;stroke-width:1.4;fill:none;marker-end:url(#vlahr)}
+</style>
+<marker id="vlah" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L6,3.5 L0,7 Z" fill="#8a9ab0"/></marker>
+<marker id="vlahr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L6,3.5 L0,7 Z" fill="#7c2d12"/></marker>
+</defs>
+
+<!-- ===== LEFT: MAPPING CHECKS ===== -->
+<rect x="4" y="4" width="334" height="24" rx="6" fill="#f3effb" stroke="#4c1d95" stroke-width="1.2"/>
+<text class="vl-lb" x="171" y="20" text-anchor="middle" fill="#4c1d95">MAPPING CHECKS — per-level flags on Flat</text>
+<!-- Check boxes stacked -->
+<rect x="4" y="34" width="334" height="30" rx="6" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1"/>
+<text class="vl-sub" x="171" y="54" text-anchor="middle">Missing L0 — active leaf with no Level 0 entry  ·  all frames</text>
+<rect x="4" y="70" width="334" height="30" rx="6" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1"/>
+<text class="vl-sub" x="171" y="90" text-anchor="middle">Missing L1 — excludes PL shallow leaves (depth 2, legitimately no L1)</text>
+<rect x="4" y="106" width="334" height="30" rx="6" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1"/>
+<text class="vl-sub" x="171" y="126" text-anchor="middle">Missing L2 — BS and PL leaves at eligible depths</text>
+<rect x="4" y="142" width="334" height="30" rx="6" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1"/>
+<text class="vl-sub" x="171" y="162" text-anchor="middle">Missing L3 — BS only · excludes leaf sitting at L3 tier</text>
+<rect x="4" y="178" width="334" height="30" rx="6" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1"/>
+<text class="vl-sub" x="171" y="198" text-anchor="middle">Missing L4 — BS only · all PL excluded (no L4)</text>
+<!-- KPI output -->
+<line class="vl-e" x1="171" y1="208" x2="171" y2="240"/>
+<rect x="4" y="242" width="334" height="46" rx="7" fill="#fef9ec" stroke="#b7791f" stroke-width="1.5"/>
+<text class="vl-lb" x="171" y="260" text-anchor="middle" fill="#b7791f">SUMOF('Missing Lk Check') — per level</text>
+<text class="vl-sub" x="171" y="276" text-anchor="middle">COA_Missing_Level_0  ·  _1  ·  _2  ·  _3  ·  _4</text>
+<text class="vl-sub" x="171" y="288" text-anchor="middle">returns 1 per failing row · BLANK = OK (sparse by design)</text>
+
+<!-- ===== RIGHT: INTEGRITY CHECKS ===== -->
+<rect x="382" y="4" width="334" height="24" rx="6" fill="#fef0f0" stroke="#7c2d12" stroke-width="1.2"/>
+<text class="vl-lb" x="549" y="20" text-anchor="middle" fill="#7c2d12">INTEGRITY CHECKS — structural flags on Flat</text>
+<rect x="382" y="34" width="334" height="30" rx="6" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1"/>
+<text class="vl-sub" x="549" y="54" text-anchor="middle">Self-Reference Warning — Parent = self  (1-hop loop)</text>
+<rect x="382" y="70" width="334" height="30" rx="6" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1"/>
+<text class="vl-sub" x="549" y="90" text-anchor="middle">Ancestor Cycle Warning — 2–6 hop loop back to self</text>
+<rect x="382" y="106" width="334" height="30" rx="6" fill="#f8f9fb" stroke="#dde3eb" stroke-width="1"/>
+<text class="vl-sub" x="549" y="126" text-anchor="middle">Depth Ceiling Warning — chain past 6 hops (beyond BS max)</text>
+<!-- OR combinator -->
+<line class="vl-er" x1="549" y1="136" x2="549" y2="162"/>
+<rect x="484" y="162" width="130" height="24" rx="12" fill="#fef0f0" stroke="#7c2d12" stroke-width="1.2"/>
+<text class="vl-lb" x="549" y="178" text-anchor="middle" fill="#7c2d12">Hierarchy Warning  OR</text>
+<!-- Combined KPI -->
+<line class="vl-er" x1="549" y1="186" x2="549" y2="242"/>
+<rect x="382" y="242" width="334" height="46" rx="7" fill="#fef9ec" stroke="#b7791f" stroke-width="1.5"/>
+<text class="vl-lb" x="549" y="260" text-anchor="middle" fill="#b7791f">IFBLANK(COUNTALLOF(… Hierarchy Warning), 0)</text>
+<text class="vl-sub" x="549" y="276" text-anchor="middle">COA with Hierarchy Warning — integer count</text>
+<text class="vl-sub" x="549" y="288" text-anchor="middle">IFBLANK coerces empty result to 0 for color-scale formatting</text>
+
+<!-- ===== BOARDS (bottom, spanning both tracks) ===== -->
+<line class="vl-e" x1="171" y1="288" x2="171" y2="316"/>
+<line class="vl-e" x1="549" y1="288" x2="549" y2="316"/>
+<path d="M171,316 L549,316" stroke="#8a9ab0" stroke-width="1.4" fill="none"/>
+<line class="vl-e" x1="360" y1="316" x2="360" y2="328"/>
+<rect x="120" y="328" width="480" height="8" rx="4" fill="#e4ebf3"/>
+<text class="vl-sub" x="360" y="338" text-anchor="middle">22. COA Maintenance board · 90.1.x COA hierarchy check boards (KPI tiles + filterable list views)</text>
+</svg>
+<figcaption style="font-size:13px;color:#46586f;margin-top:6px;font-family:var(--mono);">Fig. 5 — Two independent validation tracks. Mapping checks catch leaves that failed to resolve a reporting tier; their flags sum into per-level KPIs. Integrity checks catch structural corruption; they combine via OR into a single Hierarchy Warning flag, counted by COUNTALLOF with an IFBLANK guard so a zero count renders as 0 rather than blank.</figcaption>
+</figure>
 
   <div class="prose">
     <h3>Missing-mapping checks</h3>
