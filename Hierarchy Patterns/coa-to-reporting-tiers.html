@@ -293,7 +293,7 @@
 <line class="arf-e" x1="370" y1="64" x2="370" y2="77"/>
 <!-- FLAT LIST -->
 <rect x="42" y="78" width="650" height="60" rx="8" fill="#eef2f8" stroke="#1e3a5f" stroke-width="2"/>
-<text class="arf-ht" x="196" y="100" text-anchor="middle">A.0 Flat list</text>
+<text class="arf-ht" x="196" y="100" text-anchor="middle">Flat list</text>
 <text class="arf-sub" x="196" y="116" text-anchor="middle">Parent input · Depth · L0–L4 flags</text>
 <text class="arf-ht" x="554" y="100" text-anchor="middle">Mapping + Validation</text>
 <text class="arf-sub" x="554" y="116" text-anchor="middle">Level 0–4 mapping props · integrity checks</text>
@@ -332,7 +332,7 @@
 <text class="arf-sub" x="603" y="283" text-anchor="middle">COA maintenance boards</text>
 <line class="arf-e" x1="603" y1="236" x2="603" y2="250"/>
 </svg>
-<figcaption style="font-size:13px;color:#46586f;margin-top:6px;font-family:var(--mono);">Fig. 2 — All hierarchy intelligence lives in the Flat list. Level 0–4 standalone dimensions are populated from it by a one-time import per tier (amber gate). Validation checks run against the same Flat rows and roll into KPI count metrics surfaced on maintenance boards.</figcaption>
+<figcaption style="font-size:13px;color:#46586f;margin-top:6px;font-family:var(--mono);">Fig. 2 — All hierarchy intelligence lives in the Flat list. Level 0–4 standalone dimensions are populated from it by a one-time import per tier (amber gate). Validation checks run against the same Flat rows and roll into KPI count metrics on monitoring boards.</figcaption>
 </figure>
 
   <div class="prose">
@@ -781,7 +781,7 @@ IF(Flat.Statement = Statement."BS",
 <line class="vl-e" x1="171" y1="208" x2="171" y2="240"/>
 <rect x="4" y="242" width="334" height="46" rx="7" fill="#fef9ec" stroke="#b7791f" stroke-width="1.5"/>
 <text class="vl-lb" x="171" y="260" text-anchor="middle" fill="#b7791f">SUMOF('Missing Lk Check') — per level</text>
-<text class="vl-sub" x="171" y="276" text-anchor="middle">COA_Missing_Level_0  ·  _1  ·  _2  ·  _3  ·  _4</text>
+<text class="vl-sub" x="171" y="276" text-anchor="middle">one integer count KPI per tier</text>
 <text class="vl-sub" x="171" y="288" text-anchor="middle">returns 1 per failing row · BLANK = OK (sparse by design)</text>
 
 <!-- ===== RIGHT: INTEGRITY CHECKS ===== -->
@@ -801,7 +801,7 @@ IF(Flat.Statement = Statement."BS",
 <line class="vl-er" x1="549" y1="186" x2="549" y2="242"/>
 <rect x="382" y="242" width="334" height="46" rx="7" fill="#fef9ec" stroke="#b7791f" stroke-width="1.5"/>
 <text class="vl-lb" x="549" y="260" text-anchor="middle" fill="#b7791f">IFBLANK(COUNTALLOF(… Hierarchy Warning), 0)</text>
-<text class="vl-sub" x="549" y="276" text-anchor="middle">COA with Hierarchy Warning — integer count</text>
+<text class="vl-sub" x="549" y="276" text-anchor="middle">integer count of accounts with any integrity issue</text>
 <text class="vl-sub" x="549" y="288" text-anchor="middle">IFBLANK coerces empty result to 0 for color-scale formatting</text>
 
 <!-- ===== BOARDS (bottom, spanning both tracks) ===== -->
@@ -810,7 +810,7 @@ IF(Flat.Statement = Statement."BS",
 <path d="M171,316 L549,316" stroke="#8a9ab0" stroke-width="1.4" fill="none"/>
 <line class="vl-e" x1="360" y1="316" x2="360" y2="328"/>
 <rect x="120" y="328" width="480" height="8" rx="4" fill="#e4ebf3"/>
-<text class="vl-sub" x="360" y="338" text-anchor="middle">22. COA Maintenance board · 90.1.x COA hierarchy check boards (KPI tiles + filterable list views)</text>
+<text class="vl-sub" x="360" y="338" text-anchor="middle">monitoring boards — KPI tiles + filterable list views</text>
 </svg>
 <figcaption style="font-size:13px;color:#46586f;margin-top:6px;font-family:var(--mono);">Fig. 5 — Two independent validation tracks. Mapping checks catch leaves that failed to resolve a reporting tier; their flags sum into per-level KPIs. Integrity checks catch structural corruption; they combine via OR into a single Hierarchy Warning flag, counted by COUNTALLOF with an IFBLANK guard so a zero count renders as 0 rather than blank.</figcaption>
 </figure>
