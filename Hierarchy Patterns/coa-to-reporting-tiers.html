@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="icon" href="favicon.png" type="image/png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon.png" type="image/png">
 <title>Self-referencing COA to tiered reporting dimensions · falconbi</title>
 <meta name="description" content="A reusable pattern for turning a flat, self-referencing chart of accounts into standalone reporting-level dimensions — with validation — in a planning tool without native ragged consolidation.">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="falconbi.css">
+<link rel="stylesheet" href="../falconbi.css">
 </head>
 <body>
 
 <header class="topbar">
-  <a href="index.html" class="brand">
-    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+  <a href="../index.html" class="brand">
+    <img src="../favicon.png" class="brand-eagle" alt="FalconBI">
     <span class="brand-word">falcon<b>bi</b></span>
   </a>
   <div class="topbar-right"><span class="topbar-kicker">Pigment · Patterns</span>
-    <a href="index.html">← articles</a></div>
+    <a href="../index.html">← articles</a></div>
 </header>
 
 <div class="shell">
@@ -55,6 +55,11 @@
     <span class="chip">Reusable design</span>
   </div>
   <p style="font-family:var(--mono);font-size:.72rem;color:var(--ink-faint);margin:.8rem 0 0">Published 19 August 2026</p>
+</div>
+
+<div class="callout steel" style="margin-top:1.5rem">
+  <span class="co-label">Part of the hierarchy patterns set</span>
+  <p><a href="00_ragged_hierarchies_concepts.html">Ragged Hierarchies — Concepts &amp; Pattern Selection</a> explains the underlying problem and the choice between the <a href="balanced_hierarchy_pattern.html">Balanced</a> and <a href="lean_hierarchy_pattern.html">Lean</a> patterns. This document applies the same ideas to a specific case: a chart of accounts with multiple financial-statement frames and dirty source data.</p>
 </div>
 
 <hr class="hr">
@@ -594,7 +599,7 @@ IFBLANK(COUNTALLOF(Flat.'Hierarchy Warning'[FILTER: Flat.'Hierarchy Warning']), 
     <div>
       <div class="foot-mark">falcon<b>bi</b></div>
       <p>Open EPM methodology — COA hierarchy patterns for Pigment and Anaplan. Published freely for the practitioner community.</p>
-      <a href="index.html" class="license">← All articles</a>
+      <a href="../index.html" class="license">← All articles</a>
     </div>
     <div class="foot-meta">
       Pigment · COA Hierarchy Pattern<br>
