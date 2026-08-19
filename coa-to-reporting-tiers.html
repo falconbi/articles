@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<title>Self-referencing COA to tiered reporting dimensions · falconbi</title>
+<meta name="description" content="A reusable pattern for turning a flat, self-referencing chart of accounts into standalone reporting-level dimensions — with validation — in a planning tool without native ragged consolidation.">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a href="index.html" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="topbar-kicker">Pigment · Patterns</span>
+    <a href="index.html">← articles</a></div>
+</header>
+
+<div class="shell">
+
+<nav class="toc" aria-label="On this page">
+  <div class="toc-label">On this page</div>
+  <ol>
+    <li><a href="#problem"><span class="num">01</span>The problem</a></li>
+    <li><a href="#frame"><span class="num">02</span>The frame model</a></li>
+    <li><a href="#architecture"><span class="num">03</span>Architecture</a></li>
+    <li><a href="#source"><span class="num">04</span>Source properties</a></li>
+    <li><a href="#depth"><span class="num">05</span>Depth</a></li>
+    <li><a href="#flags"><span class="num">06</span>Tier flags</a></li>
+    <li><a href="#mapping"><span class="num">07</span>Composite mapping</a></li>
+    <li><a href="#dimensions"><span class="num">08</span>Composite dimensions</a></li>
+    <li><a href="#validation"><span class="num">09</span>Validation</a></li>
+    <li><a href="#antipattern"><span class="num">10</span>Anti-pattern</a></li>
+    <li><a href="#scope"><span class="num">11</span>When not to use</a></li>
+    <li><a href="#checklist"><span class="num">12</span>Reuse checklist</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="eyebrow"><span>Open methodology</span><span>Pigment</span><span>Patterns</span></div>
+  <h1>Self-referencing COA to tiered reporting dimensions</h1>
+  <p class="lede">A reusable pattern for converting a flat, self-referencing chart of accounts into standalone reporting-level dimensions — with a full validation net — in a planning tool without native ragged consolidation. Formulas are shown in Pigment syntax; the structure ports to any tool with dimensions, self-referencing properties, and item lookups.</p>
+  <div class="meta-row">
+    <span class="chip violet">Pigment</span>
+    <span class="chip amber">Hierarchy · COA</span>
+    <span class="chip">Validation pattern</span>
+    <span class="chip">Reusable design</span>
+  </div>
+  <p style="font-family:var(--mono);font-size:.72rem;color:var(--ink-faint);margin:.8rem 0 0">Published 19 August 2026</p>
+</div>
+
+<hr class="hr">
+
+<!-- 01 THE PROBLEM -->
+<section id="problem" class="reveal">
+  <span class="snum">01 — The problem</span>
+  <h2>The problem</h2>
+  <div class="prose">
+    <p>Source systems export a chart of accounts as a single flat list with one self-referencing parent property — each row names its immediate parent, and the tree is implied. That shape is awkward to report from: you cannot pivot cleanly by "reporting level", roll up consistently, or validate the tree.</p>
+    <p>The goal is to convert that flat list into N standalone dimensions, one per reporting tier, so that any downstream model can slice by a stable, explicit level — while maintaining a manual safety net for the gaps and errors that arrive in every source export.</p>
+    <p>Two complications make this non-trivial.</p>
+    <p><strong>Ragged depth.</strong> Different financial-statement frames have different heights. A leaf account in one frame sits at a different absolute depth than a leaf in another.</p>
+    <p><strong>Dirty source data.</strong> Exports arrive with missing parents, wrong account types, and occasional cycles. The transform must be defensive and self-validating.</p>
+  </div>
+  <div class="callout">
+    <span class="co-label">The trade</span>
+    <p>The pattern buys stable, explicit reporting levels and a validation net that localises every source error — at the cost of hand-written, hand-maintained scaffolding. A sound trade when the tree is deep, ragged, and dirty; overkill when it is not (see section 11), and largely redundant in a tool that consolidates ragged hierarchies natively (see the platform note in section 3).</p>
+  </div>
+</section>
+
+<!-- 02 FRAME MODEL -->
+<section id="frame" class="reveal">
+  <span class="snum">02 — The frame model</span>
+  <h2>The frame model</h2>
+  <div class="prose">
+    <p>A <strong>frame</strong> is a root-to-leaf chain (here: Balance Sheet and P&amp;L). Tier labels are <strong>leaf-relative</strong>: <code>L0</code> is always the leaf, <code>Lk</code> is always <em>k</em> tiers above the leaf. What differs between frames is the <strong>absolute depth</strong> at which each tier sits.</p>
+    <p>The two frames below are worked examples, not fixed limits — the pattern takes any number of frames, each of any depth.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Frame</th><th>Chain (root → leaf)</th><th>Max depth</th><th>Leaf tier</th><th>Top tier</th></tr></thead>
+      <tbody>
+        <tr><td><strong>BS</strong> (Balance Sheet)</td><td>L4 → L3 → L2 → L1 → L0</td><td>5</td><td>L0 @ depth 5</td><td>L4 @ depth 1</td></tr>
+        <tr><td><strong>PL</strong> (Profit &amp; Loss)</td><td>L3 → L2 → L1 → L0</td><td>3</td><td>L0 @ depth 3</td><td>L3 @ depth 0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tree">BS frame (max depth 5)           PL frame (max depth 3)
+
+L4 · depth 1 — root              L3 · depth 0 — root
+└── L3 · depth 2                 └── L2 · depth 1
+    └── L2 · depth 3                 └── L1 · depth 2
+        └── L1 · depth 4                 └── L0 · depth 3
+            └── L0 · depth 5                  (leaf / posting account)
+                 (leaf / posting account)</div>
+
+  <div class="prose">
+    <h3>The one equation that governs everything</h3>
+    <p>A tier's absolute depth is fully determined by its frame:</p>
+  </div>
+
+  <div class="rule">
+    depth(Lk, frame) = maxDepth(frame) − k
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tier</th><th>BS depth (max 5)</th><th>PL depth (max 3)</th></tr></thead>
+      <tbody>
+        <tr><td>L0 (leaf)</td><td>5</td><td>3</td></tr>
+        <tr><td>L1</td><td>4</td><td>2</td></tr>
+        <tr><td>L2</td><td>3</td><td>1</td></tr>
+        <tr><td>L3</td><td>2</td><td>0 (root)</td></tr>
+        <tr><td>L4</td><td>1</td><td>— (PL has no L4)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+    <p>The table above is the two-frame instance; the equation holds for any frame at any depth. Every depth-based branch later in this document is that equation unrolled. State it once; the rest is mechanical.</p>
+    <p>Two structural consequences worth internalising.</p>
+    <p><strong>PL tops out at L3, BS at L4.</strong> The frames have different heights, so the top grouping tier differs. PL genuinely has no L4.</p>
+    <p><strong>Shallow leaves exist.</strong> A posting account can sit directly at a grouper tier (e.g. a PL leaf at depth 2, where L1 normally lives) because a sub-tree is shorter than its frame's maximum. These are legitimate and need special handling in the mapping and validation logic — they are the single largest source of edge cases.</p>
+
+    <h3>Tier count and frame count are parameters, not limits</h3>
+    <p>BS-with-5-tiers and PL-with-4-tiers are this example's numbers. The pattern imposes no ceiling: a BS frame could be 6 tiers deep and a PL frame 5, or you could carry a third frame (Cash Flow, a KPI tree) with its own depth. The structure never changes, because everything is driven by <code>maxDepth(frame)</code> and the tier equation.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="co-label">Manual extension required</span>
+    <p><code>Parent</code> does not recurse. Every walk up the tree — the depth ladder, the short-name walk, the cycle and ceiling probes, and the leaf multi-hop lookups — is a fixed-length chain written out by hand. If a frame is deeper than the chains written, the extra levels are silently ignored. When you resize, lengthen every <code>Parent</code> chain to match the new deepest frame. The Depth Ceiling Warning (section 9) exists precisely because this step has no automatic safety.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>To do this</th><th>Change this</th></tr></thead>
+      <tbody>
+        <tr><td>Add a tier to a frame</td><td>Raise that frame's <code>maxDepth</code>; the equation re-slots every tier automatically</td></tr>
+        <tr><td>Add a whole frame</td><td>Add a member to the <code>Statement</code> classifier; give it a <code>maxDepth</code></td></tr>
+        <tr><td>Reach a deeper leaf</td><td>Add one more <code>Parent</code> hop to the <code>Depth</code> ladder and the <code>Short Name</code> walk</td></tr>
+        <tr><td>Map a deeper tier</td><td>Add the <code>Level N</code> mapping property and its composite dimension</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+    <p>Everything scales by the same three moving parts. The <strong>depth ladder</strong> needs one <code>IFDEFINED(Parent…)</code> rung per possible depth, so its length equals the deepest frame's <code>maxDepth</code>. The <strong>tier flags</strong> have one flag <code>Lk</code> per tier, each firing at <code>depth = maxDepth − k</code> for every frame that reaches that tier. The <strong>composite tiers</strong> have one <code>Level N</code> mapping property, one standalone dimension, and one bulk-import hop per tier — linear in tier count.</p>
+    <p>The only numbers that change when you resize are the lengths of the chained <code>Parent</code> walks and the count of tiers. The logic — leaf test, <code>maxDepth − k</code>, "grouping node → 1 hop, leaf → k hops" — is invariant.</p>
+  </div>
+</section>
+
+<!-- 03 ARCHITECTURE -->
+<section id="architecture" class="reveal">
+  <span class="snum">03 — Architecture</span>
+  <h2>Architecture</h2>
+
+  <div class="tree">ERP export (flat, self-referencing)
+        ↓
+Flat list  ←  Parent input + all derived properties
+  ├── L0 rows  →  Level 0 dimension  (leaves)
+  ├── L1 rows  →  Level 1 dimension
+  ├── L2 rows  →  Level 2 dimension
+  ├── L3 rows  →  Level 3 dimension
+  ├── L4 rows  →  Level 4 dimension
+  └── All rows →  Validation checks → KPI metrics → boards</div>
+
+  <div class="prose">
+    <p>Three components do all the work.</p>
+    <p><strong>Flat</strong> — the imported source list. Holds all raw properties, all derived classification, all mapping, and all validation. This is where the work happens.</p>
+    <p><strong>Level 0 … Level 4</strong> — one standalone dimension per reporting tier. Populated from Flat by a one-time bulk import.</p>
+    <p><strong>Validation + KPIs</strong> — data-quality checks on Flat, rolled into count metrics for monitoring boards.</p>
+
+    <h3>Naming convention used throughout</h3>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Placeholder</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>Flat</code></td><td>The flat source list</td></tr>
+        <tr><td><code>Code</code></td><td>Unique key (account code)</td></tr>
+        <tr><td><code>Name</code></td><td>Full path property from the source export (colon-delimited)</td></tr>
+        <tr><td><code>Parent</code></td><td>Self-referencing dimension property — immediate parent only, plain input</td></tr>
+        <tr><td><code>Statement</code></td><td>Frame classifier property (BS / PL)</td></tr>
+        <tr><td><code>L0 … L4</code></td><td>Boolean tier flags on Flat</td></tr>
+        <tr><td><code>Level 0 … Level 4</code></td><td>The standalone composite dimensions</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout steel">
+    <span class="co-label">Platform fit</span>
+    <p>This pattern is machinery to synthesise a ragged hierarchy in a tool that will not walk one natively. Every hand-written <code>Parent.Parent…</code> chain, every per-tier composite dimension, every bulk-import hop exists because the modelling layer cannot recurse a self-reference and roll up on its own.</p>
+    <p><strong>Pigment, Anaplan</strong> — the pattern earns its keep. There is no native ragged consolidation, so a tiered-dimension build is the correct approach to stable, sliceable reporting levels.</p>
+    <p><strong>TM1 / Planning Analytics</strong> — most of this machinery is unnecessary. A single dimension with native consolidations handles ragged depth directly; the depth ladder, the tier flags, and the composite split are solving a problem the engine already solves. Port the ideas — settle-then-derive, the leaf test, the validation checks — not the scaffolding.</p>
+  </div>
+</section>
+
+<!-- 04 SOURCE PROPERTIES -->
+<section id="source" class="reveal">
+  <span class="snum">04 — Source properties</span>
+  <h2>Source properties</h2>
+
+  <div class="prose">
+    <h3>Raw imported</h3>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Property</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>Code</code></td><td>Text</td><td>Unique key</td></tr>
+        <tr><td><code>Name</code></td><td>Text</td><td>Full colon-delimited path, e.g. <code>Assets : Current Assets : Cash : 11001-Petty Cash</code></td></tr>
+        <tr><td><code>Parent</code></td><td>Dimension → self</td><td>Immediate parent only, no formula. When the export supplies no parent, it is typed in by hand. Because the property is never formula-driven, no separate "manual override" field is needed — the property is the override point.</td></tr>
+        <tr><td><code>Account Type</code></td><td>Dimension</td><td>Raw type; may be wrong or missing</td></tr>
+        <tr><td><code>Inactive</code></td><td>Boolean</td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+    <h3>Manual overrides and the settle-then-derive pattern</h3>
+    <p>Raw exports get things wrong. Patching the derived chain is safer than fighting the import on every refresh. Every override follows one shape:</p>
+  </div>
+
+<pre><code>IFDEFINED(override, override, calculated)</code></pre>
+
+  <div class="prose">
+    <p>Add override properties for anything the source gets wrong: <code>Manual Account Type Override</code>, <code>Manual Statement Override</code>, <code>Manual Depth Override</code>.</p>
+    <p><strong><code>Account Type (Settled)</code></strong> — the effective type every downstream formula reads:</p>
+  </div>
+
+<pre><code>// Manual override wins; otherwise fall back to the raw imported type.
+IFDEFINED(Flat.'Manual Account Type Override',
+          Flat.'Manual Account Type Override',
+          Flat.'Account Type')</code></pre>
+
+  <div class="prose">
+    <p><strong><code>Statement</code></strong> — looked up from the settled type, so a type correction cascades:</p>
+  </div>
+
+<pre><code>// Frame classification, derived from the settled type.
+// A Manual Account Type Override flows through to the statement automatically.
+'Account Type'.Statement [BY: Flat.'Account Type (Settled)']</code></pre>
+
+  <div class="card">
+    <h3>Derive from settled values, never raw</h3>
+    <p style="margin-bottom:0">One override then cascades correctly through every dependent property. If <code>Statement</code> derived from the raw type, correcting the type would not fix the statement — you would need to override both. Derive from settled values and the chain repairs itself.</p>
+  </div>
+</section>
+
+<!-- 05 DEPTH -->
+<section id="depth" class="reveal">
+  <span class="snum">05 — Depth</span>
+  <h2>Depth</h2>
+  <div class="prose">
+    <p>Depth is the count of hops from the root (root = 0). A manual override wins; otherwise walk the parent chain, testing the longest chain first and falling through.</p>
+  </div>
+
+<pre><code>// Depth = number of hops from root.
+// Manual Depth Override wins when it is set.
+// Ceiling: an account deeper than max depth would misreport — see Depth Ceiling Warning.
+IFDEFINED(Flat.'Manual Depth Override',
+  Flat.'Manual Depth Override',
+  IFDEFINED(Flat.Parent.Parent.Parent.Parent.Parent, 5,
+  IFDEFINED(Flat.Parent.Parent.Parent.Parent,        4,
+  IFDEFINED(Flat.Parent.Parent.Parent,               3,
+  IFDEFINED(Flat.Parent.Parent,                      2,
+  IFDEFINED(Flat.Parent,                             1,
+                                                     0 ))))))</code></pre>
+
+  <div class="prose">
+    <h3>Short name and display name</h3>
+    <p>The source stores a full ancestor path in <code>Name</code>; the leaf label is the segment after the final <code>" : "</code>. Extract it once, then build a board-facing label.</p>
+    <p><strong><code>Short Name</code></strong> — last segment of the colon-delimited path. The full nested <code>FIND</code> / <code>MID</code> ladder is mechanical — one branch per separator level up to the frame maximum. Generate it to match the deepest frame.</p>
+    <p><strong><code>Display Name</code></strong> — the label shown on boards:</p>
+  </div>
+
+<pre><code>Flat.Code & "-" & Flat.'Short Name'</code></pre>
+
+  <div class="callout warn">
+    <span class="co-label">Common bug</span>
+    <p>Concatenate <code>Code</code> with <code>Short Name</code>, not with <code>Name</code>. On the flat list <code>Name</code> is the full path, so <code>Code &amp; "-" &amp; Name</code> renders the entire ancestor chain. On the composite dimensions <code>Name</code> is already short, so the two are equivalent there — but keep the flat-list formula pointed at <code>Short Name</code>.</p>
+  </div>
+</section>
+
+<!-- 06 TIER FLAGS -->
+<section id="flags" class="reveal">
+  <span class="snum">06 — Tier flags</span>
+  <h2>Leaf and tier classification</h2>
+  <div class="prose">
+    <p>All flags are boolean and return <strong>BLANK, not FALSE</strong>, when the condition fails — preserving sparsity so they sum cleanly into counts.</p>
+    <p><strong><code>L0</code> — the leaf test.</strong> The only criterion is "nobody names me as their parent":</p>
+  </div>
+
+<pre><code>// TRUE for leaves; BLANK for grouping nodes.
+// Groups a count of 1-per-account by Parent: if this account's bucket is blank,
+// nothing points to it as a parent, so it is a leaf.
+IF(ISBLANK( (IF(ISDEFINED(Flat.Code), 1, BLANK)) [BY SUM: Flat.Parent] ), TRUE)</code></pre>
+
+  <div class="prose">
+    <p><strong><code>L1 … L4</code> — grouping tiers.</strong> A grouping flag is "not-a-leaf AND depth matches this tier's depth for the account's frame", applying the depth equation <code>depth(Lk) = maxDepth − k</code>:</p>
+  </div>
+
+<pre><code>// L1: non-leaf AND depth = maxDepth(frame) - 1   →  BS depth 4, PL depth 2
+IF(ISBLANK(Flat.L0)
+   AND ((Flat.Statement = Statement."BS" AND Flat.Depth = 4)
+     OR (Flat.Statement = Statement."PL" AND Flat.Depth = 2)),
+   TRUE)</code></pre>
+
+  <div class="prose">
+    <p><code>L2</code>, <code>L3</code>, <code>L4</code> are identical with the depth values shifted by the equation:</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Flag</th><th>Condition (besides non-leaf)</th></tr></thead>
+      <tbody>
+        <tr><td><code>L1</code></td><td>BS depth 4 <strong>or</strong> PL depth 2</td></tr>
+        <tr><td><code>L2</code></td><td>BS depth 3 <strong>or</strong> PL depth 1</td></tr>
+        <tr><td><code>L3</code></td><td>BS depth 2 <strong>or</strong> PL depth 0 (the PL root)</td></tr>
+        <tr><td><code>L4</code></td><td>BS depth 1 <strong>only</strong> (PL has no L4)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout steel">
+    <span class="co-label">Priority</span>
+    <p><code>L0</code> takes priority over grouping flags: a shallow leaf sitting at a grouper depth is a leaf, never a grouping node.</p>
+  </div>
+</section>
+
+<!-- 07 COMPOSITE MAPPING -->
+<section id="mapping" class="reveal">
+  <span class="snum">07 — Composite mapping</span>
+  <h2>Composite mapping</h2>
+  <div class="prose">
+    <p>Each account gets one mapping property per tier (<code>Level 0</code> … <code>Level 4</code> on Flat), computing which item in that composite dimension it belongs to. All resolution reduces to one rule.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:6px">The resolution rule</h3>
+    <div class="table-wrap" style="margin:0">
+      <table>
+        <thead><tr><th>Account type</th><th>Resolution</th></tr></thead>
+        <tbody>
+          <tr><td>Grouping node at tier L(k−1)</td><td>1 hop up Parent → Level k</td></tr>
+          <tr><td>Normal leaf (depth = frame max)</td><td>k hops up Parent → Level k</td></tr>
+          <tr><td>Shallow leaf (sits at a grouper tier)</td><td>(depth − depth of Level k) hops, or BLANK if at or above tier k</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>A grouping node at tier L(k−1) is always one level below its tier-k parent — so exactly 1 hop, regardless of frame or depth. A normal leaf at depth <code>maxDepth</code> reaching tier k (depth <code>maxDepth − k</code>) needs <code>maxDepth − (maxDepth − k) = k</code> hops — so k hops, no branching on frame. A shallow leaf sits above the normal leaf depth; it maps with fewer hops, or resolves to BLANK where it legitimately sits at or above the target tier.</p>
+    <p>Only leaves need the depth/statement branching, because leaves can appear at multiple depths. Grouping nodes at a given tier are always one hop from their parent tier.</p>
+    <h3>Generic template</h3>
+  </div>
+
+<pre><code>// Level k mapping on Flat
+IF(Flat.'L(k-1)',                                    // grouping node one tier below k?
+    ITEM(Flat.Parent.Code, 'Level k'.Code),          //   → 1 hop, done
+IF(Flat.L0,                                          // else, is it a leaf?
+    &lt;depth/statement-branched multi-hop lookup&gt;,     //   → k hops for normal, fewer for shallow
+    BLANK)                                            // grouping node NOT at tier k-1 → BLANK
+)</code></pre>
+
+  <div class="prose">
+    <h3>Worked example — <code>Level 2</code></h3>
+  </div>
+
+<pre><code>// Grouping node at L1 → 1 hop. Leaves → depth-branched lookup. Everything else → BLANK.
+IF(Flat.L1,
+    ITEM(Flat.Parent.Code, 'Level 2'.Code),
+IF(Flat.Statement = Statement."BS",
+    IF(Flat.Depth = 5,                               // BS normal leaf: 2 hops
+        ITEM(Flat.Parent.Parent.Code, 'Level 2'.Code),
+    IF(Flat.Depth = 4 AND Flat.L0,                   // BS shallow leaf: 1 hop
+        ITEM(Flat.Parent.Code, 'Level 2'.Code),
+    IF(Flat.Depth = 3 AND Flat.L0,                   // BS leaf sitting AT the L2 tier: self
+        ITEM(Flat.Code, 'Level 2'.Code),
+        BLANK))),
+    IF(Flat.Depth = 3,                               // PL normal leaf: 2 hops
+        ITEM(Flat.Parent.Parent.Code, 'Level 2'.Code),
+    IF(Flat.Depth = 2 AND Flat.L0,                   // PL shallow leaf: 1 hop
+        ITEM(Flat.Parent.Code, 'Level 2'.Code),
+        BLANK)))
+)</code></pre>
+
+  <div class="callout steel">
+    <span class="co-label">Shallow leaf in PL</span>
+    <p>The PL shallow-leaf branch (<code>L0 AND Depth = 2 AND Statement = PL → 1 hop → Level 2</code>) handles an account with no L1 bucket: it has no Level 1 entry by design and maps straight to Level 2. This is correct behaviour, not a gap.</p>
+  </div>
+
+  <div class="prose">
+    <p><code>Level 3</code> and <code>Level 4</code> follow the identical shape one tier higher — grouping node at L2 / L3 gives 1 hop; leaves branch by depth up to 4 hops; BS-only for Level 4. Generate them from the rule rather than hand-writing each.</p>
+  </div>
+</section>
+
+<!-- 08 COMPOSITE DIMENSIONS -->
+<section id="dimensions" class="reveal">
+  <span class="snum">08 — Composite dimensions</span>
+  <h2>Composite dimensions</h2>
+  <div class="prose">
+    <p>Each composite dimension carries <code>Code</code>, <code>Name</code>, <code>Display Name</code>, <code>Statement</code>, an <strong>immediate-parent input property</strong>, and <strong>chained-formula properties</strong> for every tier further up.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Dimension</th><th>Input property (imported)</th><th>Chained formulas (walk the chain)</th></tr></thead>
+      <tbody>
+        <tr><td>Level 0</td><td>Level 1</td><td>Level 2, Level 3, Level 4</td></tr>
+        <tr><td>Level 1</td><td>Level 2</td><td>Level 3, Level 4</td></tr>
+        <tr><td>Level 2</td><td>Level 3</td><td>Level 4</td></tr>
+        <tr><td>Level 3</td><td>Level 4</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tree">Level 0 dimension
+
+  Level 1  ←  INPUT (bulk import from Flat)
+  Level 2  =  Level1.Level2        (chained formula)
+  Level 3  =  Level2.Level3        (chained formula)
+  Level 4  =  Level3.Level4        (chained formula)</div>
+
+  <div class="prose">
+    <p>Only the immediate parent link per tier is ever imported. Every hop above it is a live chained formula that re-resolves automatically if a lower import is later corrected. You never hand-populate the upper tiers — they walk the chain.</p>
+
+    <h3>The one-time bulk-import mechanism</h3>
+    <p>For each hop X → X+1 (e.g. Level 1 → Level 2):</p>
+    <ol class="clean">
+      <li>From Flat, pull rows where the child tier flag is TRUE (<code>L1 = TRUE</code> for the L1→L2 hop), together with Flat's already-computed <code>Level 2</code> mapping value for each row.</li>
+      <li>Bulk-write those <code>(child item, parent code)</code> pairs into the immediate-parent input property of the next composite dimension. In Pigment: <code>update_list_property_input_data</code>.</li>
+      <li>This is one-way and one-time — not a live link. If Flat's underlying <code>Parent</code> mapping changes, re-run the import for the affected tiers. Nothing recalculates automatically upstream of the import.</li>
+    </ol>
+    <p>Hops in a 5-tier build: L0→L1, L1→L2, L2→L3, L3→L4.</p>
+  </div>
+</section>
+
+<!-- 09 VALIDATION -->
+<section id="validation" class="reveal">
+  <span class="snum">09 — Validation</span>
+  <h2>Validation</h2>
+  <div class="prose">
+    <p>All checks return <code>1</code> (problem) or <code>BLANK</code> (OK) so they sum into count-based KPIs.</p>
+  </div>
+
+  <div class="tree">Mapping checks              Integrity checks
+├── Missing L0              ├── Self-reference
+├── Missing L1              ├── Ancestor cycle
+├── Missing L2              └── Depth ceiling
+├── Missing L3 (BS only)             ↓
+└── Missing L4 (BS only)       Hierarchy Warning
+          ↓                       (combined flag)
+    KPI count metrics → monitoring boards</div>
+
+  <div class="prose">
+    <h3>Missing-mapping checks</h3>
+    <p>Each fires only for accounts that <em>should</em> have a mapping at that tier, excluding those that legitimately sit at or above it.</p>
+    <p><strong><code>Missing L0</code></strong> — active leaf with no entry in Level 0:</p>
+  </div>
+
+<pre><code>IF(Flat.L0 AND IFDEFINED(Flat.Inactive, NOT Flat.Inactive, TRUE),
+   IFDEFINED(ITEM(Flat.Code, 'Level 0'.Code), BLANK, 1))</code></pre>
+
+  <div class="prose">
+    <p>The higher-tier checks follow the same shape, gated on the depths that require that tier:</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Check</th><th>Fires for</th><th>Excludes</th></tr></thead>
+      <tbody>
+        <tr><td>Missing L1</td><td>BS depth-5 leaf, PL depth-3 leaf, PL L1 grouper</td><td>PL shallow leaf (depth 2, L0) — legitimately has no L1</td></tr>
+        <tr><td>Missing L2</td><td>BS depth-5 and depth-4 leaves, PL depth-3 and depth-2 leaves</td><td>BS depth-3 leaf (it <em>is</em> the L2 tier)</td></tr>
+        <tr><td>Missing L3</td><td>BS leaves at depth 5, 4, 3 <strong>(BS only)</strong></td><td>BS depth-2 leaf (sits at L3), all PL</td></tr>
+        <tr><td>Missing L4</td><td>BS leaves at depth 5, 4, 3, 2 <strong>(BS only)</strong></td><td>All PL (no L4)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+    <h3>Integrity checks</h3>
+    <p><strong><code>Self-Reference Warning</code></strong> — a 1-hop loop (parent = self):</p>
+  </div>
+
+<pre><code>IF(Flat.Parent = ITEM(Flat.Code, Flat.Code), TRUE, BLANK)</code></pre>
+
+  <div class="prose">
+    <p><strong><code>Ancestor Cycle Warning</code></strong> — multi-hop loops (2–6 levels up loop back to self):</p>
+  </div>
+
+<pre><code>(Flat.Parent.Parent                                = ITEM(Flat.Code, Flat.Code))
+OR (Flat.Parent.Parent.Parent                      = ITEM(Flat.Code, Flat.Code))
+OR (Flat.Parent.Parent.Parent.Parent               = ITEM(Flat.Code, Flat.Code))
+OR (Flat.Parent.Parent.Parent.Parent.Parent        = ITEM(Flat.Code, Flat.Code))
+OR (Flat.Parent.Parent.Parent.Parent.Parent.Parent = ITEM(Flat.Code, Flat.Code))</code></pre>
+
+  <div class="prose">
+    <p><strong><code>Depth Ceiling Warning</code></strong> — chain continues past the frame maximum. Cannot be caught by testing <code>Depth &gt; N</code> because <code>Depth</code> is capped by the same chain and will not report a value above the ceiling. Must be tested directly:</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="co-label">Do not use Depth &gt; N for ceiling detection</span>
+    <p>The <code>Depth</code> property is capped at its ceiling value by the <code>IFDEFINED</code> chain. An item 8 levels deep still reports <code>Depth = 5</code>. Test overflow directly by checking whether a chain one hop beyond the ceiling resolves — not by comparing the capped depth value.</p>
+  </div>
+
+<pre><code>// Fires when a chain one hop beyond the ceiling resolves.
+// Skipped when a Manual Depth Override is set (override takes responsibility).
+IFDEFINED(Flat.'Manual Depth Override', BLANK,
+  IFDEFINED(Flat.Parent.Parent.Parent.Parent.Parent.Parent, TRUE, BLANK))</code></pre>
+
+  <div class="prose">
+    <p><strong><code>Hierarchy Warning</code></strong> — combined flag:</p>
+  </div>
+
+<pre><code>Flat.'Self-Reference Warning' OR Flat.'Ancestor Cycle Warning' OR Flat.'Depth Ceiling Warning'</code></pre>
+
+  <div class="prose">
+    <h3>KPI metrics</h3>
+  </div>
+
+<pre><code>// Count of accounts with no parent set.
+COUNTBLANKOF(Flat.Parent)
+
+// Count of accounts missing an account type.
+COUNTBLANKOF(Flat.'Account Type')
+
+// Count of hierarchy-integrity failures.
+// COUNTALLOF returns BLANK for an empty subset, which breaks color-scale formatting.
+// IFBLANK coerces it to a real 0.
+IFBLANK(COUNTALLOF(Flat.'Hierarchy Warning'[FILTER: Flat.'Hierarchy Warning']), 0)</code></pre>
+</section>
+
+<!-- 10 ANTI-PATTERN -->
+<section id="antipattern" class="reveal">
+  <span class="snum">10 — Anti-pattern</span>
+  <h2>Anti-pattern: text-derived parentage</h2>
+  <div class="prose">
+    <p>An earlier approach parsed the colon-delimited <code>Name</code> path to infer parents by text-matching ancestor segments. Fragile string matching silently mismatched a segment, truncated Depth to 0 downstream, and corrupted the tree without any error.</p>
+    <p>The authoritative source of parentage is the <code>Parent</code> dimension property — manually maintained, never text-derived. Keep <code>Name</code> parsing for the display label only (<code>Short Name</code>), never for structure.</p>
+  </div>
+</section>
+
+<!-- 11 SCOPE -->
+<section id="scope" class="reveal">
+  <span class="snum">11 — When not to use</span>
+  <h2>When not to use this pattern</h2>
+  <div class="prose">
+    <p>The pattern is the right answer only when parentage has to be resolved inside the modelling tool. Before building any of it, check whether the problem can be moved upstream — because most of this machinery disappears if it can.</p>
+    <ul>
+      <li><strong>The source can export a level-per-column hierarchy.</strong> If the ERP or a reporting view can hand you <code>L4 … L0</code> as explicit columns, import those directly. Nothing to derive.</li>
+      <li><strong>Pre-processing before load is available.</strong> A SQL view or a dbt model can flatten the self-reference into tiered columns with a recursive CTE — one place, tested once, in a language built for graph walks. Land that in the tool and skip the in-model depth ladder entirely.</li>
+      <li><strong>The hierarchy is shallow and fixed.</strong> Two or three stable levels that never go ragged do not justify the frame model, the shallow-leaf handling, or the per-tier validation. Map them by hand.</li>
+    </ul>
+    <p>Reach for the full pattern when none of those hold: the tool must own the mapping, the source is flat and self-referencing, upstream pre-processing is not available, and the tree is deep, ragged, and dirty enough that the validation net earns its place.</p>
+  </div>
+</section>
+
+<!-- 12 CHECKLIST -->
+<section id="checklist" class="reveal">
+  <span class="snum">12 — Reuse checklist</span>
+  <h2>Reuse checklist</h2>
+  <div class="prose">
+    <ol class="clean">
+      <li>Import the flat source with a self-referencing <code>Parent</code> dimension property left as a plain input (no formula), so source gaps can be hand-filled.</li>
+      <li>Add <code>Manual … Override</code> properties for anything the source gets wrong, each wired <code>IFDEFINED(override, override, calculated)</code>. Derive from settled values, never raw.</li>
+      <li>Compute <code>Depth</code> by walking the parent chain, longest chain first.</li>
+      <li><code>L0</code> = "nothing names me as parent". <code>Lk</code> (k ≥ 1) = "not a leaf AND <code>Depth = maxDepth(frame) − k</code>".</li>
+      <li>One composite-mapping property per tier on Flat, using the single rule: grouping node at tier L(k−1) → 1 hop; normal leaf → k hops; shallow leaf → fewer hops or BLANK.</li>
+      <li>One standalone dimension per tier: an immediate-parent input property (bulk-imported from Flat once per hop) plus chained-formula properties for every tier above.</li>
+      <li>Add missing-mapping checks per tier (excluding accounts that legitimately sit at or above that tier), the self-reference / ancestor-cycle / depth-ceiling / combined integrity checks, and roll counts into KPIs with <code>IFBLANK(COUNTALLOF(…), 0)</code> so empty results render as <code>0</code> for conditional formatting.</li>
+    </ol>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open EPM methodology — COA hierarchy patterns for Pigment and Anaplan. Published freely for the practitioner community.</p>
+      <a href="index.html" class="license">← All articles</a>
+    </div>
+    <div class="foot-meta">
+      Pigment · COA Hierarchy Pattern<br>
+      Published 19 August 2026<br>
+      <a href="https://github.com/falconbi/articles">github.com/falconbi/articles</a><br>
+      <span class="license">CC0 — public domain</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+const tocLinks = document.querySelectorAll('.toc a');
+const sections = document.querySelectorAll('section[id]');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      tocLinks.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector(`.toc a[href="#${e.target.id}"]`);
+      if(a) a.classList.add('active');
+    }
+  });
+},{rootMargin:'-10% 0% -75% 0%'});
+sections.forEach(s => io.observe(s));
+
+const ro = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){e.target.classList.add('in');ro.unobserve(e.target)}
+  });
+},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+</script>
+</body>
+</html>
