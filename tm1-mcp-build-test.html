@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<title>Building a TM1 model by conversation · falconbi</title>
+<meta name="description" content="What happens when you describe a TM1 model to an AI and let it build, inspect and change the model through conversation. A worked example from a workforce planning build.">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  .shot { max-width: 100%; height: auto; border: 1px solid var(--border);
+          border-radius: .75rem; margin: 1.75rem 0 .5rem; display: block;
+          box-shadow: 0 10px 30px -10px rgba(0,0,0,.1); }
+  .shot-caption { text-align: center; font-size: .85rem; color: var(--ink-faint);
+                  margin-top: .3rem; margin-bottom: 2rem; font-family: var(--mono); }
+  .reveal { opacity: 1; transform: none; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="index.html" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="topbar-kicker">TM1 · MCP</span>
+    <a href="index.html">← All articles</a></div>
+</header>
+
+<div class="shell">
+
+<nav class="toc" aria-label="On this page">
+  <div class="toc-label">On this page</div>
+  <ol>
+    <li><a href="#setup"><span class="num">01</span>The setup</a></li>
+    <li><a href="#what"><span class="num">02</span>What an MCP actually is</a></li>
+    <li><a href="#build"><span class="num">03</span>The build</a></li>
+    <li><a href="#check"><span class="num">04</span>The catch</a></li>
+    <li><a href="#conventions"><span class="num">05</span>Conventions</a></li>
+    <li><a href="#time"><span class="num">06</span>Where the time went</a></li>
+    <li><a href="#next"><span class="num">07</span>What's next</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="eyebrow"><span>Open methodology</span><span>TM1</span><span>MCP</span></div>
+  <h1>Building a TM1 model by conversation</h1>
+  <p class="lede">I described a workforce planning model to an AI and let it build, inspect and change the model through conversation. It built the whole thing — dimensions, cubes, rules, processes, views. This is my second test of the approach, and what it tells me so far.</p>
+  <div class="meta-row">
+    <span class="chip teal">TM1</span>
+    <span class="chip">MCP</span>
+    <span class="chip">Workforce planning</span>
+    <span class="chip">September 2026</span>
+  </div>
+</div>
+
+<!-- 01 SETUP -->
+<section id="setup" class="reveal">
+  <span class="snum">01 — The setup</span>
+  <h2>The setup</h2>
+  <div class="prose">
+<p>This ran on a browser-based IDE I have been building for Planning Analytics. The MCP approach does not depend on that specific IDE — it depends on the IDE having the parts that matter. For this to work you need an IDE that already has: a full TM1 REST client, a connection and authentication layer through PAW, and a change-set log.</p>
+<p>The MCP server is a small piece inside that. A set of operations — create a dimension, build a cube, write a rule, run a process, read cells back — each one a thin wrapper over machinery the IDE already had. The AI never touches TM1. It calls an operation, the operation calls the IDE's client, the client talks to TM1.</p>
+<p>So when I say the plumbing is quick, that is only true because the client layer was already there. Starting from nothing, you would build the client, the auth, and the change log first, and that is most of the work. The IDE is also where I checked the result — I opened every view and read every cell back through it.</p>
+<p>To try this yourself you need that client layer. Whether it is your own IDE or a third-party one, it must give you: read and write access to the TM1 REST API under your own identity, a change set that captures every change, and a way to read cells back. The MCP server on its own is not enough.</p>
+  </div>
+  <img src="mcp-screenshots/IDE open with CubeMap.png" alt="The IDE showing the workforce planning model and its cube map" class="shot">
+  <p class="shot-caption">The IDE with the model open — the cube map shows how the model is wired together</p>
+</section>
+
+<!-- 02 WHAT AN MCP IS -->
+<section id="what" class="reveal">
+  <span class="snum">02 — What an MCP actually is</span>
+  <h2>What an MCP actually is</h2>
+  <div class="prose">
+    <p>An MCP is a way to give an AI hands on a system. Off the shelf, the official PA connector is limited, and the deeper REST API sits behind the vendor's auth and licensing. A generic connector can browse a model. It cannot build one.</p>
+    <p>The alternative is a custom MCP over your own client. Every action the AI can take — create a dimension, write a rule, run a process, read cells back — maps to a call on the TM1 REST client you already have. The AI asks, the adapter calls your client, your client talks to TM1, under your identity and your change log.</p>
+  </div>
+  <figure class="reveal">
+    <div class="fig-frame">
+      <div class="fig-title">Where the AI sits, and what it never touches</div>
+      <svg viewBox="0 0 720 250" role="img" aria-label="The AI calls operations on the MCP server, which calls the TM1 client, which talks to TM1. The AI never touches TM1 directly.">
+        <defs><marker id="b1-a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--teal)"/></marker></defs>
+        <rect x="20" y="84" width="150" height="82" rx="12" fill="var(--teal-tint)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="95" y="116" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">The AI</text>
+        <text x="95" y="138" text-anchor="middle" font-size="11.5" fill="var(--ink-muted)">reads your description,</text>
+        <text x="95" y="154" text-anchor="middle" font-size="11.5" fill="var(--ink-muted)">calls operations</text>
+        <path d="M 170 125 H 232" fill="none" stroke="var(--teal)" stroke-width="2" marker-end="url(#b1-a)"/>
+        <text x="201" y="115" text-anchor="middle" font-size="11" fill="var(--ink-muted)">asks</text>
+        <rect x="238" y="84" width="170" height="82" rx="12" fill="var(--surface)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="323" y="112" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">MCP server</text>
+        <text x="323" y="132" text-anchor="middle" font-size="11.5" fill="var(--ink-muted)">one operation per action</text>
+        <text x="323" y="150" text-anchor="middle" font-size="11.5" fill="var(--ink-muted)">thin wrappers only</text>
+        <path d="M 408 125 H 470" fill="none" stroke="var(--teal)" stroke-width="2" marker-end="url(#b1-a)"/>
+        <text x="439" y="115" text-anchor="middle" font-size="11" fill="var(--ink-muted)">calls</text>
+        <rect x="476" y="84" width="160" height="82" rx="12" fill="var(--surface)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="556" y="112" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">TM1 client</text>
+        <text x="556" y="132" text-anchor="middle" font-size="11.5" fill="var(--ink-muted)">your identity,</text>
+        <text x="556" y="150" text-anchor="middle" font-size="11.5" fill="var(--ink-muted)">your auth, your log</text>
+        <path d="M 636 125 H 688" fill="none" stroke="var(--teal)" stroke-width="2" marker-end="url(#b1-a)"/>
+        <text x="662" y="115" text-anchor="middle" font-size="11" fill="var(--ink-muted)">talks to</text>
+        <rect x="20" y="196" width="150" height="38" rx="9" fill="var(--surface)" stroke="var(--border-s)" stroke-width="1.3"/>
+        <text x="95" y="220" text-anchor="middle" font-size="12" fill="var(--ink-muted)">you — the person</text>
+        <path d="M 95 196 V 174" fill="none" stroke="var(--border-s)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#b1-a)"/>
+        <text x="226" y="220" font-size="11.5" fill="var(--ink-faint)">decides what "right" means,</text>
+        <text x="226" y="238" font-size="11.5" fill="var(--ink-faint)">writes the expected results</text>
+        <rect x="476" y="196" width="160" height="38" rx="9" fill="var(--surface)" stroke="var(--teal)" stroke-width="1.3"/>
+        <text x="556" y="220" text-anchor="middle" font-size="12" fill="var(--ink)">TM1 / Planning Analytics</text>
+      </svg>
+    </div>
+    <figcaption>The MCP is a thin adapter over a client you already own. The AI reaches as deep as your own code does — and no deeper.</figcaption>
+  </figure>
+</section>
+
+<!-- 03 THE BUILD -->
+<section id="build" class="reveal">
+  <span class="snum">03 — The build</span>
+  <h2>The build</h2>
+  <div class="prose">
+    <p>I gave it a design document for a workforce planning model: headcount by position, salary cost per position, progressive employer tax, benefits, bonus accrual, one-off payments, FX translation into a reporting currency, capitalised labour, hiring and attrition, and a variance layer that compares actuals to plan.</p>
+    <p>It built the lot from the document with no manual steps. Then I added views, changed assumptions, and rebuilt parts of the model — still by conversation. That worked too.</p>
+    <p>The result was a real model: seven cubes, twenty-two dimensions, the engine cube carrying cost, currency, capitalisation and variance in one place, and a headcount bridge that reconciles opening, hires, leavers and closing headcount by month.</p>
+  </div>
+  <div class="callout steel">
+    <span class="co-label">What "built by conversation" meant in practice</span>
+    <p>The design was described in plain language. The AI created dimensions and their attributes, built cubes in the agreed order, wrote rules and processes, seeded data, read cells back to check itself, and revised when I asked it to. The change-set log recorded every action as it happened.</p>
+  </div>
+  <img src="mcp-screenshots/Rules.png" alt="The rules editor showing the workforce cost engine rules" class="shot">
+  <p class="shot-caption">A rules file in the editor — the engine cube carrying cost, currency, capitalisation and variance in one place</p>
+</section>
+
+<!-- 04 THE CATCH -->
+<section id="check" class="reveal">
+  <span class="snum">04 — The catch</span>
+  <h2>The catch</h2>
+  <div class="prose">
+    <p>Build a model by hand and you see the numbers as you go. You write a rule, open a view, and the number is there. If it is wrong, you notice. You do not plan that check — it is just how you work.</p>
+    <p>Build it in seconds and that is gone. The model exists before you have seen a single number. To check it, you have to stop and do it on purpose.</p>
+  </div>
+  <figure class="reveal">
+    <div class="fig-frame">
+      <div class="fig-title">By hand, build and number alternate. Built fast, the check is a step you add.</div>
+      <svg viewBox="0 0 700 168" role="img" aria-label="By hand, build and number alternate. Built fast, the build runs straight through and the check is a step you add at the end.">
+        <text x="6" y="52" font-size="13" font-weight="600" fill="var(--ink)">By hand</text>
+        <rect class="d-box" x="112" y="34" width="74" height="30" rx="3" fill="var(--surface)" stroke="var(--border-s)"/><text x="149" y="53" text-anchor="middle" font-size="12" fill="var(--ink-muted)">build</text>
+        <rect x="192" y="34" width="74" height="30" rx="3" fill="var(--teal-tint)" stroke="var(--teal)"/><text x="229" y="53" text-anchor="middle" font-size="12" font-weight="600" fill="var(--teal)">number</text>
+        <rect x="272" y="34" width="74" height="30" rx="3" fill="var(--surface)" stroke="var(--border-s)"/><text x="309" y="53" text-anchor="middle" font-size="12" fill="var(--ink-muted)">build</text>
+        <rect x="352" y="34" width="74" height="30" rx="3" fill="var(--teal-tint)" stroke="var(--teal)"/><text x="389" y="53" text-anchor="middle" font-size="12" font-weight="600" fill="var(--teal)">number</text>
+        <rect x="432" y="34" width="74" height="30" rx="3" fill="var(--surface)" stroke="var(--border-s)"/><text x="469" y="53" text-anchor="middle" font-size="12" fill="var(--ink-muted)">build</text>
+        <rect x="512" y="34" width="74" height="30" rx="3" fill="var(--teal-tint)" stroke="var(--teal)"/><text x="549" y="53" text-anchor="middle" font-size="12" font-weight="600" fill="var(--teal)">number</text>
+        <text x="6" y="126" font-size="13" font-weight="600" fill="var(--ink)">Built fast</text>
+        <rect x="112" y="108" width="368" height="30" rx="3" fill="var(--surface)" stroke="var(--border-s)"/><text x="296" y="127" text-anchor="middle" font-size="12" fill="var(--ink-muted)">build — fast, unattended</text>
+        <line x1="482" y1="123" x2="510" y2="123" stroke="var(--border-s)" stroke-width="1.5"/>
+        <path d="M 510 123 h 4 l -4 -4 M 510 123 h 4 l -4 4" fill="none" stroke="var(--border-s)" stroke-width="1.3"/>
+        <rect x="514" y="108" width="80" height="30" rx="3" fill="none" stroke="var(--teal)" stroke-width="1.5" stroke-dasharray="5 4"/><text x="554" y="127" text-anchor="middle" font-size="12" font-weight="600" fill="var(--teal)">check</text>
+        <text x="554" y="152" text-anchor="middle" font-size="11" fill="var(--ink-faint)">you add this</text>
+      </svg>
+    </div>
+    <figcaption>By hand, a wrong value is caught on sight. Built fast, the numbers appear only when you stop and look.</figcaption>
+  </figure>
+  <img src="mcp-screenshots/CubeView.png" alt="A cube view showing the built model's numbers" class="shot">
+  <p class="shot-caption">The numbers, when you stop and look — a view of the built model with values computed</p>
+</section>
+
+<!-- 05 CONVENTIONS -->
+<section id="conventions" class="reveal">
+  <span class="snum">05 — Conventions</span>
+  <h2>Conventions</h2>
+  <div class="prose">
+    <p>The build did not go wrong. It improvised. An AI does not know your conventions until you tell it — the naming you use, how you want the design structured, where the complexity should live. Left to itself it builds something that works but does not match how you work.</p>
+    <p>So the pattern was build, review, inform. I told it the conventions; it revised to match; the next build followed them.</p>
+    <p>The unexpected part is that the build teaches the tool. Each model surfaces a standard or a landmine — a rule function that needs four arguments on this version, a feeder that must not target a helper cell, a conditional that must not nest past two deep. Those get codified into the lints the next build starts from. The conventions you apply become the tooling the next model inherits.</p>
+  </div>
+  <div class="callout steel">
+    <span class="co-label">What informing looked like</span>
+    <p>Naming — how dimensions and elements should be named, and why.<br>
+    Design — where the complexity should sit, how cubes should be structured.<br>
+    House style — the conventions the model should follow, given once, then followed.</p>
+  </div>
+</section>
+
+<!-- 06 WHERE THE TIME WENT -->
+<section id="time" class="reveal">
+  <span class="snum">06 — Where the time went</span>
+  <h2>Where the time went</h2>
+  <div class="prose">
+    <p>Building this by hand would take weeks. Through the MCP it took days. Both halves got faster — but checking is now half the job, and it is still manual. A person reads each number and confirms it is right.</p>
+    <p>The fix is not to slow the build down. It is to automate the checking. Write the expected results down once — this total equals that total, this pool clears to zero. Then have the tools reject any build that breaks one.</p>
+    <p>TM1's rule checker tells you a rule is written correctly. It does not tell you it produces the right number — and a fast build makes that gap visible. The rules pass every check and still return the wrong figure; only reading the numbers back shows it.</p>
+    <p>That is regression testing for a TM1 model, which has never been standard practice here. The judgement stays with the person. The checking runs every time.</p>
+  </div>
+</section>
+
+<!-- 07 WHAT'S NEXT -->
+<section id="next" class="reveal">
+  <span class="snum">07 — What's next</span>
+  <h2>What's next</h2>
+  <div class="prose">
+    <p>A second test, and an encouraging one. I am still learning how best to use this technology — what to hand the AI, how to describe a design so it builds well, where to apply the judgement. But the initial results are impressive, and they point somewhere worth pursuing.</p>
+    <p>This build opens a lot of questions about the path forward — not just for the model itself, but for the whole way AI could be used to build and manage TM1 models, and the consulting practice around it. What does a build look like when an AI does the construction and a person does the deciding? How much of the checking can be handed to the machine? How do you govern an agent that can write to a model? Those are the questions I am working through next.</p>
+    <p>This experiment deliberately focuses on the model-building side of the problem. There is a much bigger set of questions around security and governance — what an AI agent should be allowed to read, whose permissions apply, what it should be allowed to change, and how every change is reviewed. Those are worth treating separately.</p>
+  </div>
+</section>
+
+<!-- APPENDIX: TECHNICAL SPEC -->
+<section id="brief" class="reveal appendix">
+  <span class="snum">Appendix — Technical spec</span>
+  <h2>Appendix — Technical spec</h2>
+  <div class="prose">
+    <h3>Architecture</h3>
+    <p>AI agent → MCP server → TM1 client → TM1 REST API. The AI never touches TM1 directly.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Layer</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td>MCP server</td><td>~60 operations over the MCP protocol; one per build action</td></tr>
+        <tr><td>TM1 client</td><td>REST client; all calls go through it, under your identity</td></tr>
+        <tr><td>Auth</td><td>PAW session, direct connection, or OAuth per environment</td></tr>
+        <tr><td>Change log</td><td>SQLite; every write recorded, linked to its change set</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <h3>Design pillars</h3>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Pillar</th><th>Rule</th></tr></thead>
+      <tbody>
+        <tr><td>One write path</td><td>AI and IDE write through the same client and log; no ungoverned route</td></tr>
+        <tr><td>Change-set gate</td><td>No open change set, no write; the whole build is one attributable unit</td></tr>
+        <tr><td>One grain</td><td>Engine cube holds cost, currency, capex, variance at position × period</td></tr>
+        <tr><td>Verify, then trust</td><td>Expected results run on every close; checked against "right", not just syntax</td></tr>
+        <tr><td>Enforced conventions</td><td>Fixed dim order, measure dim last, TI naming — tools refuse non-conformant builds</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <h3>Write gate</h3>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Operation</th><th>Behaviour</th></tr></thead>
+      <tbody>
+        <tr><td>Metadata write</td><td>Requires an open change set; refused otherwise</td></tr>
+        <tr><td>Change capture</td><td>object, action, before/after, timestamp, session</td></tr>
+        <tr><td>Review</td><td>Everything appears in the IDE's change-set list</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <h3>Validation</h3>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Check</th><th>When</th></tr></thead>
+      <tbody>
+        <tr><td>Rules/process lint</td><td>Before write — arg counts, v11 landmines, section structure</td></tr>
+        <tr><td>TM1 CheckRules</td><td>Before rules are saved</td></tr>
+        <tr><td>Expected results</td><td>On every change-set close</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <h3>Scope</h3>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Does</th><th>Does not</th></tr></thead>
+      <tbody>
+        <tr><td>Read model structure and data</td><td>Deploy — packaging and deployment stay human steps</td></tr>
+        <tr><td>Build dimensions, cubes, rules, processes, views</td><td>Fine-grained permissions — access is gated by change set, not per action</td></tr>
+        <tr><td>Run processes, read cells back, verify</td><td>Authenticate as a specific user — connects as a service identity</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout steel">
+    <span class="co-label">Caveats</span>
+    <p>Evolving; second test. Security is the open question — service identity, no per-action permissions. Separate subject. The TM1 IDE (falconbi) is in development and not yet committed to GitHub.</p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Open methodology and tools for IBM Planning Analytics and Pigment. Everything published here is free to use, adapt, and share.</p>
+      <a href="index.html" class="license">← All articles</a>
+    </div>
+    <div class="foot-meta">
+      Published September 2026<br>
+      Workforce planning model built by conversation with an AI<br>
+      <a href="https://github.com/falconbi/articles">github.com/falconbi/articles</a><br>
+      <span class="license">CC0 — public domain</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+const tocLinks = document.querySelectorAll('.toc a');
+const sections = document.querySelectorAll('section[id]');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      tocLinks.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector(`.toc a[href="#${e.target.id}"]`);
+      if(a) a.classList.add('active');
+    }
+  });
+},{rootMargin:'-10% 0% -75% 0%'});
+sections.forEach(s => io.observe(s));
+
+const ro = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){e.target.classList.add('in');ro.unobserve(e.target)}
+  });
+},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+</script>
+</body>
+</html>
