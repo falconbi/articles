@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Building a Consolidation Engine with AI</title>
+<meta name="description" content="How a statutory group consolidation engine in TM1 was built by AI through an MCP, test-first against 26 published examples, in four days — phases, research, test data, design, mistakes and lessons.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --paper:#fafaf9;
+    --panel:#ffffff;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+
+    --steel:#0f766e;        /* structure, hierarchy, base */
+    --steel-light:#f0fdfa;
+    --green:#166534;        /* valid flow, base data, counted-once */
+    --green-light:#f0fdf4;
+    --amber:#92400e;        /* contra, grouped, reversal */
+    --amber-light:#fef3c7;
+    --red:#991b1b;          /* double-count, warnings */
+    --red-light:#fee2e2;
+    --indigo:#4c1d95;       /* implementation, UI */
+    --indigo-light:#ede9fe;
+
+    --maxw:860px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    background:
+      linear-gradient(180deg,#ffffff 0%, var(--paper) 100%);
+  }
+  .masthead .wrap{padding-top:78px;padding-bottom:52px}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--steel);
+    font-weight:500;
+    margin:0 0 22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1.title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.3rem);
+    line-height:1.08;
+    letter-spacing:-.012em;
+    margin:0 0 22px;
+    color:var(--ink);
+  }
+  h1.title .accent{color:var(--steel)}
+  .standfirst{
+    font-size:1.18rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:64ch;
+    margin:0 0 30px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-size:13.5px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;
+    padding-top:8px;border-top:1px solid var(--rule-soft);
+  }
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  .prototype{
+    margin:34px 0 0;
+    background:var(--green-light);
+    border:1px solid #cfe6d8;
+    border-left:4px solid var(--green);
+    border-radius:6px;
+    padding:16px 20px;
+    font-size:15.5px;
+    color:#21422f;
+  }
+  .prototype b{color:var(--green);font-weight:600}
+
+  /* ---------- TOC ---------- */
+  /* falconbi.css sets .toc{position:sticky} for sidebar use — override for this horizontal bar */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;margin:0 0 18px;
+  }
+  nav.toc ol{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:2px 28px;
+    counter-reset:toc;
+  }
+  nav.toc li{counter-increment:toc}
+  nav.toc a{
+    display:flex;gap:12px;align-items:baseline;
+    text-decoration:none;color:var(--ink-soft);
+    padding:7px 4px;border-radius:4px;
+    border-bottom:1px solid transparent;
+    transition:color .15s,background .15s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--steel);
+    flex:none;width:2ch;
+  }
+  nav.toc a:hover{color:var(--steel);background:var(--steel-light)}
+
+  /* ---------- Sections ---------- */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:44px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin:0 0 18px}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;color:var(--steel);
+    flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-weight:600;font-size:1.16rem;
+    margin:34px 0 12px;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  p{margin:0 0 16px}
+  section > p, section > ul, section > ol, section > .fig, section > .tablewrap,
+  section > pre, section > blockquote, section > .callout{margin-left:0}
+  strong{font-weight:600;color:var(--ink)}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:#f1f0ec;
+    padding:.1em .38em;border-radius:4px;
+    color:#3a4750;
+  }
+  a{color:var(--steel)}
+
+  ul,ol{margin:0 0 16px;padding-left:1.3em}
+  li{margin:6px 0}
+  li::marker{color:var(--steel)}
+
+  blockquote{
+    margin:18px 0;padding:4px 0 4px 22px;
+    border-left:3px solid var(--rule);
+    color:var(--ink-soft);font-style:italic;
+    font-family:'DM Sans',system-ui,sans-serif;font-size:1.08rem;
+  }
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;margin:22px 0}
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink-soft);
+  }
+  tbody tr:hover{background:#f6f7f8}
+  td code{background:#eef0f2}
+  .pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    letter-spacing:.02em;
+  }
+  .pill.sub{background:var(--steel-light);color:var(--steel)}
+  .pill.assoc{background:var(--indigo-light);color:var(--indigo)}
+  .pill.inv{background:#eef1f3;color:var(--ink-soft)}
+  .pill.grp{background:var(--amber-light);color:var(--amber)}
+
+  /* ---------- Code / ASCII ---------- */
+  pre{
+    background:#1c2530;color:#d7e0e8;
+    font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.6;
+    padding:18px 20px;border-radius:8px;overflow-x:auto;margin:20px 0;
+    border:1px solid #283442;
+  }
+  pre .c{color:#7f8fa0}      /* comment / faint */
+  pre .k{color:#7fb3e0}      /* steel key */
+  pre .g{color:#7fd0a0}      /* green */
+  pre .a{color:#e3b766}      /* amber */
+  pre .r{color:#e89b94}      /* red */
+  pre.ascii{font-size:13px;line-height:1.5}
+
+  /* ---------- Figures ---------- */
+  .fig{margin:26px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  figcaption{
+    font-size:13px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+    margin-top:12px;text-align:center;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600}
+
+  /* SVG element styling */
+  .svg-label{font-family:'DM Sans',sans-serif;font-size:14px;fill:var(--ink)}
+  .svg-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-faint)}
+  .svg-edge{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .node-steel{fill:var(--steel-light);stroke:var(--steel);stroke-width:1.5}
+  .node-green{fill:var(--green-light);stroke:var(--green);stroke-width:1.5}
+  .node-amber{fill:var(--amber-light);stroke:var(--amber);stroke-width:1.5}
+  .node-red{fill:var(--red-light);stroke:var(--red);stroke-width:1.5}
+  .node-indigo{fill:var(--indigo-light);stroke:var(--indigo);stroke-width:1.5}
+  .node-plain{fill:#fff;stroke:var(--ink-soft);stroke-width:1.3}
+  .edge{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+  .edge-green{stroke:var(--green);stroke-width:1.8;fill:none}
+  .edge-red{stroke:var(--red);stroke-width:1.8;fill:none}
+  .edge-amber{stroke:var(--amber);stroke-width:1.8;fill:none}
+  .edge-dash{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:6px;padding:16px 20px;margin:22px 0;font-size:15.5px;
+    border:1px solid var(--rule);border-left:4px solid var(--ink-soft);
+    background:var(--panel);
+  }
+  .callout.warn{background:var(--red-light);border-color:#eccac6;border-left-color:var(--red)}
+  .callout.warn b{color:var(--red)}
+  .callout.note{background:var(--steel-light);border-color:#cfe0ee;border-left-color:var(--steel)}
+  .callout.note b{color:var(--steel)}
+  .callout.key{background:var(--amber-light);border-color:#e8d6a8;border-left-color:var(--amber)}
+  .callout.key b{color:var(--amber)}
+  .callout p{margin:0}
+  .callout p + p{margin-top:10px}
+
+  /* ---------- Signature: path encoding ---------- */
+  .signature{
+    margin:30px 0;padding:30px 26px;border-radius:10px;
+    background:linear-gradient(160deg,#1c2530 0%,#243140 100%);
+    border:1px solid #2b3a4a;color:#dbe4ec;
+  }
+  .signature .sig-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#8aa0b4;margin:0 0 18px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{background:#1c2530;color:#aebccb;border-top:3px solid var(--steel)}
+  footer .wrap{padding-top:48px;padding-bottom:54px}
+  footer h2{
+    font-family:'DM Sans',system-ui,sans-serif;color:#f0f4f8;font-weight:600;
+    font-size:1.3rem;margin:0 0 14px;
+  }
+  footer p{color:#aebccb;font-size:15px;max-width:62ch}
+  footer a{color:#9ec3e6}
+  .lic{
+    margin-top:22px;padding-top:20px;border-top:1px solid #2c3a48;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8294a4;
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+  }
+  .refs{font-size:15px;color:#c4d0db}
+  .refs cite{font-style:italic;color:#e6edf3}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .sec-head{gap:12px}
+    nav.toc ol{grid-template-columns:1fr}
+    .masthead .wrap{padding-top:54px;padding-bottom:40px}
+  }
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">AI &amp; MCP &nbsp;·&nbsp; IBM Planning Analytics</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">AI &amp; MCP &nbsp;·&nbsp; Build log</p>
+    <h1 class="title">Building a Consolidation<br>Engine with <span class="accent">AI</span></h1>
+    <p class="standfirst">A statutory group consolidation in TM1, built by an AI through an MCP, test-first against 26 published examples. Four days. This is how it went: the phases, the research, the test data, the design, the mistakes.</p>
+    <div class="meta-row">
+      <span><b>Design</b> <a href="../consolidation-second-design/">Consolidation in TM1: A Second Design</a></span>
+      <span><b>Earlier test</b> <a href="../tm1-mcp-build-test.html">Building a TM1 model by conversation</a></span>
+      <span><b>Status</b> DRAFT for review</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#a1">The setup</a></li>
+      <li><a href="#a2">The method: test first</a></li>
+      <li><a href="#a3">Research: the standards</a></li>
+      <li><a href="#a4">Research: finding test data</a></li>
+      <li><a href="#a5">Phases and timeline</a></li>
+      <li><a href="#a6">How the design came about</a></li>
+      <li><a href="#a7">What the AI found</a></li>
+      <li><a href="#a8">What the AI got wrong</a></li>
+      <li><a href="#a9">What the human did</a></li>
+      <li><a href="#a10">Lessons</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<section id="a1">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">The setup</h2></div>
+  <p>A blank TM1 v11 server. A browser IDE for TM1. An MCP that lets the AI build and inspect the model: dimensions, cubes, rules, processes, views, and stored checks.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 150" role="img" aria-label="The human talks to the AI; the AI works through the MCP on the TM1 server; every change goes into a change set.">
+      <rect x="20" y="50" width="130" height="50" rx="8" class="node-plain"/><text x="85" y="80" text-anchor="middle" class="svg-label">Human</text>
+      <rect x="200" y="50" width="130" height="50" rx="8" class="node-indigo"/><text x="265" y="80" text-anchor="middle" class="svg-label">AI</text>
+      <rect x="380" y="50" width="130" height="50" rx="8" class="node-amber"/><text x="445" y="80" text-anchor="middle" class="svg-label">MCP</text>
+      <rect x="560" y="50" width="140" height="50" rx="8" class="node-steel"/><text x="630" y="80" text-anchor="middle" class="svg-label">TM1 server</text>
+      <path d="M150 75 L200 75" class="edge"/><path d="M330 75 L380 75" class="edge"/><path d="M510 75 L560 75" class="edge"/>
+      <text x="85" y="125" text-anchor="middle" class="svg-sub">decides, checks</text>
+      <text x="265" y="125" text-anchor="middle" class="svg-sub">designs, builds</text>
+      <text x="445" y="125" text-anchor="middle" class="svg-sub">change sets, checks</text>
+      <text x="630" y="125" text-anchor="middle" class="svg-sub">the model</text>
+    </svg>
+  </figure>
+  <p>I gave it the goal, my old consolidation design notes as background, and my rules of practice. I approved each major step.</p>
+</section>
+
+<section id="a2">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">The method: test first</h2></div>
+  <p>Nothing was built until there was a worked example with a known answer to build against.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 170" role="img" aria-label="Loop: find a published example, write its answer as checks, build, run, compare, fix, and every earlier check must still pass.">
+      <rect x="20"  y="60" width="120" height="44" rx="8" class="node-plain"/><text x="80"  y="87" text-anchor="middle" class="svg-label">Find example</text>
+      <rect x="160" y="60" width="120" height="44" rx="8" class="node-plain"/><text x="220" y="87" text-anchor="middle" class="svg-label">Write checks</text>
+      <rect x="300" y="60" width="120" height="44" rx="8" class="node-indigo"/><text x="360" y="87" text-anchor="middle" class="svg-label">Build</text>
+      <rect x="440" y="60" width="120" height="44" rx="8" class="node-plain"/><text x="500" y="87" text-anchor="middle" class="svg-label">Run</text>
+      <rect x="580" y="60" width="120" height="44" rx="8" class="node-green"/><text x="640" y="87" text-anchor="middle" class="svg-label">All green</text>
+      <path d="M140 82 L160 82" class="edge"/><path d="M280 82 L300 82" class="edge"/><path d="M420 82 L440 82" class="edge"/><path d="M560 82 L580 82" class="edge-green"/>
+      <path d="M500 104 C500 150 360 150 360 104" class="edge-red"/><text x="430" y="160" text-anchor="middle" class="svg-sub">wrong → fix</text>
+    </svg>
+  </figure>
+  <p>Every check is a stored query with an expected number. All of them run every time the model changes. A change that breaks an earlier example does not get through. By the end: 26 examples, 133 checks.</p>
+</section>
+
+<section id="a3">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Research: the standards</h2></div>
+  <p>The AI worked from the IFRS standards as issued, not local variants. The ones that shaped the build:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Standard</th><th>What it decided</th></tr></thead>
+    <tbody>
+      <tr><td>IFRS 10</td><td>consolidate on <b>control</b>, not ownership %; buying or selling NCI is an equity transaction; loss of control</td></tr>
+      <tr><td>IFRS 3</td><td>goodwill at the date control is gained; earlier stakes revalued; negative goodwill is a gain; one goodwill per business combination</td></tr>
+      <tr><td>IAS 21</td><td>closing, average and historic rates; translation reserve; goodwill of a foreign subsidiary retranslated; reserve recycled on disposal</td></tr>
+      <tr><td>IFRIC 16</td><td>direct vs step-by-step translation of a sub-group</td></tr>
+      <tr><td>IAS 28</td><td>associates: equity method</td></tr>
+    </tbody>
+  </table></div>
+  <p>Where my old textbook used pre-2008 rules — goodwill per tranche, goodwill written off to reserves — the AI flagged it and adapted the examples to current IFRS rather than copy the old journals.</p>
+</section>
+
+<section id="a4">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">Research: finding test data</h2></div>
+  <p>The AI searched for worked consolidation examples with published answers. Exam questions were the best source: full facts, full answer.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Source</th><th>Used for</th></tr></thead>
+    <tbody>
+      <tr><td>ACCA Student Accountant articles</td><td>vertical groups, mixed (D-shaped) groups, foreign disposal</td></tr>
+      <tr><td>ACCA P2 / SBR exam answers</td><td>step acquisition, NCI trades, loss of control, a full master group, a foreign subsidiary</td></tr>
+      <tr><td>ACCA FR specimen</td><td>associates</td></tr>
+      <tr><td>Ng Eng Juan, <em>Consolidated Financial Statements</em></td><td>seven examples: consolidation of consolidation, connecting affiliates, intragroup P&amp;L</td></tr>
+    </tbody>
+  </table></div>
+  <p>Some things had no published example: a year-end roll-forward across two years, three currencies in one group. For those the AI built the case and wrote out the workings by hand for me to check. The difference is marked on every check.</p>
+</section>
+
+<section id="a5">
+  <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Phases and timeline</h2></div>
+  <p>Four days, in conversation. Each phase closed only when every check passed.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 250" role="img" aria-label="Timeline over four days: day 1 design and core engine; day 2 feeders, foreign currency, year-end, sub-groups, disposals; day 3 comparison of two designs and book examples; day 4 review and decision.">
+      <line x1="40" y1="40" x2="40" y2="230" class="edge"/>
+      <circle cx="40" cy="50" r="6" class="node-steel"/><text x="60" y="55" class="svg-label" font-weight="600">Day 1</text><text x="140" y="55" class="svg-sub">design brief · test cases · ownership rules · company data · core engine · ownership changes · associates</text>
+      <circle cx="40" cy="100" r="6" class="node-steel"/><text x="60" y="105" class="svg-label" font-weight="600">Day 2</text><text x="140" y="105" class="svg-sub">feeders · foreign currency · master group · year-end close · sub-groups · three currencies · foreign disposal</text>
+      <circle cx="40" cy="150" r="6" class="node-steel"/><text x="60" y="155" class="svg-label" font-weight="600">Day 3</text><text x="140" y="155" class="svg-sub">second design built beside the first · textbook examples 1–7 · check views</text>
+      <circle cx="40" cy="200" r="6" class="node-green"/><text x="60" y="205" class="svg-label" font-weight="600">Day 4</text><text x="140" y="205" class="svg-sub">walkthrough and review · decision · old design removed · write-up</text>
+    </svg>
+  </figure>
+  <div class="tablewrap"><table>
+    <thead><tr><th>At the end</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>Worked examples</td><td>26</td></tr>
+      <tr><td>Automated checks</td><td>133, all passing</td></tr>
+      <tr><td>Cubes / processes</td><td>10 / 12</td></tr>
+      <tr><td>Change sets</td><td>every change recorded and reviewable</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="a6">
+  <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">How the design came about</h2></div>
+  <p>The AI started from my first design — one dimension of ownership paths. It proposed a different shape: separate dimensions for whose books, which company, the other side, and which adjustment.</p>
+  <p>Rather than argue it, we built both, in the same model, on the same data, and ran both against every example.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 160" role="img" aria-label="Both designs read the same inputs and are checked against the same published answers.">
+      <rect x="20" y="58" width="150" height="44" rx="8" class="node-plain"/><text x="95" y="85" text-anchor="middle" class="svg-label">Same inputs</text>
+      <rect x="260" y="20" width="180" height="44" rx="8" class="node-amber"/><text x="350" y="47" text-anchor="middle" class="svg-label">First design (paths)</text>
+      <rect x="260" y="96" width="180" height="44" rx="8" class="node-steel"/><text x="350" y="123" text-anchor="middle" class="svg-label">Second design (roots)</text>
+      <rect x="540" y="58" width="160" height="44" rx="8" class="node-green"/><text x="620" y="85" text-anchor="middle" class="svg-label">Published answers</text>
+      <path d="M170 80 L260 42" class="edge"/><path d="M170 80 L260 118" class="edge"/>
+      <path d="M440 42 L540 80" class="edge-dash"/><path d="M440 118 L540 80" class="edge-dash"/>
+    </svg>
+  </figure>
+  <p>Both reached the book's answers. The first needed three corrections to get there. The second needed none and has less to maintain. The evidence made the decision.</p>
+</section>
+
+<section id="a7">
+  <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">What the AI found</h2></div>
+  <ul>
+    <li><b>A textbook answer that did not balance.</b> One of the seven book examples was out by 42. The AI reworked it from the facts; both designs matched the correction.</li>
+    <li><b>A gap in my first design.</b> When a sub-group has its own goodwill, the outside shareholders of the sub-group took a share of it. Goodwill and NCI were 4.4 too high. The fix is the indirect holding adjustment.</li>
+    <li><b>A bug in its own engine,</b> found by comparing the two designs: one business combination was being split into goodwill on one company and a gain on another.</li>
+    <li><b>A silent failure mode.</b> With TM1's SKIPCHECK on and feeders missing, a subsidiary disappeared with no error. It built a check that runs before every consolidation.</li>
+    <li><b>Bugs in the IDE itself.</b> A rules linter that miscounted arguments, a cube map that could not see processes. Fixed along the way.</li>
+  </ul>
+</section>
+
+<section id="a8">
+  <div class="sec-head"><span class="sec-num">08</span><h2 class="sec-title">What the AI got wrong</h2></div>
+  <ul>
+    <li>Built cubes without default views and dimensions without default subsets. I found it.</li>
+    <li>Let the main process grow to about 1,200 lines in one block. I found it. Splitting it is on the list.</li>
+    <li>Started actions — even read-only checks — before I had said yes. I stopped it. The rule now: nothing runs without explicit approval.</li>
+    <li>Lost the model's data once, after the server stopped uncleanly before a save. It rebuilt everything from its saved test files in minutes. A save now runs hourly.</li>
+    <li>Gave long answers when I needed one step at a time. Asked, it changed.</li>
+  </ul>
+</section>
+
+<section id="a9">
+  <div class="sec-head"><span class="sec-num">09</span><h2 class="sec-title">What the human did</h2></div>
+  <p>The AI did the building and the arithmetic. The decisions that mattered came from experience:</p>
+  <ul>
+    <li>Classify by control, measure NCI by ownership.</li>
+    <li>Store movements, not balances.</li>
+    <li>Journals run once per close, cleared and rebuilt — not live rules.</li>
+    <li>SKIPCHECK and feeders, always.</li>
+    <li>Every cube a default view, every dimension a default subset.</li>
+    <li>Keep the worked examples in the model, permanently.</li>
+    <li>Choose between the designs on evidence.</li>
+  </ul>
+  <p>Then I checked it — one example at a time, journal by journal, against the book.</p>
+</section>
+
+<section id="a10">
+  <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">Lessons</h2></div>
+  <div class="callout key"><p><b>Test data first.</b> Published examples with answers turned "looks right" into "is right". Without them I would not trust any of it.</p></div>
+  <ul>
+    <li>The AI is fast and thorough at research, arithmetic and building. It still needs a domain expert to set the rules and to check.</li>
+    <li>Build both options when unsure. It is cheaper than arguing.</li>
+    <li>Every change in a change set, every result against a check. That is what makes speed safe.</li>
+    <li>House rules must be written down. The AI follows what it is told, not what it should have guessed.</li>
+    <li>Keep the test files outside the server. They were the recovery.</li>
+  </ul>
+  <p>Four days for a tested statutory consolidation engine. The design is in the companion article; the detail of each step is in its <a href="../consolidation-second-design/steps.html">detailed section</a>.</p>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Building a Consolidation Engine with AI — build log.</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      AI &amp; MCP · IBM Planning Analytics<br>
+      DRAFT for review<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
