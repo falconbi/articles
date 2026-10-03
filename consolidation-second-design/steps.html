@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Each Consolidation Step Is Done in TM1</title>
+<meta name="description" content="Detailed companion: the fifteen steps of a group consolidation and how each is done in a TM1 model — cubes, dimensions, adjustment layers and run order.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --paper:#fafaf9;
+    --panel:#ffffff;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+
+    --steel:#0f766e;        /* structure, hierarchy, base */
+    --steel-light:#f0fdfa;
+    --green:#166534;        /* valid flow, base data, counted-once */
+    --green-light:#f0fdf4;
+    --amber:#92400e;        /* contra, grouped, reversal */
+    --amber-light:#fef3c7;
+    --red:#991b1b;          /* double-count, warnings */
+    --red-light:#fee2e2;
+    --indigo:#4c1d95;       /* implementation, UI */
+    --indigo-light:#ede9fe;
+
+    --maxw:860px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    background:
+      linear-gradient(180deg,#ffffff 0%, var(--paper) 100%);
+  }
+  .masthead .wrap{padding-top:78px;padding-bottom:52px}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--steel);
+    font-weight:500;
+    margin:0 0 22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1.title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.3rem);
+    line-height:1.08;
+    letter-spacing:-.012em;
+    margin:0 0 22px;
+    color:var(--ink);
+  }
+  h1.title .accent{color:var(--steel)}
+  .standfirst{
+    font-size:1.18rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:64ch;
+    margin:0 0 30px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-size:13.5px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;
+    padding-top:8px;border-top:1px solid var(--rule-soft);
+  }
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  .prototype{
+    margin:34px 0 0;
+    background:var(--green-light);
+    border:1px solid #cfe6d8;
+    border-left:4px solid var(--green);
+    border-radius:6px;
+    padding:16px 20px;
+    font-size:15.5px;
+    color:#21422f;
+  }
+  .prototype b{color:var(--green);font-weight:600}
+
+  /* ---------- TOC ---------- */
+  /* falconbi.css sets .toc{position:sticky} for sidebar use — override for this horizontal bar */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;margin:0 0 18px;
+  }
+  nav.toc ol{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:2px 28px;
+    counter-reset:toc;
+  }
+  nav.toc li{counter-increment:toc}
+  nav.toc a{
+    display:flex;gap:12px;align-items:baseline;
+    text-decoration:none;color:var(--ink-soft);
+    padding:7px 4px;border-radius:4px;
+    border-bottom:1px solid transparent;
+    transition:color .15s,background .15s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--steel);
+    flex:none;width:2ch;
+  }
+  nav.toc a:hover{color:var(--steel);background:var(--steel-light)}
+
+  /* ---------- Sections ---------- */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:44px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin:0 0 18px}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;color:var(--steel);
+    flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-weight:600;font-size:1.16rem;
+    margin:34px 0 12px;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  p{margin:0 0 16px}
+  section > p, section > ul, section > ol, section > .fig, section > .tablewrap,
+  section > pre, section > blockquote, section > .callout{margin-left:0}
+  strong{font-weight:600;color:var(--ink)}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:#f1f0ec;
+    padding:.1em .38em;border-radius:4px;
+    color:#3a4750;
+  }
+  a{color:var(--steel)}
+
+  ul,ol{margin:0 0 16px;padding-left:1.3em}
+  li{margin:6px 0}
+  li::marker{color:var(--steel)}
+
+  blockquote{
+    margin:18px 0;padding:4px 0 4px 22px;
+    border-left:3px solid var(--rule);
+    color:var(--ink-soft);font-style:italic;
+    font-family:'DM Sans',system-ui,sans-serif;font-size:1.08rem;
+  }
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;margin:22px 0}
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink-soft);
+  }
+  tbody tr:hover{background:#f6f7f8}
+  td code{background:#eef0f2}
+  .pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    letter-spacing:.02em;
+  }
+  .pill.sub{background:var(--steel-light);color:var(--steel)}
+  .pill.assoc{background:var(--indigo-light);color:var(--indigo)}
+  .pill.inv{background:#eef1f3;color:var(--ink-soft)}
+  .pill.grp{background:var(--amber-light);color:var(--amber)}
+
+  /* ---------- Code / ASCII ---------- */
+  pre{
+    background:#1c2530;color:#d7e0e8;
+    font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.6;
+    padding:18px 20px;border-radius:8px;overflow-x:auto;margin:20px 0;
+    border:1px solid #283442;
+  }
+  pre .c{color:#7f8fa0}      /* comment / faint */
+  pre .k{color:#7fb3e0}      /* steel key */
+  pre .g{color:#7fd0a0}      /* green */
+  pre .a{color:#e3b766}      /* amber */
+  pre .r{color:#e89b94}      /* red */
+  pre.ascii{font-size:13px;line-height:1.5}
+
+  /* ---------- Figures ---------- */
+  .fig{margin:26px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  figcaption{
+    font-size:13px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+    margin-top:12px;text-align:center;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600}
+
+  /* SVG element styling */
+  .svg-label{font-family:'DM Sans',sans-serif;font-size:14px;fill:var(--ink)}
+  .svg-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-faint)}
+  .svg-edge{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .node-steel{fill:var(--steel-light);stroke:var(--steel);stroke-width:1.5}
+  .node-green{fill:var(--green-light);stroke:var(--green);stroke-width:1.5}
+  .node-amber{fill:var(--amber-light);stroke:var(--amber);stroke-width:1.5}
+  .node-red{fill:var(--red-light);stroke:var(--red);stroke-width:1.5}
+  .node-indigo{fill:var(--indigo-light);stroke:var(--indigo);stroke-width:1.5}
+  .node-plain{fill:#fff;stroke:var(--ink-soft);stroke-width:1.3}
+  .edge{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+  .edge-green{stroke:var(--green);stroke-width:1.8;fill:none}
+  .edge-red{stroke:var(--red);stroke-width:1.8;fill:none}
+  .edge-amber{stroke:var(--amber);stroke-width:1.8;fill:none}
+  .edge-dash{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:6px;padding:16px 20px;margin:22px 0;font-size:15.5px;
+    border:1px solid var(--rule);border-left:4px solid var(--ink-soft);
+    background:var(--panel);
+  }
+  .callout.warn{background:var(--red-light);border-color:#eccac6;border-left-color:var(--red)}
+  .callout.warn b{color:var(--red)}
+  .callout.note{background:var(--steel-light);border-color:#cfe0ee;border-left-color:var(--steel)}
+  .callout.note b{color:var(--steel)}
+  .callout.key{background:var(--amber-light);border-color:#e8d6a8;border-left-color:var(--amber)}
+  .callout.key b{color:var(--amber)}
+  .callout p{margin:0}
+  .callout p + p{margin-top:10px}
+
+  /* ---------- Signature: path encoding ---------- */
+  .signature{
+    margin:30px 0;padding:30px 26px;border-radius:10px;
+    background:linear-gradient(160deg,#1c2530 0%,#243140 100%);
+    border:1px solid #2b3a4a;color:#dbe4ec;
+  }
+  .signature .sig-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#8aa0b4;margin:0 0 18px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{background:#1c2530;color:#aebccb;border-top:3px solid var(--steel)}
+  footer .wrap{padding-top:48px;padding-bottom:54px}
+  footer h2{
+    font-family:'DM Sans',system-ui,sans-serif;color:#f0f4f8;font-weight:600;
+    font-size:1.3rem;margin:0 0 14px;
+  }
+  footer p{color:#aebccb;font-size:15px;max-width:62ch}
+  footer a{color:#9ec3e6}
+  .lic{
+    margin-top:22px;padding-top:20px;border-top:1px solid #2c3a48;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8294a4;
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+  }
+  .refs{font-size:15px;color:#c4d0db}
+  .refs cite{font-style:italic;color:#e6edf3}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .sec-head{gap:12px}
+    nav.toc ol{grid-template-columns:1fr}
+    .masthead .wrap{padding-top:54px;padding-bottom:40px}
+  }
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">Design Reference &nbsp;·&nbsp; IBM Planning Analytics</span>
+    <a href="index.html">&larr; back to the article</a></div>
+</header>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Detailed section &nbsp;·&nbsp; Consolidation in TM1: A Second Design</p>
+    <h1 class="title">How each consolidation step<br>is done in <span class="accent">TM1</span></h1>
+    <p class="standfirst">The fifteen steps of a group consolidation, and for each one: the cubes, the dimensions, the adjustment layer and the order it runs in.</p>
+    <div class="meta-row">
+      <span><b>Companion to</b> <a href="index.html">Consolidation in TM1: A Second Design</a></span>
+      <span><b>Status key</b> ✅ built · ⚠️ partial · ❌ not built</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#d0">The idea</a></li>
+      <li><a href="#d1">Cubes</a></li>
+      <li><a href="#d2">Run sequence</a></li>
+      <li><a href="#d3">The fifteen steps</a></li>
+      <li><a href="#d4">Year-end close</a></li>
+      <li><a href="#dchecks">Checks</a></li>
+      <li><a href="#d5">Gaps</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<section id="d0">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">The idea</h2></div>
+  <div class="callout key"><p><b>In one line.</b> Add everything together. Remove what is internal to the group. Recognise who owns what. Produce the group statements.</p></div>
+  <p>Each adjustment is its own layer (a <b>Stage</b>). The companies' own books are never changed.</p>
+</section>
+
+<section id="d1">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Cubes</h2></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Cube</th><th>Dimensions</th><th>Holds</th><th>Filled by</th></tr></thead>
+    <tbody>
+      <tr><td>Holding</td><td>Period · Version · Entity · Owner · Measure</td><td>who owns what (share %, vote %)</td><td>input</td></tr>
+      <tr><td>Ownership</td><td>Period · Version · Entity · Root · Owner · Measure</td><td>control %, interest %, classification</td><td>rules (live)</td></tr>
+      <tr><td>Classification Override</td><td>Period · Version · Entity · Root · Measure</td><td>forced subsidiary / associate / investment</td><td>input</td></tr>
+      <tr><td>Event</td><td>Version · Event · Measure</td><td>acquisitions, disposals, NCI trades, impairments, unrealised profit</td><td>input</td></tr>
+      <tr><td>Event FVA</td><td>Version · Event · FVA Line · Measure</td><td>fair value adjustments</td><td>input</td></tr>
+      <tr><td>FX Rate</td><td>Period · Version · Currency · Currency To · Measure</td><td>closing and average rates</td><td>input</td></tr>
+      <tr><td>Company Journal</td><td>Period · Version · Entity · Journal · Line · Measure</td><td>company adjustments</td><td>input</td></tr>
+      <tr><td><b>Data</b></td><td><b>Period · Version · Entity · Account · Root · Partner · Stage · Measure</b></td><td>company books <b>and</b> group results</td><td>load + process</td></tr>
+      <tr><td>Run Log</td><td>Version · Root · Log Line · Measure</td><td>what each run did</td><td>process</td></tr>
+    </tbody>
+  </table></div>
+  <p>The Data cube is the centre. Read any number as: <b>which group (Root) → which company (Entity) → which adjustment (Stage)</b>.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 200" role="img" aria-label="Stages add up: Reported, Company Adj and Translation make Adjusted Entity; the consolidation adjustments make Consolidation Adj; both make Consolidated.">
+      <rect x="20" y="20" width="170" height="34" rx="6" class="node-plain"/><text x="105" y="42" text-anchor="middle" class="svg-sub">Reported</text>
+      <rect x="20" y="62" width="170" height="34" rx="6" class="node-plain"/><text x="105" y="84" text-anchor="middle" class="svg-sub">Company Adj</text>
+      <rect x="20" y="104" width="170" height="34" rx="6" class="node-plain"/><text x="105" y="126" text-anchor="middle" class="svg-sub">Translation</text>
+      <rect x="250" y="62" width="170" height="34" rx="6" class="node-green"/><text x="335" y="84" text-anchor="middle" class="svg-label">Adjusted Entity</text>
+      <path d="M190 37 L250 79" class="edge"/><path d="M190 79 L250 79" class="edge"/><path d="M190 121 L250 79" class="edge"/>
+      <rect x="20" y="150" width="400" height="34" rx="6" class="node-amber"/><text x="220" y="172" text-anchor="middle" class="svg-sub">Investment Elim · FVA · NCI · Impairment · Ownership Change · Disposal · Equity Acc · Intragroup</text>
+      <rect x="480" y="62" width="200" height="34" rx="6" class="node-steel"/><text x="580" y="84" text-anchor="middle" class="svg-label" font-weight="600">Consolidated</text>
+      <path d="M420 79 L480 79" class="edge"/><path d="M420 167 L480 79" class="edge"/>
+    </svg>
+  </figure>
+</section>
+
+<section id="d2">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Run sequence</h2></div>
+  <figure class="fig">
+    <svg viewBox="0 0 720 230" role="img" aria-label="Company books are loaded, company adjustments posted, then the consolidation process runs per group and month, reading ownership, events and rates, and writing the group results and the log.">
+      <rect x="20" y="30" width="150" height="48" rx="8" class="node-plain"/><text x="95" y="52" text-anchor="middle" class="svg-label">Load books</text><text x="95" y="68" text-anchor="middle" class="svg-sub">Reported</text>
+      <rect x="200" y="30" width="150" height="48" rx="8" class="node-plain"/><text x="275" y="52" text-anchor="middle" class="svg-label">Company adj.</text><text x="275" y="68" text-anchor="middle" class="svg-sub">Company Adj</text>
+      <rect x="380" y="30" width="150" height="48" rx="8" class="node-steel"/><text x="455" y="52" text-anchor="middle" class="svg-label">Consolidate</text><text x="455" y="68" text-anchor="middle" class="svg-sub">per group, per month</text>
+      <rect x="560" y="30" width="140" height="48" rx="8" class="node-green"/><text x="630" y="52" text-anchor="middle" class="svg-label">Group results</text><text x="630" y="68" text-anchor="middle" class="svg-sub">Data · Root = group</text>
+      <path d="M170 54 L200 54" class="edge"/><path d="M350 54 L380 54" class="edge"/><path d="M530 54 L560 54" class="edge-green"/>
+      <rect x="200" y="140" width="150" height="40" rx="8" class="node-indigo"/><text x="275" y="165" text-anchor="middle" class="svg-label">Ownership (rules)</text>
+      <rect x="380" y="140" width="150" height="40" rx="8" class="node-amber"/><text x="455" y="165" text-anchor="middle" class="svg-label">Events · FVA · Rates</text>
+      <rect x="560" y="140" width="140" height="40" rx="8" class="node-plain"/><text x="630" y="165" text-anchor="middle" class="svg-label">Run Log</text>
+      <path d="M275 140 L430 78" class="edge-dash"/><path d="M455 140 L455 78" class="edge-dash"/><path d="M500 78 L600 140" class="edge-dash"/>
+    </svg>
+  </figure>
+  <p>Inside the consolidation process, each month runs in this order:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>#</th><th>Region</th><th>Steps</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Validate holdings, check feeders</td><td>1, 15</td></tr>
+      <tr><td>2</td><td>Year-end close (first month of a year)</td><td>16</td></tr>
+      <tr><td>3</td><td>Clear the group's month</td><td>—</td></tr>
+      <tr><td>4</td><td>Copy members in, translate foreign ones</td><td>4, 5</td></tr>
+      <tr><td>5</td><td>Per subsidiary: investment, goodwill, fair values, NCI, ownership changes, impairment</td><td>6, 7, 8, 12, 13</td></tr>
+      <tr><td>6</td><td>One goodwill per business combination</td><td>7</td></tr>
+      <tr><td>7</td><td>Former subsidiaries: removal and disposal</td><td>13</td></tr>
+      <tr><td>8</td><td>Associates: equity method</td><td>1</td></tr>
+      <tr><td>9</td><td>Intercompany and unrealised profit</td><td>9, 10, 11</td></tr>
+      <tr><td>10</td><td>Closing positions → monthly movement</td><td>—</td></tr>
+      <tr><td>11</td><td>Sub-group check</td><td>—</td></tr>
+      <tr><td>12</td><td>Balance check, log</td><td>15</td></tr>
+    </tbody>
+  </table></div>
+  <p>Every run clears and rebuilds. Running it twice gives the same answer.</p>
+</section>
+
+<section id="d3">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">The fifteen steps</h2></div>
+
+  <h3>1. Identify the group structure ✅</h3>
+  <p>Holdings are entered once: owner, company, share %, vote %. Rules work out, for each group, control %, interest % and classification.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 150" role="img" aria-label="J owns 80 percent of B, B owns 60 percent of D. D is controlled through B, so it is a subsidiary; J's interest in D is 48 percent, NCI 52 percent.">
+      <rect x="40" y="50" width="90" height="40" rx="8" class="node-steel"/><text x="85" y="75" text-anchor="middle" class="svg-label">J</text>
+      <rect x="220" y="50" width="90" height="40" rx="8" class="node-plain"/><text x="265" y="75" text-anchor="middle" class="svg-label">B</text>
+      <rect x="400" y="50" width="90" height="40" rx="8" class="node-plain"/><text x="445" y="75" text-anchor="middle" class="svg-label">D</text>
+      <path d="M130 70 L220 70" class="edge"/><text x="160" y="62" class="svg-edge" fill="#57534e">80%</text>
+      <path d="M310 70 L400 70" class="edge"/><text x="340" y="62" class="svg-edge" fill="#57534e">60%</text>
+      <text x="520" y="62" class="svg-sub">control 60% → subsidiary</text>
+      <text x="520" y="82" class="svg-sub">interest 80% × 60% = 48%</text>
+      <text x="520" y="102" class="svg-sub">NCI 52%</text>
+    </svg>
+  </figure>
+  <p>Votes held by a controlled company count in full. Subsidiary above 50% control, associate from 20%, otherwise investment. Overrides are possible. A group (Root) exists for each holding company whose accounts are needed.</p>
+
+  <h3>2. Get each entity's trial balance ✅ <span style="font-weight:400">(upload ❌)</span></h3>
+  <p>Loaded into the Data cube at <b>Root = Entity Level, Stage = Reported</b>, by account and month. Amounts with another group company carry a Partner tag.</p>
+
+  <h3>3. Standardise accounting policies ✅</h3>
+  <p>Company journals (account, debit, credit, partner, narrative) are posted to <b>Stage = Company Adj</b>. Reported + Company Adj + Translation = <b>Adjusted Entity</b>: the figures the group uses.</p>
+
+  <h3>4. Convert currencies ✅</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Item</th><th>Rate</th></tr></thead>
+    <tbody>
+      <tr><td>Assets, liabilities</td><td>closing</td></tr>
+      <tr><td>Equity at acquisition</td><td>acquisition date</td></tr>
+      <tr><td>Profit since acquisition</td><td>each month's average, locked</td></tr>
+      <tr><td>Difference</td><td>translation reserve (owners / NCI)</td></tr>
+    </tbody>
+  </table></div>
+  <p>Written to <b>Stage = Translation</b>. Goodwill of a foreign subsidiary stays in its own currency and is retranslated at closing. A sub-group can translate step by step through its own currency.</p>
+
+  <h3>5. Aggregate the financial statements ✅</h3>
+  <p>Each member's adjusted books are copied into the group root. The Entity dimension keeps each company's part; <b>All Entities</b> is the group total. Only the parent and subsidiaries are copied.</p>
+
+  <h3>6. Eliminate the parent's investment ✅</h3>
+  <p><b>Stage = Investment Elimination.</b> The investment comes off the owner; the subsidiary's equity at acquisition comes off the subsidiary. If an intermediate the group only partly owns paid for it, that intermediate's NCI carries its share of the cost.</p>
+
+  <h3>7. Goodwill / bargain purchase ✅</h3>
+  <p>Goodwill = cost (+ NCI at fair value, if that method) − net assets at the date the <b>group</b> gained control. Negative goodwill is a gain. One business combination gives one goodwill. Fair value adjustments are added at acquisition and unwind over time (Stage = FVA Realisation). Impairments use Stage = Impairment.</p>
+
+  <h3>8. Recognise NCI ✅</h3>
+  <p>NCI at acquisition: fair value, or share of net assets. Chosen per acquisition.</p>
+
+  <h3>9. Eliminate intercompany balances ✅ <span style="font-weight:400">(matching screen ❌)</span></h3>
+  <p><b>Stage = Intragroup.</b> Every amount whose partner is in the same group is removed on both sides. A mismatch goes to an Intragroup Difference account, with a warning.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 120" role="img" aria-label="E's sales tagged with partner D and D's cost of sales tagged with partner E are both removed.">
+      <rect x="40" y="35" width="220" height="44" rx="8" class="node-plain"/><text x="150" y="62" text-anchor="middle" class="svg-label">E: Sales 80 · partner D</text>
+      <rect x="460" y="35" width="220" height="44" rx="8" class="node-plain"/><text x="570" y="62" text-anchor="middle" class="svg-label">D: Cost of sales 80 · partner E</text>
+      <rect x="300" y="35" width="120" height="44" rx="8" class="node-red"/><text x="360" y="62" text-anchor="middle" class="svg-label">both removed</text>
+      <path d="M260 57 L300 57" class="edge-red"/><path d="M460 57 L420 57" class="edge-red"/>
+    </svg>
+  </figure>
+  <p>Only pairs inside the group being consolidated. A sub-group's sales to its parent stay as sales in the sub-group's own accounts.</p>
+
+  <h3>10. Eliminate intercompany transactions ✅</h3>
+  <p>As step 9, for P&amp;L lines: sales and purchases, fees, interest, dividends.</p>
+
+  <h3>11. Eliminate unrealised profit ✅</h3>
+  <p>Entered as an event: seller, buyer, amount. The seller's profit is reduced, the buyer's stock (or land) is reduced, and the seller's NCI carries its share. Next month it reverses — the profit is realised — unless entered again.</p>
+
+  <h3>12. NCI share of movements ✅</h3>
+  <p><b>Stage = NCI Post-Acq.</b> NCI % × the change in the subsidiary's equity since acquisition, taken from each equity component so group reserves split correctly.</p>
+
+  <h3>13. Acquisitions and disposals ✅</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Event</th><th>Effect</th><th>Stage</th></tr></thead>
+    <tbody>
+      <tr><td>Control gained, earlier stake held</td><td>earlier stake revalued; gain</td><td>Investment Elimination</td></tr>
+      <tr><td>NCI bought / sold</td><td>equity transaction; goodwill unchanged</td><td>Ownership Change</td></tr>
+      <tr><td>Control lost</td><td>balances removed; gain; translation reserve recycled; results to date kept</td><td>Exclusion, Disposal</td></tr>
+      <tr><td>Significant influence</td><td>equity method</td><td>Equity Accounting</td></tr>
+    </tbody>
+  </table></div>
+  <p>Mid-month dates: the balance sheet is exact; the P&amp;L for that month is not yet split before and after the date.</p>
+
+  <h3>14. Prepare consolidated statements ⚠️</h3>
+  <p>Balance sheet and P&amp;L, by stage, from the Data cube at <b>Stage = Consolidated</b>. Not yet: statement of changes in equity, notes. Cash flow is out of scope.</p>
+
+  <h3>15. Consolidation checks ⚠️</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Check</th><th>When</th></tr></thead>
+    <tbody>
+      <tr><td>Balance sheet balances</td><td>every group, every month</td></tr>
+      <tr><td>Holdings valid (no loops, ≤ 100%)</td><td>start of every run</td></tr>
+      <tr><td>Ownership rules fully calculated</td><td>start of every run</td></tr>
+      <tr><td>Intercompany agrees</td><td>every run (difference account)</td></tr>
+      <tr><td>Known answers still hold</td><td>133 automated checks, 26 worked examples</td></tr>
+    </tbody>
+  </table></div>
+  <p>Not yet: NCI and retained earnings reconciliation reports.</p>
+</section>
+
+<section id="d4">
+  <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Year-end close</h2></div>
+  <p>Run automatically in the first month of a year. Next year's opening balance = this year's closing, for every group and every layer. P&amp;L and dividends go into retained earnings.</p>
+</section>
+
+<section id="dchecks">
+  <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">Checks</h2></div>
+  <p>Three layers.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 170" role="img" aria-label="Three layers of checks: every run, every change, and on live data.">
+      <rect x="20" y="30" width="210" height="110" rx="10" class="node-steel"/>
+      <text x="125" y="58" text-anchor="middle" class="svg-label" font-weight="600">1 · Every run</text>
+      <text x="125" y="84" text-anchor="middle" class="svg-sub">automatic, stops on error</text>
+      <text x="125" y="104" text-anchor="middle" class="svg-sub">written to the run log</text>
+      <rect x="255" y="30" width="210" height="110" rx="10" class="node-green"/>
+      <text x="360" y="58" text-anchor="middle" class="svg-label" font-weight="600">2 · Every change</text>
+      <text x="360" y="84" text-anchor="middle" class="svg-sub">26 worked examples</text>
+      <text x="360" y="104" text-anchor="middle" class="svg-sub">133 automated checks</text>
+      <rect x="490" y="30" width="210" height="110" rx="10" class="node-amber"/>
+      <text x="595" y="58" text-anchor="middle" class="svg-label" font-weight="600">3 · Live data</text>
+      <text x="595" y="84" text-anchor="middle" class="svg-sub">health checks, reconciliations</text>
+      <text x="595" y="104" text-anchor="middle" class="svg-sub">sign-off (planned)</text>
+    </svg>
+  </figure>
+
+  <h3>1. Every run ✅</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Check</th><th>If it fails</th></tr></thead>
+    <tbody>
+      <tr><td>Holdings valid — no loops, no company over 100%</td><td>run stops</td></tr>
+      <tr><td>Ownership rules fully calculated</td><td>run stops</td></tr>
+      <tr><td>Rates, events and acquisition values present</td><td>error logged, company skipped</td></tr>
+      <tr><td>Intercompany agrees</td><td>difference account + warning</td></tr>
+      <tr><td>Balance sheet balances, every group, every month</td><td>error logged</td></tr>
+    </tbody>
+  </table></div>
+  <p>Every calculation writes a line to the <b>Run Log</b>: what was done, with the figures used — goodwill, NCI, rates, eliminations. A failed run says why, in plain words.</p>
+
+  <h3>2. Every change ✅</h3>
+  <p>The 26 worked examples stay in the model as their own versions. Each has a known answer from the source.</p>
+  <ul>
+    <li><b>Automated checks</b> — 133 stored queries, each with an expected answer. They run every time the model is changed. One failure blocks the change.</li>
+    <li><b>Check views</b> — one per example: the book's figure, the model's figure, the difference.</li>
+  </ul>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Line</th><th>Book</th><th>Model</th><th>Difference</th></tr></thead>
+    <tbody>
+      <tr><td>Goodwill</td><td>22.4</td><td>22.4</td><td>0</td></tr>
+      <tr><td>NCI</td><td>27.7</td><td>27.776</td><td>0.076 (book rounds)</td></tr>
+      <tr><td>Total assets</td><td>91.6</td><td>91.6</td><td>0</td></tr>
+    </tbody>
+  </table></div>
+  <p style="color:var(--ink-faint);font-size:15px">Example: J Group, ACCA (Holt, 2009).</p>
+
+  <h3>3. Live data ❌ planned</h3>
+  <ul>
+    <li><b>Health checks</b> — rules that must hold on any data: balance, intercompany difference zero, opening = last year's closing, holdings ≤ 100%, every subsidiary has an acquisition, no errors in the last run.</li>
+    <li><b>Reconciliations</b> — NCI and retained earnings: opening + movements = closing.</li>
+    <li><b>Review and sign-off</b> — per group, per period.</li>
+  </ul>
+</section>
+
+<section id="d5">
+  <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">Gaps</h2></div>
+  <ul>
+    <li>Trial balance upload and account mapping</li>
+    <li>Intercompany matching screen</li>
+    <li>P&amp;L split for mid-month acquisitions and disposals</li>
+    <li>Statement of changes in equity, notes</li>
+    <li>NCI and retained earnings reconciliation reports</li>
+    <li>Review, approval and sign-off</li>
+    <li>Registers to set up companies, holdings and groups from one entry</li>
+  </ul>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>How each consolidation step is done in TM1 — detailed section.</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      Companion to Consolidation in TM1: A Second Design<br>
+      DRAFT for review<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
