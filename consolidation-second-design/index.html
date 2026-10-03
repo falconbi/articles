@@ -336,6 +336,7 @@
       <li><a href="#s7">Stage — which adjustment</a></li>
       <li><a href="#s8">Sub-groups</a></li>
       <li><a href="#s8b">How the structure is maintained</a></li>
+      <li><a href="#smodel">The model as built</a></li>
       <li><a href="#s9">How both were tested</a></li>
       <li><a href="#s10">What the first design needed</a></li>
       <li><a href="#s11">Side by side</a></li>
@@ -516,9 +517,24 @@
   <div class="callout note"><p><b>Status.</b> Planned. Today companies, holdings and groups are set up by hand.</p></div>
 </section>
 
+<!-- model -->
+<section id="smodel">
+  <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">The model as built</h2></div>
+  <p>Cubes, rules and processes, as drawn by the TM1 IDE's cube map.</p>
+  <figure class="fig">
+    <img src="images/CubeMapAll.png" alt="Cube map of the consolidation model: input cubes, the CON Consolidate process, and the CON Data and CON Run Log cubes it writes." style="max-width:100%;height:auto;border:1px solid var(--rule);border-radius:8px">
+    <figcaption style="font-size:14px;color:var(--ink-soft);margin-top:8px">Inputs on the left. One process, CON Consolidate, does the consolidation. It writes CON Data and CON Run Log.</figcaption>
+  </figure>
+  <p>Ownership is live. Holdings feed rules; rules give control, interest and classification. The process only reads the result.</p>
+  <figure class="fig">
+    <img src="images/CONOwnership.png" alt="Cube map step: CON Holding feeds CON Ownership by rules; CON Feeder Check reads CON Ownership." style="max-width:100%;height:auto;border:1px solid var(--rule);border-radius:8px">
+    <figcaption style="font-size:14px;color:var(--ink-soft);margin-top:8px">CON Holding → rules → CON Ownership. A check process confirms every holding is counted before the run continues.</figcaption>
+  </figure>
+</section>
+
 <!-- 9 -->
 <section id="s9">
-  <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">How both were tested</h2></div>
+  <div class="sec-head"><span class="sec-num">11</span><h2 class="sec-title">How both were tested</h2></div>
   <p>26 worked examples with known answers. Each loaded as its own version.</p>
   <div class="tablewrap"><table>
     <thead><tr><th>Source</th><th>Covers</th></tr></thead>
@@ -533,7 +549,7 @@
 
 <!-- 10 -->
 <section id="s10">
-  <div class="sec-head"><span class="sec-num">11</span><h2 class="sec-title">What the first design needed</h2></div>
+  <div class="sec-head"><span class="sec-num">12</span><h2 class="sec-title">What the first design needed</h2></div>
   <div class="tablewrap"><table>
     <thead><tr><th>Issue</th><th>Effect</th><th>Fix</th></tr></thead>
     <tbody>
@@ -547,7 +563,7 @@
 
 <!-- 11 -->
 <section id="s11">
-  <div class="sec-head"><span class="sec-num">12</span><h2 class="sec-title">Side by side</h2></div>
+  <div class="sec-head"><span class="sec-num">13</span><h2 class="sec-title">Side by side</h2></div>
   <div class="tablewrap"><table>
     <thead><tr><th></th><th>First design (paths)</th><th>Second design (roots)</th></tr></thead>
     <tbody>
@@ -565,7 +581,7 @@
 
 <!-- 12 -->
 <section id="s12">
-  <div class="sec-head"><span class="sec-num">13</span><h2 class="sec-title">Decision</h2></div>
+  <div class="sec-head"><span class="sec-num">14</span><h2 class="sec-title">Decision</h2></div>
   <p>Same answers. Fewer elements. No overrides. No depth limit.</p>
   <p>I use the second design. The first design remains a valid way to present a group step by step, and its tree view is still the best picture of a group.</p>
   <div class="callout note"><p><b>Same platform, either way.</b> Hierarchy-driven tools such as HFM work closer to the first design. SAP Group Reporting works closer to the second. TM1 can do both.</p></div>
@@ -573,7 +589,7 @@
 
 <!-- 13 -->
 <section id="s13">
-  <div class="sec-head"><span class="sec-num">14</span><h2 class="sec-title">References</h2></div>
+  <div class="sec-head"><span class="sec-num">15</span><h2 class="sec-title">References</h2></div>
   <div class="callout note">
     <p>Ng, Eng Juan. <em>Consolidated Financial Statements (Singapore)</em>. McGraw-Hill Education (Asia), 2nd ed., 2010.</p>
     <p>ACCA Student Accountant: Holt, "Business combinations – IFRS 3 (revised)", 2009; Jones, "Complex groups", 2010.</p>
