@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consolidation in TM1: A Second Design</title>
+<meta name="description" content="A second consolidation design for IBM Planning Analytics (TM1): four simple dimensions instead of path-encoded elements, tested against 26 textbook and ACCA examples.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --paper:#fafaf9;
+    --panel:#ffffff;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+
+    --steel:#0f766e;        /* structure, hierarchy, base */
+    --steel-light:#f0fdfa;
+    --green:#166534;        /* valid flow, base data, counted-once */
+    --green-light:#f0fdf4;
+    --amber:#92400e;        /* contra, grouped, reversal */
+    --amber-light:#fef3c7;
+    --red:#991b1b;          /* double-count, warnings */
+    --red-light:#fee2e2;
+    --indigo:#4c1d95;       /* implementation, UI */
+    --indigo-light:#ede9fe;
+
+    --maxw:860px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    background:
+      linear-gradient(180deg,#ffffff 0%, var(--paper) 100%);
+  }
+  .masthead .wrap{padding-top:78px;padding-bottom:52px}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--steel);
+    font-weight:500;
+    margin:0 0 22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1.title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.3rem);
+    line-height:1.08;
+    letter-spacing:-.012em;
+    margin:0 0 22px;
+    color:var(--ink);
+  }
+  h1.title .accent{color:var(--steel)}
+  .standfirst{
+    font-size:1.18rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:64ch;
+    margin:0 0 30px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-size:13.5px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;
+    padding-top:8px;border-top:1px solid var(--rule-soft);
+  }
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  .prototype{
+    margin:34px 0 0;
+    background:var(--green-light);
+    border:1px solid #cfe6d8;
+    border-left:4px solid var(--green);
+    border-radius:6px;
+    padding:16px 20px;
+    font-size:15.5px;
+    color:#21422f;
+  }
+  .prototype b{color:var(--green);font-weight:600}
+
+  /* ---------- TOC ---------- */
+  /* falconbi.css sets .toc{position:sticky} for sidebar use — override for this horizontal bar */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;margin:0 0 18px;
+  }
+  nav.toc ol{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:2px 28px;
+    counter-reset:toc;
+  }
+  nav.toc li{counter-increment:toc}
+  nav.toc a{
+    display:flex;gap:12px;align-items:baseline;
+    text-decoration:none;color:var(--ink-soft);
+    padding:7px 4px;border-radius:4px;
+    border-bottom:1px solid transparent;
+    transition:color .15s,background .15s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--steel);
+    flex:none;width:2ch;
+  }
+  nav.toc a:hover{color:var(--steel);background:var(--steel-light)}
+
+  /* ---------- Sections ---------- */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:44px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin:0 0 18px}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;color:var(--steel);
+    flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-weight:600;font-size:1.16rem;
+    margin:34px 0 12px;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  p{margin:0 0 16px}
+  section > p, section > ul, section > ol, section > .fig, section > .tablewrap,
+  section > pre, section > blockquote, section > .callout{margin-left:0}
+  strong{font-weight:600;color:var(--ink)}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:#f1f0ec;
+    padding:.1em .38em;border-radius:4px;
+    color:#3a4750;
+  }
+  a{color:var(--steel)}
+
+  ul,ol{margin:0 0 16px;padding-left:1.3em}
+  li{margin:6px 0}
+  li::marker{color:var(--steel)}
+
+  blockquote{
+    margin:18px 0;padding:4px 0 4px 22px;
+    border-left:3px solid var(--rule);
+    color:var(--ink-soft);font-style:italic;
+    font-family:'DM Sans',system-ui,sans-serif;font-size:1.08rem;
+  }
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;margin:22px 0}
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink-soft);
+  }
+  tbody tr:hover{background:#f6f7f8}
+  td code{background:#eef0f2}
+  .pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    letter-spacing:.02em;
+  }
+  .pill.sub{background:var(--steel-light);color:var(--steel)}
+  .pill.assoc{background:var(--indigo-light);color:var(--indigo)}
+  .pill.inv{background:#eef1f3;color:var(--ink-soft)}
+  .pill.grp{background:var(--amber-light);color:var(--amber)}
+
+  /* ---------- Code / ASCII ---------- */
+  pre{
+    background:#1c2530;color:#d7e0e8;
+    font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.6;
+    padding:18px 20px;border-radius:8px;overflow-x:auto;margin:20px 0;
+    border:1px solid #283442;
+  }
+  pre .c{color:#7f8fa0}      /* comment / faint */
+  pre .k{color:#7fb3e0}      /* steel key */
+  pre .g{color:#7fd0a0}      /* green */
+  pre .a{color:#e3b766}      /* amber */
+  pre .r{color:#e89b94}      /* red */
+  pre.ascii{font-size:13px;line-height:1.5}
+
+  /* ---------- Figures ---------- */
+  .fig{margin:26px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  figcaption{
+    font-size:13px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+    margin-top:12px;text-align:center;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600}
+
+  /* SVG element styling */
+  .svg-label{font-family:'DM Sans',sans-serif;font-size:14px;fill:var(--ink)}
+  .svg-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-faint)}
+  .svg-edge{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .node-steel{fill:var(--steel-light);stroke:var(--steel);stroke-width:1.5}
+  .node-green{fill:var(--green-light);stroke:var(--green);stroke-width:1.5}
+  .node-amber{fill:var(--amber-light);stroke:var(--amber);stroke-width:1.5}
+  .node-red{fill:var(--red-light);stroke:var(--red);stroke-width:1.5}
+  .node-indigo{fill:var(--indigo-light);stroke:var(--indigo);stroke-width:1.5}
+  .node-plain{fill:#fff;stroke:var(--ink-soft);stroke-width:1.3}
+  .edge{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+  .edge-green{stroke:var(--green);stroke-width:1.8;fill:none}
+  .edge-red{stroke:var(--red);stroke-width:1.8;fill:none}
+  .edge-amber{stroke:var(--amber);stroke-width:1.8;fill:none}
+  .edge-dash{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:6px;padding:16px 20px;margin:22px 0;font-size:15.5px;
+    border:1px solid var(--rule);border-left:4px solid var(--ink-soft);
+    background:var(--panel);
+  }
+  .callout.warn{background:var(--red-light);border-color:#eccac6;border-left-color:var(--red)}
+  .callout.warn b{color:var(--red)}
+  .callout.note{background:var(--steel-light);border-color:#cfe0ee;border-left-color:var(--steel)}
+  .callout.note b{color:var(--steel)}
+  .callout.key{background:var(--amber-light);border-color:#e8d6a8;border-left-color:var(--amber)}
+  .callout.key b{color:var(--amber)}
+  .callout p{margin:0}
+  .callout p + p{margin-top:10px}
+
+  /* ---------- Signature: path encoding ---------- */
+  .signature{
+    margin:30px 0;padding:30px 26px;border-radius:10px;
+    background:linear-gradient(160deg,#1c2530 0%,#243140 100%);
+    border:1px solid #2b3a4a;color:#dbe4ec;
+  }
+  .signature .sig-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#8aa0b4;margin:0 0 18px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{background:#1c2530;color:#aebccb;border-top:3px solid var(--steel)}
+  footer .wrap{padding-top:48px;padding-bottom:54px}
+  footer h2{
+    font-family:'DM Sans',system-ui,sans-serif;color:#f0f4f8;font-weight:600;
+    font-size:1.3rem;margin:0 0 14px;
+  }
+  footer p{color:#aebccb;font-size:15px;max-width:62ch}
+  footer a{color:#9ec3e6}
+  .lic{
+    margin-top:22px;padding-top:20px;border-top:1px solid #2c3a48;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8294a4;
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+  }
+  .refs{font-size:15px;color:#c4d0db}
+  .refs cite{font-style:italic;color:#e6edf3}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .sec-head{gap:12px}
+    nav.toc ol{grid-template-columns:1fr}
+    .masthead .wrap{padding-top:54px;padding-bottom:40px}
+  }
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">Design Reference &nbsp;·&nbsp; IBM Planning Analytics</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<!-- ============ MASTHEAD ============ -->
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Design Reference &nbsp;·&nbsp; IBM Planning Analytics</p>
+    <h1 class="title">Consolidation in <span class="accent">TM1</span>:<br>A Second Design</h1>
+    <p class="standfirst">My first design built consolidation of consolidation into one dimension. This one splits it into four simple dimensions. Both were tested against the same 26 textbook and exam examples. I now use the second.</p>
+    <div class="meta-row">
+      <span><b>Platform</b> IBM Planning Analytics / TM1</span>
+      <span><b>Follows</b> <a href="../consolidation-hierarchy-design/">Financial Consolidation Hierarchy Design in TM1</a></span>
+      <span><b>Status</b> Built and tested</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============ TOC ============ -->
+<nav class="toc">
+  <div class="wrap">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#s1">Why a second design</a></li>
+      <li><a href="#s2">The first design in one picture</a></li>
+      <li><a href="#s3">The second design: four dimensions</a></li>
+      <li><a href="#s4">Root — whose books</a></li>
+      <li><a href="#s5">Entity — which company</a></li>
+      <li><a href="#s6">Partner — the other side</a></li>
+      <li><a href="#s7">Stage — which adjustment</a></li>
+      <li><a href="#s8">Sub-groups</a></li>
+      <li><a href="#s8b">How the structure is maintained</a></li>
+      <li><a href="#s9">How both were tested</a></li>
+      <li><a href="#s10">What the first design needed</a></li>
+      <li><a href="#s11">Side by side</a></li>
+      <li><a href="#s12">Decision</a></li>
+      <li><a href="#s13">References</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<!-- 1 -->
+<section id="s1">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">Why a second design</h2></div>
+  <p>The first design worked. It also needed more elements, more overrides and two corrections to match the textbook.</p>
+  <p>I built a second design next to it, in the same model, on the same data. I ran both against the same examples. Same answers. Less to maintain.</p>
+  <div class="callout key"><p><b>Short version.</b> One dimension doing four jobs became four dimensions doing one job each.</p></div>
+</section>
+
+<!-- 2 -->
+<section id="s2">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">The first design in one picture</h2></div>
+  <p>One element per ownership path. The name carries the path.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 230" role="img" aria-label="Group J owns B 80 percent, B owns D 60 percent; path elements J1, J1_B1, J1_B1_D1 roll into CC_J1.">
+      <rect x="40" y="30" width="110" height="44" rx="8" class="node-steel"/><text x="95" y="57" text-anchor="middle" class="svg-label">J</text>
+      <rect x="40" y="100" width="110" height="44" rx="8" class="node-plain"/><text x="95" y="127" text-anchor="middle" class="svg-label">B</text>
+      <rect x="40" y="170" width="110" height="44" rx="8" class="node-plain"/><text x="95" y="197" text-anchor="middle" class="svg-label">D</text>
+      <line x1="95" y1="74" x2="95" y2="100" class="edge"/><text x="105" y="92" class="svg-edge" fill="#57534e">80%</text>
+      <line x1="95" y1="144" x2="95" y2="170" class="edge"/><text x="105" y="162" class="svg-edge" fill="#57534e">60%</text>
+      <text x="240" y="40" class="svg-sub">one dimension</text>
+      <rect x="240" y="50" width="150" height="40" rx="6" class="node-steel"/><text x="315" y="75" text-anchor="middle" class="svg-label">CC_J1</text>
+      <rect x="430" y="20" width="150" height="34" rx="6" class="node-plain"/><text x="505" y="42" text-anchor="middle" class="svg-sub">J1</text>
+      <rect x="430" y="62" width="150" height="34" rx="6" class="node-plain"/><text x="505" y="84" text-anchor="middle" class="svg-sub">J1_B1</text>
+      <rect x="430" y="104" width="150" height="34" rx="6" class="node-plain"/><text x="505" y="126" text-anchor="middle" class="svg-sub">J1_B1_D1</text>
+      <path d="M390 70 L430 37" class="edge"/><path d="M390 70 L430 79" class="edge"/><path d="M390 70 L430 121" class="edge"/>
+      <text x="430" y="170" class="svg-sub">group + company + path</text>
+      <text x="430" y="188" class="svg-sub">all in one name</text>
+    </svg>
+  </figure>
+  <p>The group, the company and the route to it are all in one element name. Ownership is read from the name.</p>
+</section>
+
+<!-- 3 -->
+<section id="s3">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">The second design: four dimensions</h2></div>
+  <p>Each question gets its own dimension.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 200" role="img" aria-label="Four dimensions: Root answers whose books, Entity answers which company, Partner answers the other side, Stage answers which adjustment.">
+      <rect x="20"  y="40" width="160" height="110" rx="10" class="node-steel"/>
+      <text x="100" y="78" text-anchor="middle" class="svg-label" font-weight="600">Root</text>
+      <text x="100" y="104" text-anchor="middle" class="svg-sub">whose books?</text>
+      <text x="100" y="124" text-anchor="middle" class="svg-sub">J Group</text>
+      <rect x="195" y="40" width="160" height="110" rx="10" class="node-green"/>
+      <text x="275" y="78" text-anchor="middle" class="svg-label" font-weight="600">Entity</text>
+      <text x="275" y="104" text-anchor="middle" class="svg-sub">which company?</text>
+      <text x="275" y="124" text-anchor="middle" class="svg-sub">B</text>
+      <rect x="370" y="40" width="160" height="110" rx="10" class="node-indigo"/>
+      <text x="450" y="78" text-anchor="middle" class="svg-label" font-weight="600">Partner</text>
+      <text x="450" y="104" text-anchor="middle" class="svg-sub">other side?</text>
+      <text x="450" y="124" text-anchor="middle" class="svg-sub">with D</text>
+      <rect x="545" y="40" width="160" height="110" rx="10" class="node-amber"/>
+      <text x="625" y="78" text-anchor="middle" class="svg-label" font-weight="600">Stage</text>
+      <text x="625" y="104" text-anchor="middle" class="svg-sub">which adjustment?</text>
+      <text x="625" y="124" text-anchor="middle" class="svg-sub">investment elim.</text>
+    </svg>
+  </figure>
+  <p>Ownership is no longer in a name. It is calculated by rules from a holdings table: who owns what percentage of whom.</p>
+</section>
+
+<!-- 4 -->
+<section id="s4">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">Root — whose books</h2></div>
+  <p>One element per set of group accounts. Plus one for the companies' own books.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Root</th><th>Means</th></tr></thead>
+    <tbody>
+      <tr><td><b>Entity Level</b></td><td>each company's own books</td></tr>
+      <tr><td><b>J1</b></td><td>J Group accounts (J + B + D)</td></tr>
+      <tr><td><b>B1</b></td><td>B sub-group accounts (B + D) — only if needed</td></tr>
+    </tbody>
+  </table></div>
+  <p>A root exists only for a holding company whose group accounts you want. Usually just the top parent.</p>
+</section>
+
+<!-- 5 -->
+<section id="s5">
+  <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Entity — which company</h2></div>
+  <p>The same company list in every root. The root says which accounts. The entity says which company's part of them.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 190" role="img" aria-label="Root J1 split by entity: J, B and D add to the J Group total.">
+      <rect x="40" y="30" width="200" height="130" rx="10" class="node-steel"/>
+      <text x="140" y="60" text-anchor="middle" class="svg-label" font-weight="600">Root J1</text>
+      <text x="140" y="86" text-anchor="middle" class="svg-sub">J Group accounts</text>
+      <rect x="320" y="20" width="140" height="38" rx="6" class="node-green"/><text x="390" y="44" text-anchor="middle" class="svg-label">J's part</text>
+      <rect x="320" y="70" width="140" height="38" rx="6" class="node-green"/><text x="390" y="94" text-anchor="middle" class="svg-label">B's part</text>
+      <rect x="320" y="120" width="140" height="38" rx="6" class="node-green"/><text x="390" y="144" text-anchor="middle" class="svg-label">D's part</text>
+      <path d="M240 95 L320 39" class="edge"/><path d="M240 95 L320 89" class="edge"/><path d="M240 95 L320 139" class="edge"/>
+      <rect x="540" y="70" width="140" height="38" rx="6" class="node-steel"/><text x="610" y="94" text-anchor="middle" class="svg-label">All = group</text>
+      <path d="M460 39 L540 89" class="edge-dash"/><path d="M460 89 L540 89" class="edge-dash"/><path d="M460 139 L540 89" class="edge-dash"/>
+    </svg>
+  </figure>
+  <p>One company alone need not balance. The whole group must.</p>
+</section>
+
+<!-- 6 -->
+<section id="s6">
+  <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">Partner — the other side</h2></div>
+  <p>Any amount with another group company is tagged with that company.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Company</th><th>Account</th><th>Partner</th></tr></thead>
+    <tbody>
+      <tr><td>J</td><td>Investment</td><td>B</td></tr>
+      <tr><td>E</td><td>Sales</td><td>D</td></tr>
+      <tr><td>D</td><td>Cost of sales</td><td>E</td></tr>
+    </tbody>
+  </table></div>
+  <p>Investments are matched to the company owned. Intragroup amounts are found on both sides and removed.</p>
+</section>
+
+<!-- 7 -->
+<section id="s7">
+  <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">Stage — which adjustment</h2></div>
+  <p>Every group figure is built in layers. Each journal type is its own layer.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 210" role="img" aria-label="B's goodwill in J Group: investment elimination 12, impairment minus 4, consolidated 8.">
+      <text x="40" y="30" class="svg-sub">B's goodwill in the J Group</text>
+      <rect x="40"  y="50" width="240" height="40" rx="6" class="node-green"/><text x="160" y="75" text-anchor="middle" class="svg-label">Investment elimination  +12</text>
+      <rect x="40"  y="100" width="240" height="40" rx="6" class="node-red"/><text x="160" y="125" text-anchor="middle" class="svg-label">Impairment  −4</text>
+      <rect x="40"  y="150" width="240" height="40" rx="6" class="node-steel"/><text x="160" y="175" text-anchor="middle" class="svg-label" font-weight="600">Consolidated  8</text>
+      <text x="360" y="75" class="svg-sub">Reported</text>
+      <text x="360" y="95" class="svg-sub">Company adjustments</text>
+      <text x="360" y="115" class="svg-sub">Translation</text>
+      <text x="360" y="135" class="svg-sub">Investment elimination · NCI · Impairment</text>
+      <text x="360" y="155" class="svg-sub">Disposal · Associates · Intragroup</text>
+      <text x="360" y="180" class="svg-label">= Consolidated</text>
+    </svg>
+  </figure>
+  <p>Any number traces to: group → company → adjustment.</p>
+</section>
+
+<!-- 8 -->
+<section id="s8">
+  <div class="sec-head"><span class="sec-num">08</span><h2 class="sec-title">Sub-groups</h2></div>
+  <p>The group is always calculated straight from the companies' books. A sub-group that needs its own accounts gets its own root, calculated the same way.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 170" role="img" aria-label="Company books feed both J Group and B sub-group directly; a bridge links the two.">
+      <rect x="40" y="65" width="160" height="44" rx="8" class="node-plain"/><text x="120" y="92" text-anchor="middle" class="svg-label">Company books</text>
+      <rect x="320" y="20" width="160" height="44" rx="8" class="node-steel"/><text x="400" y="47" text-anchor="middle" class="svg-label">J Group</text>
+      <rect x="320" y="110" width="160" height="44" rx="8" class="node-steel"/><text x="400" y="137" text-anchor="middle" class="svg-label">B sub-group</text>
+      <path d="M200 87 L320 42" class="edge-green"/><path d="M200 87 L320 132" class="edge-green"/>
+      <path d="M480 42 C560 42 560 132 480 132" class="edge-dash"/><text x="565" y="92" class="svg-sub">bridge</text>
+    </svg>
+  </figure>
+  <p>No double counting can happen. Nothing rolls into anything else. The bridge shows the difference between the two for audit.</p>
+</section>
+
+<!-- 8b -->
+<section id="s8b">
+  <div class="sec-head"><span class="sec-num">09</span><h2 class="sec-title">How the structure is maintained</h2></div>
+  <p>A group exists when it is added as a root. Only holding companies whose accounts are needed get one.</p>
+  <p>Companies come from two registers. One entry each.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 220" role="img" aria-label="Acquisition register and company register create the company, its holding and the acquisition, which every group then uses.">
+      <rect x="20" y="40" width="190" height="50" rx="8" class="node-amber"/><text x="115" y="62" text-anchor="middle" class="svg-label">Acquisition register</text><text x="115" y="80" text-anchor="middle" class="svg-sub">J buys 80% of B</text>
+      <rect x="20" y="130" width="190" height="50" rx="8" class="node-amber"/><text x="115" y="152" text-anchor="middle" class="svg-label">Company register</text><text x="115" y="170" text-anchor="middle" class="svg-sub">parent, set-up companies</text>
+      <rect x="280" y="20" width="170" height="40" rx="6" class="node-green"/><text x="365" y="45" text-anchor="middle" class="svg-label">Company</text>
+      <rect x="280" y="90" width="170" height="40" rx="6" class="node-green"/><text x="365" y="115" text-anchor="middle" class="svg-label">Holding 80%</text>
+      <rect x="280" y="160" width="170" height="40" rx="6" class="node-green"/><text x="365" y="185" text-anchor="middle" class="svg-label">Acquisition</text>
+      <path d="M210 65 L280 40" class="edge"/><path d="M210 65 L280 110" class="edge"/><path d="M210 65 L280 180" class="edge"/>
+      <path d="M210 155 L280 40" class="edge-dash"/>
+      <rect x="530" y="90" width="170" height="40" rx="6" class="node-steel"/><text x="615" y="115" text-anchor="middle" class="svg-label">Every group</text>
+      <path d="M450 40 L530 110" class="edge-dash"/><path d="M450 110 L530 110" class="edge-dash"/><path d="M450 180 L530 110" class="edge-dash"/>
+    </svg>
+  </figure>
+  <p>Each group works out its own view of an acquisition: when the group gained control, and at what values. Nothing is entered twice.</p>
+  <div class="callout note"><p><b>Status.</b> Planned. Today companies, holdings and groups are set up by hand.</p></div>
+</section>
+
+<!-- 9 -->
+<section id="s9">
+  <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">How both were tested</h2></div>
+  <p>26 worked examples with known answers. Each loaded as its own version.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Source</th><th>Covers</th></tr></thead>
+    <tbody>
+      <tr><td>ACCA exams and articles</td><td>vertical groups, mixed groups, step acquisitions, NCI trades, loss of control, associates, foreign subsidiaries, disposals</td></tr>
+      <tr><td>Ng Eng Juan, examples 1–7</td><td>consolidation of consolidation, connecting affiliates, intragroup sales, unrealised profit, dividends</td></tr>
+      <tr><td>Built on the above</td><td>year-end close, sub-group variants, three currencies</td></tr>
+    </tbody>
+  </table></div>
+  <p>Both designs matched the book on every example. One textbook answer did not balance; it was corrected and both matched the correction.</p>
+</section>
+
+<!-- 10 -->
+<section id="s10">
+  <div class="sec-head"><span class="sec-num">11</span><h2 class="sec-title">What the first design needed</h2></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Issue</th><th>Effect</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>Sub-group goodwill rolled up whole</td><td>Goodwill and NCI too high (4.4 in the J Group example)</td><td>Added an indirect holding adjustment</td></tr>
+      <tr><td>Classified by effective %</td><td>A 45% company reads as an associate; the book treats it as a subsidiary</td><td>Classify by control</td></tr>
+      <tr><td>Company owned directly and through a sub-group</td><td>Counted twice</td><td>Manual "Grouped" override on that path</td></tr>
+    </tbody>
+  </table></div>
+  <p>The second design needed none of these. Control, effective interest and every route are calculated from the holdings.</p>
+</section>
+
+<!-- 11 -->
+<section id="s11">
+  <div class="sec-head"><span class="sec-num">12</span><h2 class="sec-title">Side by side</h2></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>First design (paths)</th><th>Second design (roots)</th></tr></thead>
+    <tbody>
+      <tr><td>Group</td><td>CC_ element</td><td>Root</td></tr>
+      <tr><td>Company in group</td><td>Path element</td><td>Entity</td></tr>
+      <tr><td>Ownership</td><td>Read from the name</td><td>Rules on holdings</td></tr>
+      <tr><td>Intragroup</td><td>Per level</td><td>Partner tags, per group</td></tr>
+      <tr><td>Journals</td><td>Per path</td><td>Stage</td></tr>
+      <tr><td>New company</td><td>Element for every path, every group</td><td>One element</td></tr>
+      <tr><td>Extra level of depth</td><td>New rule block</td><td>Nothing</td></tr>
+      <tr><td>Reads like the book</td><td>Yes, step by step</td><td>Through the bridge</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 12 -->
+<section id="s12">
+  <div class="sec-head"><span class="sec-num">13</span><h2 class="sec-title">Decision</h2></div>
+  <p>Same answers. Fewer elements. No overrides. No depth limit.</p>
+  <p>I use the second design. The first design remains a valid way to present a group step by step, and its tree view is still the best picture of a group.</p>
+  <div class="callout note"><p><b>Same platform, either way.</b> Hierarchy-driven tools such as HFM work closer to the first design. SAP Group Reporting works closer to the second. TM1 can do both.</p></div>
+</section>
+
+<!-- 13 -->
+<section id="s13">
+  <div class="sec-head"><span class="sec-num">14</span><h2 class="sec-title">References</h2></div>
+  <div class="callout note">
+    <p>Ng, Eng Juan. <em>Consolidated Financial Statements (Singapore)</em>. McGraw-Hill Education (Asia), 2nd ed., 2010.</p>
+    <p>ACCA Student Accountant: Holt, "Business combinations – IFRS 3 (revised)", 2009; Jones, "Complex groups", 2010.</p>
+    <p>ACCA P2 / SBR exam questions and answers (June 2015, December 2015).</p>
+    <p>First design: <a href="../consolidation-hierarchy-design/"><em>Financial Consolidation Hierarchy Design in TM1</em></a>, falconbi, 2026.</p>
+  </div>
+</section>
+
+</div>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Consolidation in TM1: A Second Design — roots, entities, partners and stages.</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      Design reference · IBM Planning Analytics<br>
+      DRAFT for review<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

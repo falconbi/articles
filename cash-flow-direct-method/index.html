@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forecast Cash Flow &amp; Balance Sheet — Design</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --paper:#fafaf9;
+    --card:#ffffff;
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+    --structure:#0f766e;
+    --structure-soft:#f0fdfa;
+    --cash:#166534;
+    --cash-soft:#f0fdf4;
+    --contra:#92400e;
+    --contra-soft:#fef3c7;
+    --tm1:#4c1d95;
+    --tm1-soft:#ede9fe;
+    --flag:#991b1b;
+    --maxw:880px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"DM Sans",system-ui,sans-serif;
+    font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---- Masthead ---- */
+  header.mast{
+    border-bottom:2px solid var(--ink);
+    padding:64px 0 30px;margin-bottom:8px;
+  }
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--structure);font-weight:500;margin:0 0 18px;
+  }
+  h1.title{
+    font-family:"DM Sans",sans-serif;font-weight:700;
+    font-size:clamp(30px,5.4vw,50px);line-height:1.04;letter-spacing:-.018em;
+    margin:0 0 14px;
+  }
+  .subtitle{
+    font-family:"DM Sans",system-ui,sans-serif;font-style:italic;color:var(--ink-soft);
+    font-size:clamp(17px,2.4vw,21px);margin:0 0 26px;max-width:42ch;
+  }
+  .meta{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-faint);
+    letter-spacing:.04em;border-top:1px solid var(--rule);padding-top:16px;
+  }
+  .meta b{color:var(--structure);font-weight:500}
+
+  /* ---- Contents ---- */
+  nav.toc{
+    background:var(--card);border:1px solid var(--rule);border-radius:3px;
+    padding:22px 26px;margin:34px 0 10px;position:static;top:auto;
+  }
+  nav.toc h2{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--ink-faint);margin:0 0 14px;font-weight:600;
+  }
+  nav.toc ol{margin:0;padding:0;list-style:none;
+    column-count:2;column-gap:36px;font-family:"DM Sans",sans-serif;font-size:14.5px}
+  nav.toc li{margin:0 0 9px;break-inside:avoid;display:flex;gap:11px;align-items:baseline}
+  nav.toc .n{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--structure);
+    font-weight:600;min-width:22px}
+  nav.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid transparent}
+  nav.toc a:hover{border-bottom-color:var(--structure)}
+
+  /* ---- Sections ---- */
+  section{padding:46px 0 8px;border-top:1px solid var(--rule-soft)}
+  section:first-of-type{border-top:none}
+  .sec-num{
+    font-family:"IBM Plex Mono",monospace;font-size:12.5px;letter-spacing:.14em;
+    color:var(--structure);font-weight:600;display:block;margin-bottom:8px;
+  }
+  h2.sec{
+    font-family:"DM Sans",sans-serif;font-weight:600;
+    font-size:clamp(22px,3.6vw,30px);line-height:1.12;letter-spacing:-.012em;
+    margin:0 0 18px;
+  }
+  h3{
+    font-family:"DM Sans",sans-serif;font-weight:600;font-size:18.5px;
+    letter-spacing:-.005em;margin:34px 0 10px;color:var(--ink);
+  }
+  p{margin:0 0 16px}
+  .lead{font-size:18.5px;color:var(--ink)}
+  strong{font-weight:600}
+  em{color:var(--ink-soft)}
+  a.inl{color:var(--structure);text-decoration:none;border-bottom:1px solid var(--rule)}
+
+  /* ---- Figures ---- */
+  figure{margin:30px 0;}
+  .fig-frame{
+    background:var(--card);border:1px solid var(--rule);border-radius:4px;
+    padding:26px 24px 16px;overflow:hidden;
+  }
+  figure svg{display:block;width:100%;height:auto;max-width:100%}
+  figcaption{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-faint);
+    letter-spacing:.03em;margin-top:14px;padding-top:11px;border-top:1px solid var(--rule-soft);
+    line-height:1.5;
+  }
+  figcaption b{color:var(--structure);font-weight:500}
+
+  /* ---- Callouts ---- */
+  .callout{
+    border-left:3px solid var(--structure);background:var(--structure-soft);
+    padding:16px 20px;margin:24px 0;border-radius:0 3px 3px 0;font-size:16px;
+  }
+  .callout.trade{border-left-color:var(--contra);background:var(--contra-soft)}
+  .callout.warn{border-left-color:var(--flag);background:#fee2e2}
+  .callout .lbl{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;font-weight:600;display:block;margin-bottom:6px;color:var(--structure);
+  }
+  .callout.trade .lbl{color:var(--contra)}
+  .callout.warn .lbl{color:var(--flag)}
+  .callout p:last-child{margin-bottom:0}
+
+  /* ---- Code ---- */
+  pre{
+    background:#1c1917;color:#d6d3d1;border-radius:4px;padding:18px 20px;
+    overflow-x:auto;font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.65;
+    margin:22px 0;border:1px solid #0c0a09;
+  }
+  pre .c{color:#7E8AA0;font-style:italic}      /* comment */
+  pre .k{color:#7FB3E8}                          /* keyword */
+  pre .f{color:#E0A95B}                          /* function */
+  pre .s{color:#8FD0A0}                          /* string */
+  pre .o{color:#C9B6F0}                          /* operator/measure */
+  code.inl{
+    font-family:"IBM Plex Mono",monospace;font-size:.85em;background:var(--rule-soft);
+    padding:1px 6px;border-radius:3px;color:var(--ink);
+  }
+
+  /* ---- Tables ---- */
+  table{width:100%;border-collapse:collapse;margin:24px 0;font-size:14.5px;
+    font-family:"DM Sans",sans-serif}
+  th{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;text-align:left;color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink);padding:0 12px 8px}
+  td{padding:11px 12px;border-bottom:1px solid var(--rule-soft);vertical-align:top;line-height:1.45}
+  tr:last-child td{border-bottom:none}
+  .tag{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+    padding:2px 7px;border-radius:3px;white-space:nowrap}
+  .tag.hi{background:var(--flag);color:#fff}
+  .tag.md{background:var(--contra-soft);color:var(--contra)}
+  .tag.lo{background:var(--rule-soft);color:var(--ink-soft)}
+  .tag.na{background:var(--structure-soft);color:var(--structure)}
+
+  /* ---- Checklist ---- */
+  ul.check{list-style:none;padding:0;margin:20px 0;font-family:"DM Sans",sans-serif;font-size:15.5px}
+  ul.check li{padding:9px 0 9px 30px;position:relative;border-bottom:1px solid var(--rule-soft)}
+  ul.check li:before{content:"▢";position:absolute;left:2px;top:8px;color:var(--structure);font-size:15px}
+  ul.check li:last-child{border-bottom:none}
+
+  ul.plain{padding-left:20px;margin:14px 0 18px}
+  ul.plain li{margin-bottom:9px}
+
+  /* ---- Footer ---- */
+  footer{border-top:2px solid var(--ink);margin-top:54px;padding:26px 0 70px;
+    font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-faint);letter-spacing:.03em}
+
+  @media (max-width:620px){
+    nav.toc ol{column-count:1}
+    body{font-size:16px}
+  }
+  @media print{
+    body{background:#fff}
+    .fig-frame,nav.toc{break-inside:avoid}
+    figure,pre,table,.callout{break-inside:avoid}
+    section{border-top:none}
+    header.mast{padding-top:0}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">Methodology Design &nbsp;·&nbsp; FP&amp;A Systems</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<header class="mast">
+  <div class="wrap">
+    <p class="eyebrow">Methodology Specification · FP&amp;A Systems Design</p>
+    <h1 class="title">Forecast Cash Flow &amp;<br>Balance Sheet</h1>
+    <p class="subtitle">A posting-engine three-way design — where the statements fall out of balanced postings. Platform-agnostic; the concepts are the deliverable.</p>
+    <div class="meta">
+      <span><b>Pattern</b> &nbsp;Posting engine / sub-ledger discipline</span>
+      <span><b>Scope</b> &nbsp;Platform-agnostic concept</span>
+      <span><b>Status</b> &nbsp;Reusable design</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><span class="n">01</span><a href="#philosophy">Design philosophy</a></li>
+    <li><span class="n">02</span><a href="#architecture">Architecture placement</a></li>
+    <li><span class="n">03</span><a href="#posting">The balanced posting</a></li>
+    <li><span class="n">04</span><a href="#method">The Method parameter set</a></li>
+    <li><span class="n">05</span><a href="#decay">Balance decay over time</a></li>
+    <li><span class="n">06</span><a href="#source">Source-module isolation</a></li>
+    <li><span class="n">07</span><a href="#fx">Currency &amp; FX layer</a></li>
+    <li><span class="n">08</span><a href="#edge">Edge-case accounts</a></li>
+    <li><span class="n">09</span><a href="#boundary">Actual / forecast boundary</a></li>
+    <li><span class="n">10</span><a href="#validation">Validation &amp; controls</a></li>
+    <li><span class="n">11</span><a href="#tm1">Implementation considerations</a></li>
+    <li><span class="n">12</span><a href="#sizing">What sizes the build</a></li>
+  </ol>
+</nav>
+
+<!-- ============ 01 ============ -->
+<section id="philosophy">
+  <span class="sec-num">01</span>
+  <h2 class="sec">Design philosophy</h2>
+  <p class="lead">The objective is a forecast cash flow and balance sheet that <strong>tie to the P&amp;L by construction</strong> — not three statements built separately and linked by hand-maintained schedules.</p>
+  <p>The method imposes <strong>sub-ledger discipline on a planning model</strong>. Every movement is a balanced posting with a contra; every posting is traceable to the source that created it; and the three statements <em>assemble themselves</em> from the postings rather than being modelled and reconciled as separate artefacts. This inverts the conventional FP&amp;A build.</p>
+
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 840 300" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, system-ui, sans-serif">
+        <!-- LEFT: conventional -->
+        <text x="20" y="26" font-size="12" font-family="IBM Plex Mono" letter-spacing="1.5" fill="#a8a29e">CONVENTIONAL — LINKED SCHEDULES</text>
+        <g transform="translate(20,44)">
+          <rect x="0" y="0" width="150" height="40" rx="4" fill="#ffffff" stroke="#0f766e" stroke-width="1.4"/>
+          <text x="75" y="25" text-anchor="middle" font-size="13" fill="#1c1917">Forecast P&amp;L</text>
+          <rect x="0" y="70" width="150" height="40" rx="4" fill="#ffffff" stroke="#92400e" stroke-width="1.4"/>
+          <text x="75" y="95" text-anchor="middle" font-size="13" fill="#1c1917">Separate BS</text>
+          <rect x="0" y="140" width="150" height="40" rx="4" fill="#ffffff" stroke="#166534" stroke-width="1.4"/>
+          <text x="75" y="165" text-anchor="middle" font-size="13" fill="#1c1917">Separate CF</text>
+          <!-- tangled links -->
+          <path d="M150,20 C220,20 220,90 150,90" fill="none" stroke="#991b1b" stroke-width="1.3" stroke-dasharray="4 3"/>
+          <path d="M150,90 C230,90 230,160 150,160" fill="none" stroke="#991b1b" stroke-width="1.3" stroke-dasharray="4 3"/>
+          <path d="M150,160 C250,160 250,25 150,22" fill="none" stroke="#991b1b" stroke-width="1.3" stroke-dasharray="4 3"/>
+          <text x="265" y="85" font-size="12" font-family="IBM Plex Mono" fill="#991b1b">hand-linked</text>
+          <text x="265" y="103" font-size="12" font-family="IBM Plex Mono" fill="#991b1b">&amp; hope it ties</text>
+        </g>
+
+        <!-- divider -->
+        <line x1="420" y1="40" x2="420" y2="270" stroke="#e7e5e4" stroke-width="1"/>
+
+        <!-- RIGHT: posting engine -->
+        <text x="448" y="26" font-size="12" font-family="IBM Plex Mono" letter-spacing="1.5" fill="#a8a29e">POSTING ENGINE — STATEMENTS FALL OUT</text>
+        <g transform="translate(448,44)">
+          <rect x="0" y="55" width="150" height="70" rx="4" fill="#1c1917"/>
+          <text x="75" y="86" text-anchor="middle" font-size="13" fill="#fff" font-weight="600">Balanced</text>
+          <text x="75" y="104" text-anchor="middle" font-size="13" fill="#fff" font-weight="600">postings</text>
+          <!-- three outputs -->
+          <line x1="150" y1="90" x2="210" y2="30" stroke="#0f766e" stroke-width="1.5"/>
+          <line x1="150" y1="90" x2="210" y2="90" stroke="#92400e" stroke-width="1.5"/>
+          <line x1="150" y1="90" x2="210" y2="150" stroke="#166534" stroke-width="1.5"/>
+          <rect x="210" y="12" width="148" height="36" rx="4" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.2"/>
+          <text x="284" y="35" text-anchor="middle" font-size="12.5" fill="#0f766e">P&amp;L</text>
+          <rect x="210" y="72" width="148" height="36" rx="4" fill="#fef3c7" stroke="#92400e" stroke-width="1.2"/>
+          <text x="284" y="95" text-anchor="middle" font-size="12.5" fill="#92400e">Balance Sheet</text>
+          <rect x="210" y="132" width="148" height="36" rx="4" fill="#f0fdf4" stroke="#166534" stroke-width="1.2"/>
+          <text x="284" y="155" text-anchor="middle" font-size="12.5" fill="#166534">Cash Flow</text>
+          <text x="0" y="200" font-size="12" font-family="IBM Plex Mono" fill="#166534">balances by design ✓</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption><b>Fig.01</b> &nbsp;The conventional build links three statements and reconciles at the end. The posting engine produces one balanced increment per source; the statements are a read of those postings.</figcaption>
+  </figure>
+
+  <div class="callout trade">
+    <span class="lbl">The core trade</span>
+    <p>The pattern's strength is <strong>reconciliation</strong>: postings are isolated by source and each source self-balances, so a break localises instantly. Its cost is <strong>rule proliferation</strong>: every account needs a method. More rules to author, far cheaper rules to debug and trust — a deliberate, sound trade for any model that runs every period for years.</p>
+  </div>
+</section>
+
+<!-- ============ 02 ============ -->
+<section id="architecture">
+  <span class="sec-num">02</span>
+  <h2 class="sec">Architecture placement</h2>
+  <p>The cash flow layer sits <strong>downstream of every module that posts to a statement</strong> and reads its shared structure from the Hub. Only modules that post to P&amp;L or BS need treatment — calculation and staging sub-modules that merely feed another module are invisible to the engine. The classifier is <em>does it post to a statement</em>, not where it sits in the dependency chain.</p>
+
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 840 420" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, system-ui, sans-serif">
+        <!-- HUB -->
+        <rect x="120" y="14" width="600" height="52" rx="4" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.5"/>
+        <text x="420" y="34" text-anchor="middle" font-size="13" font-weight="600" fill="#0f766e">HUB — global dimensions &amp; shared master data</text>
+        <text x="420" y="54" text-anchor="middle" font-size="11.5" font-family="IBM Plex Mono" fill="#57534e">Account · Cost Centre · Entity · Time · Version · Currency</text>
+
+        <!-- source modules -->
+        <g font-size="12.5" fill="#1c1917">
+          <rect x="40" y="118" width="160" height="56" rx="4" fill="#ffffff" stroke="#1c1917" stroke-width="1.3"/>
+          <text x="120" y="142" text-anchor="middle" font-weight="600">Revenue</text>
+          <text x="120" y="160" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono" fill="#a8a29e">posts P&amp;L / BS</text>
+
+          <rect x="220" y="118" width="160" height="56" rx="4" fill="#ffffff" stroke="#1c1917" stroke-width="1.3"/>
+          <text x="300" y="142" text-anchor="middle" font-weight="600">Workforce</text>
+          <text x="300" y="160" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono" fill="#a8a29e">owns people cost</text>
+
+          <rect x="400" y="118" width="160" height="56" rx="4" fill="#ffffff" stroke="#1c1917" stroke-width="1.3"/>
+          <text x="480" y="142" text-anchor="middle" font-weight="600">OpEx</text>
+          <text x="480" y="160" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono" fill="#a8a29e">non-people cost</text>
+
+          <rect x="580" y="118" width="160" height="56" rx="4" fill="#ffffff" stroke="#1c1917" stroke-width="1.3"/>
+          <text x="660" y="142" text-anchor="middle" font-weight="600">Allocation</text>
+          <text x="660" y="160" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono" fill="#a8a29e">reclass · nets to 0</text>
+        </g>
+        <!-- hub to modules -->
+        <g stroke="#0f766e" stroke-width="1.1" opacity="0.55">
+          <line x1="120" y1="66" x2="120" y2="118"/>
+          <line x1="300" y1="66" x2="300" y2="118"/>
+          <line x1="480" y1="66" x2="480" y2="118"/>
+          <line x1="660" y1="66" x2="660" y2="118"/>
+        </g>
+
+        <!-- engine -->
+        <rect x="120" y="226" width="600" height="64" rx="4" fill="#1c1917"/>
+        <text x="420" y="252" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">POSTING ENGINE</text>
+        <text x="420" y="274" text-anchor="middle" font-size="11" font-family="IBM Plex Mono" fill="#B9C2D0">Method · lag · contra · CF line · Source Module · “Modelled as”</text>
+        <g stroke="#1c1917" stroke-width="1.2">
+          <line x1="120" y1="174" x2="180" y2="226"/>
+          <line x1="300" y1="174" x2="320" y2="226"/>
+          <line x1="480" y1="174" x2="520" y2="226"/>
+          <line x1="660" y1="174" x2="640" y2="226"/>
+        </g>
+
+        <!-- outputs -->
+        <g>
+          <rect x="120" y="340" width="180" height="44" rx="4" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.3"/>
+          <text x="210" y="367" text-anchor="middle" font-size="13" fill="#0f766e" font-weight="600">Forecast P&amp;L</text>
+          <rect x="330" y="340" width="180" height="44" rx="4" fill="#fef3c7" stroke="#92400e" stroke-width="1.3"/>
+          <text x="420" y="362" text-anchor="middle" font-size="13" fill="#92400e" font-weight="600">Forecast BS</text>
+          <text x="420" y="377" text-anchor="middle" font-size="10" font-family="IBM Plex Mono" fill="#92400e">balances</text>
+          <rect x="540" y="340" width="180" height="44" rx="4" fill="#f0fdf4" stroke="#166534" stroke-width="1.3"/>
+          <text x="630" y="362" text-anchor="middle" font-size="13" fill="#166534" font-weight="600">Forecast CF</text>
+          <text x="630" y="377" text-anchor="middle" font-size="10" font-family="IBM Plex Mono" fill="#57534e">direct or indirect</text>
+        </g>
+        <g stroke="#57534e" stroke-width="1.1">
+          <line x1="210" y1="290" x2="210" y2="340"/>
+          <line x1="420" y1="290" x2="420" y2="340"/>
+          <line x1="630" y1="290" x2="630" y2="340"/>
+        </g>
+
+        <!-- assumptions feed -->
+        <rect x="752" y="226" width="74" height="64" rx="4" fill="#ede9fe" stroke="#4c1d95" stroke-width="1.3"/>
+        <text x="789" y="250" text-anchor="middle" font-size="10.5" fill="#4c1d95" font-weight="600">Assump</text>
+        <text x="789" y="264" text-anchor="middle" font-size="10.5" fill="#4c1d95" font-weight="600">&amp; Settings</text>
+        <text x="789" y="280" text-anchor="middle" font-size="9" font-family="IBM Plex Mono" fill="#4c1d95">FX · period</text>
+        <line x1="752" y1="258" x2="720" y2="258" stroke="#4c1d95" stroke-width="1.2"/>
+      </svg>
+    </div>
+    <figcaption><b>Fig.02</b> &nbsp;Hub supplies structure; source modules post; the engine derives the three statements. <b>Allocation</b> is its own posting source that nets to zero at the P&amp;L, so it satisfies “balance alone” trivially. People cost is owned by Workforce — OpEx must not re-plan it.</figcaption>
+  </figure>
+
+  <p><strong>One reporting structure, not three.</strong> P&amp;L, balance sheet and cash flow are not separate cubes. They share the <strong>Account dimension</strong> — which statement an account belongs to is a property or hierarchy of the account, not a different object — so all three live together in a single reporting cube. The “three statements” are three views over one account-dimensioned structure, which is exactly why they stay consistent: there is only one set of postings to read.</p>
+
+  <p><strong>Granularity is inherited from the module, not fixed at the engine.</strong> The cash flow can be modelled at whatever depth the owning module works at. If a module calculates at contract, product or employee level, the cash legs and their assumptions can be built at <em>that</em> level and the engine carries the depth through; users drill down as normal. The same pattern scales from a summary cash forecast to a detailed bottom-up one without changing the architecture — only the level the modules feed it at.</p>
+</section>
+
+<!-- ============ 03 ============ -->
+<section id="posting">
+  <span class="sec-num">03</span>
+  <h2 class="sec">The balanced posting</h2>
+  <p>Every posting decomposes into three legs that net to a balanced entry <strong>within its source module</strong>: the <strong>statement leg</strong> (the originating P&amp;L or BS movement), the <strong>cash leg</strong> (the portion converting to cash this period, governed by the lag), and the <strong>contra leg</strong> (the balancing residual, held on the contra account until it unwinds).</p>
+
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 840 248" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, system-ui, sans-serif">
+        <!-- origin -->
+        <rect x="20" y="92" width="170" height="64" rx="4" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.5"/>
+        <text x="105" y="118" text-anchor="middle" font-size="13" fill="#0f766e" font-weight="600">Revenue posting</text>
+        <text x="105" y="138" text-anchor="middle" font-size="12" font-family="IBM Plex Mono" fill="#1c1917">+1,000</text>
+
+        <!-- split node -->
+        <circle cx="270" cy="124" r="6" fill="#1c1917"/>
+        <line x1="190" y1="124" x2="264" y2="124" stroke="#0f766e" stroke-width="1.5"/>
+
+        <!-- cash leg -->
+        <path d="M276,124 C330,124 330,52 384,52" fill="none" stroke="#166534" stroke-width="1.6"/>
+        <rect x="384" y="30" width="200" height="46" rx="4" fill="#f0fdf4" stroke="#166534" stroke-width="1.4"/>
+        <text x="396" y="50" font-size="12.5" fill="#166534" font-weight="600">Cash leg</text>
+        <text x="396" y="67" font-size="11" font-family="IBM Plex Mono" fill="#1c1917">+700 → Cash Flow</text>
+
+        <!-- contra leg -->
+        <path d="M276,124 C330,124 330,196 384,196" fill="none" stroke="#92400e" stroke-width="1.6"/>
+        <rect x="384" y="174" width="200" height="46" rx="4" fill="#fef3c7" stroke="#92400e" stroke-width="1.4"/>
+        <text x="396" y="194" font-size="12.5" fill="#92400e" font-weight="600">Contra leg → AR</text>
+        <text x="396" y="211" font-size="11" font-family="IBM Plex Mono" fill="#1c1917">+300 held on BS</text>
+
+        <!-- statement leg -->
+        <line x1="276" y1="124" x2="384" y2="124" stroke="#0f766e" stroke-width="1.6"/>
+        <rect x="384" y="102" width="200" height="46" rx="4" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.4"/>
+        <text x="396" y="122" font-size="12.5" fill="#0f766e" font-weight="600">Statement leg → P&amp;L</text>
+        <text x="396" y="139" font-size="11" font-family="IBM Plex Mono" fill="#1c1917">+1,000 revenue</text>
+
+        <!-- balance check -->
+        <rect x="624" y="92" width="194" height="64" rx="4" fill="#1c1917"/>
+        <text x="721" y="116" text-anchor="middle" font-size="12" fill="#fff">Σ within module</text>
+        <text x="721" y="138" text-anchor="middle" font-size="13" font-family="IBM Plex Mono" fill="#8FD0A0" font-weight="600">A − L − E = 0 ✓</text>
+        <line x1="584" y1="124" x2="624" y2="124" stroke="#57534e" stroke-width="1.3"/>
+      </svg>
+    </div>
+    <figcaption><b>Fig.03</b> &nbsp;A single revenue posting splits into statement, cash and contra legs. The contra (AR here) holds the non-cash residual until it unwinds. Because the <b>cash leg is held explicitly on every posting</b>, the cash flow is assembled from real cash movements — not reverse-engineered from profit.</figcaption>
+  </figure>
+
+  <div class="callout">
+    <span class="lbl">Direct-method by construction — a real differentiator</span>
+    <p>This is the key distinction from a standard build. Because operating cash is <strong>built up from transaction-level cash legs, module by module</strong>, the engine is a <strong>direct-method</strong> cash flow at heart — gross cash in and out, at the same depth as the forecast itself. The usual schedule-based model only ever holds balance <em>movements</em> (Δreceivables, Δpayables), so it can only ever produce the <strong>indirect</strong> reconciliation working backwards from net profit — it physically can't show gross cash from customers, because it never held the cash. This engine holds both, so it can present a <strong>direct statement</strong> (gross receipts and payments) <em>or</em> an <strong>indirect reconciliation</strong> (profit adjusted for non-cash items and balance movements) off the same postings. Being able to produce a genuine direct-method forecast is something most planning models simply cannot do.</p>
+  </div>
+</section>
+
+<!-- ============ 04 ============ -->
+<section id="method">
+  <span class="sec-num">04</span>
+  <h2 class="sec">The Method parameter set</h2>
+  <p>Every account carries a <strong>Method</strong> — a parameter set, not a single value — that fully specifies how it behaves. This is what makes the engine uniform: the logic is generic and reads the per-account parameters.</p>
+
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 840 250" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, system-ui, sans-serif">
+        <rect x="20" y="98" width="190" height="54" rx="4" fill="#1c1917"/>
+        <text x="115" y="121" text-anchor="middle" font-size="13" fill="#fff" font-weight="600">Account element</text>
+        <text x="115" y="139" text-anchor="middle" font-size="11" font-family="IBM Plex Mono" fill="#B9C2D0">4000 · Revenue</text>
+
+        <g font-family="IBM Plex Mono" font-size="11.5">
+          <!-- 4 attributes -->
+          <line x1="210" y1="125" x2="250" y2="40" stroke="#57534e" stroke-width="1"/>
+          <rect x="250" y="18" width="270" height="40" rx="4" fill="#ffffff" stroke="#0f766e" stroke-width="1.2"/>
+          <text x="262" y="35" fill="#0f766e" font-weight="600">Timing</text>
+          <text x="262" y="50" fill="#57534e" font-size="10.5">cash-lag / decay rate → §05</text>
+
+          <line x1="210" y1="125" x2="250" y2="98" stroke="#57534e" stroke-width="1"/>
+          <rect x="250" y="74" width="270" height="40" rx="4" fill="#ffffff" stroke="#92400e" stroke-width="1.2"/>
+          <text x="262" y="91" fill="#92400e" font-weight="600">Contra target</text>
+          <text x="262" y="106" fill="#57534e" font-size="10.5">which BS account absorbs the residual</text>
+
+          <line x1="210" y1="125" x2="250" y2="150" stroke="#57534e" stroke-width="1"/>
+          <rect x="250" y="130" width="270" height="40" rx="4" fill="#ffffff" stroke="#166534" stroke-width="1.2"/>
+          <text x="262" y="147" fill="#166534" font-weight="600">CF line mapping</text>
+          <text x="262" y="162" fill="#57534e" font-size="10.5">operating / investing / financing</text>
+
+          <line x1="210" y1="125" x2="250" y2="208" stroke="#57534e" stroke-width="1"/>
+          <rect x="250" y="186" width="270" height="40" rx="4" fill="#ffffff" stroke="#4c1d95" stroke-width="1.2"/>
+          <text x="262" y="203" fill="#4c1d95" font-weight="600">Treatment flag</text>
+          <text x="262" y="218" fill="#57534e" font-size="10.5">“Modelled as” vs direct input</text>
+        </g>
+
+        <!-- grouping -->
+        <rect x="560" y="74" width="258" height="92" rx="4" fill="#fafaf9" stroke="#e7e5e4" stroke-width="1.2"/>
+        <text x="575" y="98" font-size="12" font-weight="600" fill="#1c1917" font-family="DM Sans">Grouping</text>
+        <text x="575" y="120" font-size="11.5" fill="#57534e" font-family="DM Sans">~80% of accounts share a</text>
+        <text x="575" y="137" font-size="11.5" fill="#57534e" font-family="DM Sans">handful of grouped methods.</text>
+        <text x="575" y="158" font-size="11.5" fill="#991b1b" font-family="DM Sans">~20% are bespoke edge cases.</text>
+        <line x1="520" y1="94" x2="560" y2="110" stroke="#57534e" stroke-width="1" stroke-dasharray="3 3"/>
+        <line x1="520" y1="150" x2="560" y2="135" stroke="#57534e" stroke-width="1" stroke-dasharray="3 3"/>
+      </svg>
+    </div>
+    <figcaption><b>Fig.04</b> &nbsp;The Method is four parameters attached to the account. Keep <b>timing</b> (when cash lands) and <b>CF line</b> (where it presents) as separate parameters — they are different concerns. The 80/20 split between grouped and bespoke methods is the engine's whole cost structure.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 05 ============ -->
+<section id="decay">
+  <span class="sec-num">05</span>
+  <h2 class="sec">Balance decay over time</h2>
+  <p>The contra is drawn down by a decay/turnover rate applied to the <strong>closing balance</strong> each period, while fresh postings top it back up. In steady state the two offset, so the contra settles at a stable working-capital level — near the DSO/DPO equivalent.</p>
+
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 840 270" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, system-ui, sans-serif">
+        <!-- axes -->
+        <line x1="60" y1="220" x2="800" y2="220" stroke="#1c1917" stroke-width="1.2"/>
+        <line x1="60" y1="30" x2="60" y2="220" stroke="#1c1917" stroke-width="1.2"/>
+        <text x="44" y="36" text-anchor="end" font-size="11" font-family="IBM Plex Mono" fill="#a8a29e">bal</text>
+        <text x="788" y="240" font-size="11" font-family="IBM Plex Mono" fill="#a8a29e">time →</text>
+
+        <!-- ramp to steady state curve -->
+        <path d="M60,210 C160,120 240,84 340,80 C480,76 660,78 800,78"
+              fill="none" stroke="#92400e" stroke-width="2.4"/>
+        <!-- steady state line -->
+        <line x1="340" y1="78" x2="800" y2="78" stroke="#92400e" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>
+        <text x="610" y="68" font-size="11.5" font-family="IBM Plex Mono" fill="#92400e">steady state ≈ one lag-period of flow</text>
+
+        <!-- top-up / drawdown arrows -->
+        <g opacity="0.85">
+          <line x1="170" y1="150" x2="170" y2="118" stroke="#0f766e" stroke-width="1.4" marker-end="url(#au)"/>
+          <text x="178" y="138" font-size="10.5" font-family="IBM Plex Mono" fill="#0f766e">postings top up</text>
+          <line x1="260" y1="62" x2="260" y2="92" stroke="#166534" stroke-width="1.4" marker-end="url(#ad)"/>
+          <text x="268" y="74" font-size="10.5" font-family="IBM Plex Mono" fill="#166534">decay draws down</text>
+        </g>
+        <defs>
+          <marker id="au" markerWidth="8" markerHeight="8" refX="4" refY="6" orient="auto"><path d="M0,6 L4,0 L8,6" fill="none" stroke="#0f766e" stroke-width="1.4"/></marker>
+          <marker id="ad" markerWidth="8" markerHeight="8" refX="4" refY="2" orient="auto"><path d="M0,2 L4,8 L8,2" fill="none" stroke="#166534" stroke-width="1.4"/></marker>
+        </defs>
+        <text x="150" y="250" font-size="11.5" font-family="DM Sans" fill="#57534e">ramp</text>
+        <text x="540" y="250" font-size="11.5" font-family="DM Sans" fill="#57534e">equilibrium — inflow ≈ outflow</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig.05</b> &nbsp;A drifting or ballooning contra is a built-in error signal — decay rate and posting rate are inconsistent.</figcaption>
+  </figure>
+
+  <div class="callout warn">
+    <span class="lbl">Two things to watch</span>
+    <p><strong>It drains a balance gradually, it doesn't pay it back on a fixed date.</strong> The decay collects a set percentage of whatever balance is left each period, so a balance comes back as a tapering tail — most in the first period, less each period after — rather than the whole amount landing on one later date. For planning that smoothing is usually what you want. Just flag it if someone needs precise cash timing in a bumpy period, because it spreads a spike out rather than placing it exactly.</p>
+    <p><strong>The balance always looks smooth — even when the rate is wrong.</strong> Whatever rate you pick, the model glides to some stable balance and looks healthy, so "looks stable" doesn't mean "is right." Set the rate by checking it against what the account has actually done — its real collection or payment days — not by picking a number that seems reasonable.</p>
+  </div>
+
+  <div class="callout">
+    <span class="lbl">Calibrate against history</span>
+    <p>The decay rates aren't set by judgement and left alone — they're fitted to each account's own history and re-checked. Take the real past balance and the real flow through the account, work out the actual turnover (collection days, payment days, recognition pace), and set the rate to reproduce it. The strongest check is a back-test: run the decay over a past period and confirm it reproduces the actual balance you already know. If it regenerates history, trust it forward; if it doesn't, the rate is wrong before it ever touches the forecast. If the history wanders rather than settling around a level, that account may not fit a single decay rate at all — a sign it wants explicit release instead.</p>
+  </div>
+</section>
+
+<!-- ============ 06 ============ -->
+<section id="source">
+  <span class="sec-num">06</span>
+  <h2 class="sec">Source-module isolation</h2>
+  <p>The <strong>Source Module dimension is the linchpin</strong>. Each source posts a complete, balanced three-way increment within its own slice, and the consolidated statements are the sum across sources. This converts reconciliation from an unbounded search into a localised lookup, and lets the model scale by addition.</p>
+
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 840 250" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, system-ui, sans-serif">
+        <g font-size="12">
+          <!-- four balanced slices -->
+          <g>
+            <rect x="30" y="40" width="150" height="58" rx="4" fill="#ffffff" stroke="#1c1917" stroke-width="1.2"/>
+            <text x="105" y="62" text-anchor="middle" font-weight="600" fill="#1c1917">Revenue</text>
+            <text x="105" y="82" text-anchor="middle" font-size="11" font-family="IBM Plex Mono" fill="#166534">A−L−E = 0 ✓</text>
+          </g>
+          <g>
+            <rect x="30" y="110" width="150" height="58" rx="4" fill="#ffffff" stroke="#1c1917" stroke-width="1.2"/>
+            <text x="105" y="132" text-anchor="middle" font-weight="600" fill="#1c1917">Workforce</text>
+            <text x="105" y="152" text-anchor="middle" font-size="11" font-family="IBM Plex Mono" fill="#166534">A−L−E = 0 ✓</text>
+          </g>
+          <g>
+            <rect x="200" y="40" width="150" height="58" rx="4" fill="#ffffff" stroke="#1c1917" stroke-width="1.2"/>
+            <text x="275" y="62" text-anchor="middle" font-weight="600" fill="#1c1917">OpEx</text>
+            <text x="275" y="82" text-anchor="middle" font-size="11" font-family="IBM Plex Mono" fill="#166534">A−L−E = 0 ✓</text>
+          </g>
+          <g>
+            <rect x="200" y="110" width="150" height="58" rx="4" fill="#ffffff" stroke="#991b1b" stroke-width="1.6"/>
+            <text x="275" y="132" text-anchor="middle" font-weight="600" fill="#1c1917">Allocation</text>
+            <text x="275" y="152" text-anchor="middle" font-size="11" font-family="IBM Plex Mono" fill="#991b1b">A−L−E ≠ 0 ✗</text>
+          </g>
+        </g>
+
+        <!-- sum arrow -->
+        <line x1="360" y1="104" x2="470" y2="104" stroke="#57534e" stroke-width="1.4" marker-end="url(#ar)"/>
+        <text x="415" y="96" text-anchor="middle" font-size="11" font-family="IBM Plex Mono" fill="#57534e">Σ Source</text>
+        <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9" fill="#57534e"/></marker></defs>
+
+        <!-- consolidated -->
+        <rect x="480" y="62" width="170" height="84" rx="4" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.5"/>
+        <text x="565" y="92" text-anchor="middle" font-size="13" font-weight="600" fill="#0f766e">Consolidated</text>
+        <text x="565" y="112" text-anchor="middle" font-size="12" fill="#1c1917">Balance Sheet</text>
+        <text x="565" y="131" text-anchor="middle" font-size="11" font-family="IBM Plex Mono" fill="#991b1b">out of balance</text>
+
+        <!-- localised debug -->
+        <rect x="680" y="62" width="140" height="84" rx="4" fill="#fee2e2" stroke="#991b1b" stroke-width="1.3"/>
+        <text x="750" y="90" text-anchor="middle" font-size="12" font-weight="600" fill="#991b1b" font-family="DM Sans">Break localises</text>
+        <text x="750" y="110" text-anchor="middle" font-size="11" fill="#1c1917" font-family="DM Sans">to Allocation —</text>
+        <text x="750" y="127" text-anchor="middle" font-size="11" fill="#1c1917" font-family="DM Sans">not 300 accounts</text>
+        <line x1="650" y1="104" x2="680" y2="104" stroke="#991b1b" stroke-width="1.2"/>
+      </svg>
+    </div>
+    <figcaption><b>Fig.06</b> &nbsp;When the consolidated BS is out, you check the per-module balances; one module is non-zero and you are debugging <em>that module's</em> rules, not the whole chart of accounts. This is the payoff that justifies the rule proliferation.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 07 ============ -->
+<section id="fx">
+  <span class="sec-num">07</span>
+  <h2 class="sec">Currency &amp; FX layer</h2>
+  <p>An important correction to a common assumption: FX does <strong>not</strong> thread through the posting engine. The whole engine — postings, cash, contra, decay — runs entirely in <strong>local currency</strong>. Translation to group is a <strong>layer above</strong> it. So for almost every account there is no FX complication in the posting logic at all. The complexity lives in one place only: the FX gain/loss.</p>
+
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 840 280" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, system-ui, sans-serif">
+        <!-- local engine layer -->
+        <rect x="40" y="30" width="760" height="58" rx="4" fill="#ffffff" stroke="#0f766e" stroke-width="1.4"/>
+        <text x="420" y="54" text-anchor="middle" font-size="13" font-weight="600" fill="#0f766e">Posting engine — runs entirely in LOCAL currency</text>
+        <text x="420" y="73" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono" fill="#57534e">postings · cash · contra · decay — no FX here</text>
+
+        <!-- translation layer -->
+        <rect x="40" y="116" width="370" height="64" rx="4" fill="#ede9fe" stroke="#4c1d95" stroke-width="1.4"/>
+        <text x="225" y="139" text-anchor="middle" font-size="12.5" font-weight="600" fill="#4c1d95">Translation overlay</text>
+        <text x="225" y="157" text-anchor="middle" font-size="10" font-family="IBM Plex Mono" fill="#57534e">flows × AVERAGE rate</text>
+        <text x="225" y="171" text-anchor="middle" font-size="10" font-family="IBM Plex Mono" fill="#57534e">balances × CLOSING rate</text>
+
+        <!-- arrows down to translation and residual -->
+        <line x1="225" y1="88" x2="225" y2="116" stroke="#4c1d95" stroke-width="1.3" marker-end="url(#fd)"/>
+        <line x1="615" y1="88" x2="615" y2="116" stroke="#991b1b" stroke-width="1.3" marker-end="url(#fr)"/>
+
+        <!-- the residual -->
+        <rect x="430" y="116" width="370" height="64" rx="4" fill="#fee2e2" stroke="#991b1b" stroke-width="1.5"/>
+        <text x="615" y="139" text-anchor="middle" font-size="12.5" font-weight="600" fill="#991b1b">FX gain / loss — the special rule</text>
+        <text x="615" y="157" text-anchor="middle" font-size="10" font-family="DM Sans" fill="#57534e">average-rate flows ≠ closing-rate balances</text>
+        <text x="615" y="171" text-anchor="middle" font-size="10" font-family="DM Sans" fill="#57534e">the residual that re-balances them</text>
+
+        <!-- group result -->
+        <rect x="240" y="216" width="360" height="48" rx="4" fill="#f0fdf4" stroke="#166534" stroke-width="1.4"/>
+        <text x="420" y="238" text-anchor="middle" font-size="12.5" font-weight="600" fill="#166534">Group-currency statements that tie</text>
+        <text x="420" y="254" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#57534e">realised · unrealised · CTA on equity</text>
+        <line x1="225" y1="180" x2="360" y2="216" stroke="#4c1d95" stroke-width="1.2"/>
+        <line x1="615" y1="180" x2="480" y2="216" stroke="#991b1b" stroke-width="1.2"/>
+
+        <defs>
+          <marker id="fd" markerWidth="8" markerHeight="8" refX="4" refY="7" orient="auto"><path d="M0,0 L4,7 L8,0" fill="#4c1d95"/></marker>
+          <marker id="fr" markerWidth="8" markerHeight="8" refX="4" refY="7" orient="auto"><path d="M0,0 L4,7 L8,0" fill="#991b1b"/></marker>
+        </defs>
+      </svg>
+    </div>
+    <figcaption><b>Fig.07</b> &nbsp;The engine runs in local currency; translation is an overlay. Because flows translate at <b>average</b> rate and balances at <b>closing</b> rate, the translated balance sheet no longer ties to the translated movements — and the difference <em>is</em> the FX gain/loss. It's a plug that exists only in group currency, computed as the balancing residual, not produced by any normal posting.</figcaption>
+  </figure>
+
+  <p>This is why the gain/loss needs its own rules and can't ride the standard per-account method: translation deliberately breaks statement articulation. P&amp;L and cash flow translate at average rate, the balance sheet at closing rate, so the translated balance and the translated movements stop reconciling — and nothing in the local-currency engine produces the difference, because in local currency there's nothing to reconcile. The gain/loss is the residual that re-balances the translated statements, and it splits the familiar way: the <strong>realised</strong> piece on settled monetary items, the <strong>unrealised</strong> piece on open monetary balances retranslated at period-end, and the <strong>CTA</strong> on equity for translating net investment.</p>
+
+  <div class="callout">
+    <span class="lbl">What this means for effort</span>
+    <p>Multi-currency does <em>not</em> multiply the per-account work or smear FX through every contra. It adds a translation overlay (rate-by-type applied above the engine) plus a small number of bespoke gain/loss rules. Contained — but still invisible in a vanilla template and a classic reconciliation trap, because a build that translates flows and balances at different rates without computing the residual will simply not tie, and the break is rarely where people look first.</p>
+  </div>
+</section>
+
+<!-- ============ 08 ============ -->
+<section id="edge">
+  <span class="sec-num">08</span>
+  <h2 class="sec">Edge-case accounts</h2>
+  <p>Everything that <strong>originates in the P&amp;L</strong> is handled by “Modelled as” plus a grouped method. The bespoke work is the accounts with <strong>no P&amp;L parent</strong> or non-standard behaviour. The <code class="inl">Treatment</code> flag is the partition.</p>
+
+  <table>
+    <thead><tr><th>Edge case</th><th>Why it's bespoke</th><th>When it applies</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Deferred / unearned revenue</strong></td><td>Runs <em>backwards</em> — cash lands ahead of P&amp;L (upfront billing, later recognition). Billings-led, not a P&amp;L-account lag; needs a negative-lag / billings feed.</td><td><span class="tag md">subscription / prepaid models</span></td></tr>
+      <tr><td><strong>Capex / PP&amp;E</strong></td><td>BS + cash movement with no P&amp;L origin (depreciation is the P&amp;L side, the addition isn't).</td><td><span class="tag md">any asset-holding business</span></td></tr>
+      <tr><td><strong>Debt / financing</strong></td><td>Pure financing movements, no P&amp;L account. Introduces <strong>circularity</strong> (interest ↔ debt ↔ cash).</td><td><span class="tag md">any geared business</span></td></tr>
+      <tr><td><strong>Tax</strong></td><td>Charge is P&amp;L; payment / provision timing often wants its own treatment.</td><td><span class="tag md">most businesses</span></td></tr>
+      <tr><td><strong>Intercompany</strong></td><td>Cross-entity settlement, FX timing, revaluation, elimination.</td><td><span class="tag md">multi-entity groups</span></td></tr>
+      <tr><td><strong>Inventory / finished goods</strong></td><td>Closing-stock dynamics, physical-business timing.</td><td><span class="tag md">manufacturing / distribution</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="lbl">The account that bends the pattern</span>
+    <p>Most edge cases are simply accounts with no P&amp;L parent. The one that genuinely runs against the grain is <strong>deferred / unearned revenue</strong>, because cash arrives <em>before</em> the P&amp;L rather than after — billings-led, not a lag off a P&amp;L account. Wherever a business bills ahead of delivery, getting this account right is most of the edge-case question, because it drives both the timing of recognised revenue and the fact that the cash is already in hand.</p>
+  </div>
+</section>
+
+<!-- ============ 09 ============ -->
+<section id="boundary">
+  <span class="sec-num">09</span>
+  <h2 class="sec">Actual / forecast boundary</h2>
+  <p>The seam where modelled contras meet reality is the classic leak point. Actuals enter as <strong>their own Source Module</strong> — imported, not “Modelled as” — and at the boundary the modelled BS contras must tie to imported actual opening balances.</p>
+
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 840 210" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, system-ui, sans-serif">
+        <!-- timeline -->
+        <line x1="40" y1="105" x2="800" y2="105" stroke="#e7e5e4" stroke-width="2"/>
+        <line x1="420" y1="40" x2="420" y2="170" stroke="#1c1917" stroke-width="1.4" stroke-dasharray="5 4"/>
+        <text x="420" y="32" text-anchor="middle" font-size="11" font-family="IBM Plex Mono" fill="#1c1917">boundary</text>
+
+        <!-- actuals side -->
+        <rect x="60" y="64" width="300" height="42" rx="4" fill="#fef3c7" stroke="#92400e" stroke-width="1.3"/>
+        <text x="210" y="90" text-anchor="middle" font-size="12.5" fill="#92400e" font-weight="600">Actuals — imported source module</text>
+        <text x="210" y="128" text-anchor="middle" font-size="11" font-family="DM Sans" fill="#57534e">real opening balances</text>
+
+        <!-- forecast side -->
+        <rect x="480" y="64" width="300" height="42" rx="4" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.3"/>
+        <text x="630" y="90" text-anchor="middle" font-size="12.5" fill="#0f766e" font-weight="600">Forecast — modelled contras</text>
+        <text x="630" y="128" text-anchor="middle" font-size="11" font-family="DM Sans" fill="#57534e">lag-thrown balances</text>
+
+        <!-- true-up -->
+        <circle cx="420" cy="105" r="9" fill="#1c1917"/>
+        <text x="420" y="190" text-anchor="middle" font-size="11.5" font-family="IBM Plex Mono" fill="#1c1917">true-up: reset modelled contra → actual opening balance</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig.09</b> &nbsp;A true-up at the boundary resets the modelled balance to actual, so the forecast builds from the real position. The <b>per-module balance check</b> is the first-line control that catches a mismatch the instant the slices fail to reconcile.</figcaption>
+  </figure>
+
+  <h3>Seeding the opening balance — no special first period</h3>
+  <p>The first forecast period feels like it needs special seeding logic. It doesn't — and building “if first period then seed” is the trap. Make the imported actual <strong>closing balance populate the same measure the roll-forward reads</strong>, and the rule <em>Opening[t] = Closing[t-1]</em> becomes completely period-agnostic. The first forecast period reads the last actual's closing because the rule neither knows nor cares which side of the boundary it's on. In actual periods the closing is <strong>input</strong> (imported); in forecast periods it's <strong>modelled</strong> — the same Act/Fcst flag from the settings layer, applied to the balance measure.</p>
+  <p>Because the seam is driven by that flag and not a fixed period, it <strong>self-maintains</strong>: every close, the latest actual advances one period and the first forecast opening follows automatically. The seeding is the true-up above, viewed from the other end — set the opening, and the engine carries it forward.</p>
+
+  <h3>Opening-balance treatment — a separate method per BS account</h3>
+  <p>The subtlety: the opening balance is a <strong>different population</strong> from the forward flow. Modules generate <em>new</em> movement (revenue builds new AR, opex builds new AP); they know nothing about the real outstanding position sitting at the boundary. That opening stock is the <strong>engine's</strong> to convert, not the module's — so it needs its own treatment, with its own method choice per BS account.</p>
+
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 840 230" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, system-ui, sans-serif">
+        <!-- boundary -->
+        <line x1="120" y1="20" x2="120" y2="210" stroke="#1c1917" stroke-width="1.4" stroke-dasharray="5 4"/>
+        <text x="120" y="14" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono" fill="#1c1917">boundary</text>
+
+        <!-- opening stock track -->
+        <rect x="20" y="44" width="90" height="48" rx="4" fill="#fef3c7" stroke="#92400e" stroke-width="1.3"/>
+        <text x="65" y="64" text-anchor="middle" font-size="10.5" fill="#92400e" font-weight="600">Opening</text>
+        <text x="65" y="78" text-anchor="middle" font-size="10.5" fill="#92400e" font-weight="600">stock</text>
+        <text x="65" y="90" text-anchor="middle" font-size="8.5" font-family="IBM Plex Mono" fill="#57534e">real bal.</text>
+        <path d="M110,68 L200,68" fill="none" stroke="#92400e" stroke-width="1.5" marker-end="url(#ob)"/>
+        <rect x="200" y="44" width="180" height="48" rx="4" fill="#ffffff" stroke="#92400e" stroke-width="1.2"/>
+        <text x="290" y="64" text-anchor="middle" font-size="11" fill="#92400e" font-weight="600">opening-balance method</text>
+        <text x="290" y="80" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#57534e">decay · release · hold</text>
+        <path d="M380,68 C460,68 480,120 560,120" fill="none" stroke="#92400e" stroke-width="1.5" marker-end="url(#ob)"/>
+        <text x="430" y="60" font-size="9.5" font-family="DM Sans" fill="#57534e">early-period cash</text>
+
+        <!-- new postings track -->
+        <rect x="20" y="160" width="90" height="48" rx="4" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.3"/>
+        <text x="65" y="180" text-anchor="middle" font-size="10.5" fill="#0f766e" font-weight="600">New</text>
+        <text x="65" y="194" text-anchor="middle" font-size="10.5" fill="#0f766e" font-weight="600">postings</text>
+        <text x="65" y="206" text-anchor="middle" font-size="8.5" font-family="IBM Plex Mono" fill="#57534e">modules</text>
+        <path d="M110,184 L200,184" fill="none" stroke="#0f766e" stroke-width="1.5" marker-end="url(#os)"/>
+        <rect x="200" y="160" width="180" height="48" rx="4" fill="#ffffff" stroke="#0f766e" stroke-width="1.2"/>
+        <text x="290" y="180" text-anchor="middle" font-size="11" fill="#0f766e" font-weight="600">standard flow method</text>
+        <text x="290" y="196" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#57534e">lag / decay</text>
+        <path d="M380,184 C460,184 480,140 560,128" fill="none" stroke="#0f766e" stroke-width="1.5" marker-end="url(#os)"/>
+        <text x="430" y="200" font-size="9.5" font-family="DM Sans" fill="#57534e">later cash</text>
+
+        <!-- forecast cash -->
+        <rect x="560" y="98" width="150" height="48" rx="4" fill="#f0fdf4" stroke="#166534" stroke-width="1.4"/>
+        <text x="635" y="120" text-anchor="middle" font-size="12" fill="#166534" font-weight="600">Forecast cash</text>
+        <text x="635" y="136" text-anchor="middle" font-size="9" font-family="IBM Plex Mono" fill="#57534e">both populations</text>
+
+        <defs>
+          <marker id="ob" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8" fill="#92400e"/></marker>
+          <marker id="os" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8" fill="#0f766e"/></marker>
+        </defs>
+      </svg>
+    </div>
+    <figcaption><b>Fig.09b</b> &nbsp;Two populations coexist past the boundary: the seeded <b>opening stock</b> converts via its own opening-balance method (driving early-period cash), while <b>new postings</b> from modules flow via the standard method (later cash). The engine handles both without new machinery — seed plus method does it.</figcaption>
+  </figure>
+
+  <p>The method choices, per BS account — default to the flow method, override only the material or non-steady-state accounts (the 80/20 again):</p>
+  <ul class="plain">
+    <li><strong>Decay — same as flow (default).</strong> The seeded balance becomes the roll-forward's starting value and unwinds at the account's normal rate. Correct when the opening position is roughly at steady state — most working-capital accounts, most of the time. No extra assumption.</li>
+    <li><strong>Explicit release / waterfall.</strong> The opening stock runs off on a defined schedule, ideally fed from the actual sub-ledger at the boundary. This is where the <em>cohort</em> treatment earns its place — you know the real opening position, so you release it precisely instead of approximating with a rate.</li>
+    <li><strong>Hold / non-cash.</strong> Equity, retained earnings, share capital — the opening carries forward and changes only via defined movements (net income → retained earnings), never converting to cash.</li>
+    <li><strong>Scheduled movement.</strong> PP&amp;E and debt — the opening is a stock altered by capex/depreciation or draws/repayments from their own schedules, not by decay.</li>
+  </ul>
+
+  <div class="callout warn">
+    <span class="lbl">Deferred revenue forces the override</span>
+    <p>The opening deferred-revenue balance is the actual contract backlog, and it releases into the P&amp;L on the <em>existing contracts'</em> known remaining-recognition schedule — almost never the same as a steady-state decay rate. Decay it at the ongoing rate and you mis-time revenue that's already been billed and collected. So opening deferred revenue is the textbook <strong>explicit-release</strong> case, fed from the actual waterfall at the boundary — and wherever a business bills ahead of delivery, it's the single most important opening-balance treatment to get right, because it drives early-period revenue while the cash already sits in the bank.</p>
+  </div>
+
+  <div class="callout">
+    <span class="lbl">Resolving decay vs cohort</span>
+    <p>This is the one place the <strong>cohort-release</strong> treatment naturally belongs even when the ongoing engine uses balance-decay — because at the boundary you actually <em>know</em> the cohort (it's the real opening position) and can release it explicitly. Decay for steady-state forward flow; explicit cohort release for the known opening stock where it matters.</p>
+  </div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="validation">
+  <span class="sec-num">10</span>
+  <h2 class="sec">Validation &amp; controls</h2>
+  <p>Run as a parallel track from the start, not a final step. The controls are cheap because the design makes them structural.</p>
+  <ul class="check">
+    <li><strong>Balance sheet balances</strong> — A = L + E, both consolidated <em>and per Source Module</em>.</li>
+    <li><strong>Cash ties</strong> — beginning cash + net cash flow = ending cash, every period.</li>
+    <li><strong>Per-module reconciliation</strong> — the primary debugging tool; a break localises to one source.</li>
+    <li><strong>Contra drift check</strong> — a contra that won't settle in steady state flags an inconsistent decay/posting pair.</li>
+    <li><strong>Boundary true-up check</strong> — modelled contras reconcile to actual opening balances at the seam.</li>
+  </ul>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="tm1">
+  <span class="sec-num">11</span>
+  <h2 class="sec">Implementation considerations</h2>
+  <p class="lead">The pattern is platform-agnostic. The decisions below have to be made on any engine — TM1, Anaplan, Pigment, Adaptive — but <em>how</em> each is realised is left to the implementer. The concept is the deliverable; the build is a separate exercise.</p>
+
+  <h3>How the balance accumulates — movements vs balance</h3>
+  <p>Store the data as <strong>movements</strong>. The closing balance is then a <em>derived accumulation</em> of those movements — which is what keeps the statements consistent: the cash flow is the movement measures, the balance sheet is their accumulation, both read off the same stored data. Two clean ways to express the accumulation, both cheap and neither expensive recursion:</p>
+  <ul class="plain">
+    <li><strong>Period-hierarchy consolidation.</strong> Build the closing balance structurally — a consolidated period element (e.g. a year-to-date element whose children are the months) that simply sums the movement leaves up the Time hierarchy. No rule, no prior-period lookup; it's a natural rollup, so it's effectively free. (This is the typical TM1 expression.)</li>
+    <li><strong>Cumulating metric.</strong> A separate balance metric defined as a running total of the movement along Time. Also declarative and cheap — the cumulation is a named calculation you can see and point at, which is arguably the more self-documenting of the two. (This is the typical Pigment expression.)</li>
+  </ul>
+  <p>Both reach the same place — “the balance is a derived view of the movements” — and neither needs the cell-by-cell recursion people sometimes assume. The one genuine wrinkle exists either way: <strong>balance-sheet accounts are life-to-date, not year-to-date</strong>, so they don't reset in January. Each year's closing has to carry into the next year's opening deliberately (a prior-year-close element, an opening feed, or a balance structure that doesn't reset), whichever accumulation style you use.</p>
+
+  <h3>Hold the method parameters as data, not metadata</h3>
+  <p>The single most important implementation choice. The per-account parameters — lag and decay rates above all — should live as <strong>dimensioned data in an assumptions structure</strong>, not as static metadata buried on the dimension. Data is viewable, editable, securable and auditable; metadata is none of those. Because calibrating this model is a workshop loop with finance — change a timing assumption, watch the cash forecast move — the assumptions must sit somewhere finance can see and adjust in a normal grid. That requirement alone settles the choice.</p>
+
+  <div class="callout">
+    <span class="lbl">Structural vs numeric — split the Method</span>
+    <p>Not every part of the Method behaves the same way. The <strong>structural mappings</strong> — contra target, CF line, the modelled-vs-input flag — are genuinely static per account and can sit as item properties. The <strong>numeric assumptions</strong> — lag and decay rates — are calibrated, and may flex by scenario, so they belong in the assumptions data. Keep metadata as metadata and assumptions as data; don't force one mechanism to carry both.</p>
+  </div>
+
+  <h3>Decide whether timing flexes by version</h3>
+  <p>A consequence of holding assumptions as data: you can dimension them. The open question is whether the lag/decay assumptions should carry a <strong>Version (scenario)</strong> dimension. If working-capital scenarios matter — a best/worst case where collections slip or terms change — then timing flexes by version and the assumptions are scenario-aware. If timing is treated as a structural fact of the business, applied identically across cases with only the <em>amounts</em> varying, it can stay version-agnostic and leaner. The tell: has anyone ever asked “what does cash look like if collections slip?” Decide deliberately rather than by default.</p>
+
+  <h3>Things every platform must handle in some form</h3>
+  <ul class="plain">
+    <li><strong>Generic dispatch over per-account assumptions.</strong> One mechanism that applies the right method to each account by reading its parameters — so the bulk of accounts share grouped methods and only the edge cases are bespoke. The construct differs by platform; the requirement doesn't.</li>
+    <li><strong>Balance roll-forward with a prior-period reference.</strong> Closing = opening + residual − decay drawdown, with opening reading the prior period's closing. Every engine expresses temporal carry-forward differently; all of them need it here.</li>
+    <li><strong>Source-module isolation.</strong> A dimension that tags every posting with its origin and lets each source balance independently. Cheap on any platform — it's just a dimension and a per-member balance check.</li>
+    <li><strong>Performance at scale.</strong> A 300-account, multi-currency posting engine is a real calculation load. Each platform has its own levers (sparsity and feeding, calculation scope, module sizing); plan for it rather than discovering it.</li>
+    <li><strong>Circularity, if debt exists.</strong> Interest ↔ debt ↔ cash won't resolve in a single calculation pass. There's a clean forecasting choice that avoids it entirely — see below. With no debt it never arises.</li>
+    <li><strong>The seams — import and true-up.</strong> Bringing in actuals and reconciling modelled contras to actual opening balances are data-integration tasks, kept cleanly separate from the modelling logic.</li>
+  </ul>
+
+  <h3>Circularity and the revolver — a forecasting choice</h3>
+  <p>The one place a three-way can fail to <em>compute</em> rather than merely be wrong. It only arises when the debt balance is an <strong>output</strong> of the model — a revolver that draws to cover a cash shortfall — because then interest depends on a balance the model is still trying to calculate.</p>
+
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 840 250" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans, system-ui, sans-serif">
+        <!-- ring nodes -->
+        <g font-size="11.5">
+          <rect x="350" y="14" width="140" height="40" rx="4" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.3"/>
+          <text x="420" y="33" text-anchor="middle" fill="#0f766e" font-weight="600">Interest expense</text>
+          <text x="420" y="47" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#57534e">= debt × rate</text>
+
+          <rect x="606" y="92" width="140" height="40" rx="4" fill="#ffffff" stroke="#1c1917" stroke-width="1.2"/>
+          <text x="676" y="111" text-anchor="middle" fill="#1c1917" font-weight="600">P&amp;L → net income</text>
+          <text x="676" y="125" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#a8a29e">interest reduces NI</text>
+
+          <rect x="510" y="186" width="150" height="40" rx="4" fill="#f0fdf4" stroke="#166534" stroke-width="1.3"/>
+          <text x="585" y="205" text-anchor="middle" fill="#166534" font-weight="600">Cash flow</text>
+          <text x="585" y="219" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#57534e">shortfall / surplus</text>
+
+          <rect x="180" y="186" width="150" height="40" rx="4" fill="#fef3c7" stroke="#92400e" stroke-width="1.3"/>
+          <text x="255" y="205" text-anchor="middle" fill="#92400e" font-weight="600">Revolver draw</text>
+          <text x="255" y="219" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#57534e">plug to fund gap</text>
+
+          <rect x="94" y="92" width="140" height="40" rx="4" fill="#fef3c7" stroke="#92400e" stroke-width="1.3"/>
+          <text x="164" y="111" text-anchor="middle" fill="#92400e" font-weight="600">Debt balance</text>
+          <text x="164" y="125" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#57534e">now an output</text>
+        </g>
+
+        <!-- ring arrows -->
+        <g fill="none" stroke="#57534e" stroke-width="1.5">
+          <path d="M490,40 C560,48 600,70 660,92" marker-end="url(#rr)"/>
+          <path d="M676,132 C676,165 650,178 640,186" marker-end="url(#rr)"/>
+          <path d="M510,206 L330,206" marker-end="url(#rr)"/>
+          <path d="M200,186 C180,165 168,150 164,132" marker-end="url(#rr)"/>
+          <path d="M180,92 C200,68 280,46 350,36" marker-end="url(#rr)"/>
+        </g>
+        <defs><marker id="rr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9" fill="#57534e"/></marker></defs>
+
+        <!-- the cut -->
+        <line x1="288" y1="55" x2="240" y2="105" stroke="#991b1b" stroke-width="2.2"/>
+        <text x="300" y="92" font-size="11" font-family="IBM Plex Mono" fill="#991b1b" font-weight="600">✂ cut here</text>
+        <text x="300" y="108" font-size="10" font-family="DM Sans" fill="#991b1b">interest on opening balance</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig.11a</b> &nbsp;The ring: interest → net income → cash → revolver draw → debt → interest. No node has all its inputs, so a single-pass engine can't order it. <b>Charging interest on the opening (prior-period) debt cuts the ring</b> — opening debt is already known, so nothing depends on a value still being computed.</figcaption>
+  </figure>
+
+  <div class="callout">
+    <span class="lbl">The recommended default</span>
+    <p>For a <strong>forecast</strong>, charge interest on the <strong>opening</strong> debt balance, so this period's shortfall draws now but its interest applies next period — a one-period lag. This makes the whole three-way compute in a single, transparent, auditable pass with no iteration. The trade is deliberate: interest is under-charged by one period on each <em>new</em> draw (and over-charged on each repayment) — an error on the incremental movement only, immaterial against the uncertainty already in the revenue and timing assumptions, and it washes out at a stable debt level. <strong>Average of opening and closing</strong> is a noted refinement; <strong>full within-period iteration</strong> is the exception, warranted only for covenant-tight, LBO or transaction-grade models where a half-period of interest moves a ratio. A planning forecast is not that — so the lag is the correct, considered choice, stated as a design position rather than a shortcut.</p>
+  </div>
+
+  <div class="callout trade">
+    <span class="lbl">A note on platform fit</span>
+    <p>The pattern transfers, but not every engine expresses it with equal grace. Engines built around rules reading per-element parameters carry the method-dispatch elegantly; more application-shaped platforms can do it, but the dispatch is built more explicitly and the design works a little more against the grain. None of that changes the concept — it changes the effort and the idiom, which is precisely the part worth scoping deliberately for the platform in hand.</p>
+  </div>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="sizing">
+  <span class="sec-num">12</span>
+  <h2 class="sec">What sizes the build</h2>
+  <p>The build mechanics compress once the pattern is known. The effort is driven by <strong>discovery and account complexity</strong> — neither of which a template removes.</p>
+  <ul class="plain">
+    <li><strong>Account count × edge-case ratio.</strong> Most accounts take a grouped method; the bespoke tail is the cost. Not estimable without the actual chart of accounts.</li>
+    <li><strong>FX profile.</strong> Single functional currency keeps it thin. Multi-currency adds a translation overlay and a handful of bespoke gain/loss rules — real and easy to under-scope, but contained to the translation layer, not woven through every account.</li>
+    <li><strong>Deferred / unearned revenue.</strong> Where the business bills ahead of delivery, the one structurally hard account regardless of how simple the rest of the chart of accounts is.</li>
+    <li><strong>Treasury-grade vs directional.</strong> Does the cash number drive hedging and funding decisions, or is a directional view off the P&amp;L plan enough?</li>
+    <li><strong>Discovery / workshop time.</strong> Measured in <em>weeks</em>, bounded by the finance team's availability and clarity — not by build speed. The special-account logic and timing assumptions are not knowable from the COA; they surface through workshops, including the “oh, except for that one” that appears in week six.</li>
+  </ul>
+
+  <div class="callout">
+    <span class="lbl">The estimate point</span>
+    <p>A template-led estimate prices configuration and implicitly assumes requirements are known and data fits. An accurate forecast cash flow is <strong>discovery-led</strong>; the expensive part is not in the build, and therefore not in a configuration-only number. A foundational phase that delivers Hub, P&amp;L, Workforce and OpEx with statement <em>reporting</em> — leaving the discovery-led forecast cash flow to a later phase — is internally consistent, and a tight number is coherent under that scope. The same number is materially short if a genuine forecast cash flow is meant to be in it.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Forecast Cash Flow &amp; Balance Sheet — posting-engine three-way methodology.</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      Methodology design · Platform-agnostic<br>
+      Open methodology — implementation available<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>
