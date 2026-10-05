@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three Models, One Lesson</title>
+<meta name="description" content="Three TM1 models built by AI through an MCP — an allocations model, workforce planning and a statutory consolidation. What went wrong, what changed, and why the guardrails mattered more than the AI.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --paper:#fafaf9;
+    --panel:#ffffff;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+
+    --steel:#0f766e;        /* structure, hierarchy, base */
+    --steel-light:#f0fdfa;
+    --green:#166534;        /* valid flow, base data, counted-once */
+    --green-light:#f0fdf4;
+    --amber:#92400e;        /* contra, grouped, reversal */
+    --amber-light:#fef3c7;
+    --red:#991b1b;          /* double-count, warnings */
+    --red-light:#fee2e2;
+    --indigo:#4c1d95;       /* implementation, UI */
+    --indigo-light:#ede9fe;
+
+    --maxw:860px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    background:
+      linear-gradient(180deg,#ffffff 0%, var(--paper) 100%);
+  }
+  .masthead .wrap{padding-top:78px;padding-bottom:52px}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--steel);
+    font-weight:500;
+    margin:0 0 22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1.title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.3rem);
+    line-height:1.08;
+    letter-spacing:-.012em;
+    margin:0 0 22px;
+    color:var(--ink);
+  }
+  h1.title .accent{color:var(--steel)}
+  .standfirst{
+    font-size:1.18rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:64ch;
+    margin:0 0 30px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-size:13.5px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;
+    padding-top:8px;border-top:1px solid var(--rule-soft);
+  }
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  .prototype{
+    margin:34px 0 0;
+    background:var(--green-light);
+    border:1px solid #cfe6d8;
+    border-left:4px solid var(--green);
+    border-radius:6px;
+    padding:16px 20px;
+    font-size:15.5px;
+    color:#21422f;
+  }
+  .prototype b{color:var(--green);font-weight:600}
+
+  /* ---------- TOC ---------- */
+  /* falconbi.css sets .toc{position:sticky} for sidebar use — override for this horizontal bar */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;margin:0 0 18px;
+  }
+  nav.toc ol{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:2px 28px;
+    counter-reset:toc;
+  }
+  nav.toc li{counter-increment:toc}
+  nav.toc a{
+    display:flex;gap:12px;align-items:baseline;
+    text-decoration:none;color:var(--ink-soft);
+    padding:7px 4px;border-radius:4px;
+    border-bottom:1px solid transparent;
+    transition:color .15s,background .15s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--steel);
+    flex:none;width:2ch;
+  }
+  nav.toc a:hover{color:var(--steel);background:var(--steel-light)}
+
+  /* ---------- Sections ---------- */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:44px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin:0 0 18px}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;color:var(--steel);
+    flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-weight:600;font-size:1.16rem;
+    margin:34px 0 12px;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  p{margin:0 0 16px}
+  section > p, section > ul, section > ol, section > .fig, section > .tablewrap,
+  section > pre, section > blockquote, section > .callout{margin-left:0}
+  strong{font-weight:600;color:var(--ink)}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:#f1f0ec;
+    padding:.1em .38em;border-radius:4px;
+    color:#3a4750;
+  }
+  a{color:var(--steel)}
+
+  ul,ol{margin:0 0 16px;padding-left:1.3em}
+  li{margin:6px 0}
+  li::marker{color:var(--steel)}
+
+  blockquote{
+    margin:18px 0;padding:4px 0 4px 22px;
+    border-left:3px solid var(--rule);
+    color:var(--ink-soft);font-style:italic;
+    font-family:'DM Sans',system-ui,sans-serif;font-size:1.08rem;
+  }
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;margin:22px 0}
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink-soft);
+  }
+  tbody tr:hover{background:#f6f7f8}
+  td code{background:#eef0f2}
+  .pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    letter-spacing:.02em;
+  }
+  .pill.sub{background:var(--steel-light);color:var(--steel)}
+  .pill.assoc{background:var(--indigo-light);color:var(--indigo)}
+  .pill.inv{background:#eef1f3;color:var(--ink-soft)}
+  .pill.grp{background:var(--amber-light);color:var(--amber)}
+
+  /* ---------- Code / ASCII ---------- */
+  pre{
+    background:#1c2530;color:#d7e0e8;
+    font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.6;
+    padding:18px 20px;border-radius:8px;overflow-x:auto;margin:20px 0;
+    border:1px solid #283442;
+  }
+  pre .c{color:#7f8fa0}      /* comment / faint */
+  pre .k{color:#7fb3e0}      /* steel key */
+  pre .g{color:#7fd0a0}      /* green */
+  pre .a{color:#e3b766}      /* amber */
+  pre .r{color:#e89b94}      /* red */
+  pre.ascii{font-size:13px;line-height:1.5}
+
+  /* ---------- Figures ---------- */
+  .fig{margin:26px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  figcaption{
+    font-size:13px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+    margin-top:12px;text-align:center;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600}
+
+  /* SVG element styling */
+  .svg-label{font-family:'DM Sans',sans-serif;font-size:14px;fill:var(--ink)}
+  .svg-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-faint)}
+  .svg-edge{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .node-steel{fill:var(--steel-light);stroke:var(--steel);stroke-width:1.5}
+  .node-green{fill:var(--green-light);stroke:var(--green);stroke-width:1.5}
+  .node-amber{fill:var(--amber-light);stroke:var(--amber);stroke-width:1.5}
+  .node-red{fill:var(--red-light);stroke:var(--red);stroke-width:1.5}
+  .node-indigo{fill:var(--indigo-light);stroke:var(--indigo);stroke-width:1.5}
+  .node-plain{fill:#fff;stroke:var(--ink-soft);stroke-width:1.3}
+  .edge{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+  .edge-green{stroke:var(--green);stroke-width:1.8;fill:none}
+  .edge-red{stroke:var(--red);stroke-width:1.8;fill:none}
+  .edge-amber{stroke:var(--amber);stroke-width:1.8;fill:none}
+  .edge-dash{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:6px;padding:16px 20px;margin:22px 0;font-size:15.5px;
+    border:1px solid var(--rule);border-left:4px solid var(--ink-soft);
+    background:var(--panel);
+  }
+  .callout.warn{background:var(--red-light);border-color:#eccac6;border-left-color:var(--red)}
+  .callout.warn b{color:var(--red)}
+  .callout.note{background:var(--steel-light);border-color:#cfe0ee;border-left-color:var(--steel)}
+  .callout.note b{color:var(--steel)}
+  .callout.key{background:var(--amber-light);border-color:#e8d6a8;border-left-color:var(--amber)}
+  .callout.key b{color:var(--amber)}
+  .callout p{margin:0}
+  .callout p + p{margin-top:10px}
+
+  /* ---------- Signature: path encoding ---------- */
+  .signature{
+    margin:30px 0;padding:30px 26px;border-radius:10px;
+    background:linear-gradient(160deg,#1c2530 0%,#243140 100%);
+    border:1px solid #2b3a4a;color:#dbe4ec;
+  }
+  .signature .sig-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#8aa0b4;margin:0 0 18px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{background:#1c2530;color:#aebccb;border-top:3px solid var(--steel)}
+  footer .wrap{padding-top:48px;padding-bottom:54px}
+  footer h2{
+    font-family:'DM Sans',system-ui,sans-serif;color:#f0f4f8;font-weight:600;
+    font-size:1.3rem;margin:0 0 14px;
+  }
+  footer p{color:#aebccb;font-size:15px;max-width:62ch}
+  footer a{color:#9ec3e6}
+  .lic{
+    margin-top:22px;padding-top:20px;border-top:1px solid #2c3a48;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8294a4;
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+  }
+  .refs{font-size:15px;color:#c4d0db}
+  .refs cite{font-style:italic;color:#e6edf3}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .sec-head{gap:12px}
+    nav.toc ol{grid-template-columns:1fr}
+    .masthead .wrap{padding-top:54px;padding-bottom:40px}
+  }
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">AI &amp; MCP &nbsp;·&nbsp; IBM Planning Analytics</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">AI &amp; MCP &nbsp;·&nbsp; Build log</p>
+    <h1 class="title">Three Models,<br>One <span class="accent">Lesson</span></h1>
+    <p class="standfirst">Three TM1 models built by an AI through an MCP: an allocations model, workforce planning, and a statutory consolidation. The first went wrong in instructive ways. The third matched 26 published worked answers. The AI did not get smarter in between. The system around it did.</p>
+    <div class="meta-row">
+      <span><b>Build 2</b> <a href="../tm1-mcp-build-test.html">Building a TM1 model by conversation</a></span>
+      <span><b>Build 3</b> <a href="../consolidation-built-by-ai/">Building a Consolidation Engine with AI</a></span>
+      <span><b>Status</b> Published October 2026</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#a1">Why write this</a></li>
+      <li><a href="#a2">The setup</a></li>
+      <li><a href="#a3">Build 1 — allocations: the mistakes</a></li>
+      <li><a href="#a4">Mistakes into rules</a></li>
+      <li><a href="#a5">Build 2 — workforce planning: deployment</a></li>
+      <li><a href="#a6">Build 3 — consolidation: test first</a></li>
+      <li><a href="#a7">Working together</a></li>
+      <li><a href="#a8">What changed, build by build</a></li>
+      <li><a href="#a9">What I learned</a></li>
+      <li><a href="#a10">Where it is going</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<section id="a1">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">Why write this</h2></div>
+  <p>Most AI stories show the result. This one shows the progression — three models, built one after the other, by the same AI and the same person. The first build made beginner mistakes. The third built a statutory consolidation engine that matched every published answer it was tested against.</p>
+  <p>The interesting part is what changed in between. It was not the AI. It was the rules, the checks and the way we worked together.</p>
+</section>
+
+<section id="a2">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">The setup</h2></div>
+  <p>A TM1 v11 server, and a browser IDE for TM1 with the MCP built into it. The MCP is the set of tools the AI uses to build and inspect the model: dimensions, cubes, rules, processes, views, and stored checks. Because it lives inside the IDE, the AI and the person share the same tools and the same guardrails. Every change the AI makes goes into a change set, and the person reviews, tests and deploys it from the same screens.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 200" role="img" aria-label="The human works in the IDE and talks to the AI; the AI builds through the MCP inside the IDE; the IDE works on the TM1 server, and every change goes into a change set.">
+      <rect x="20" y="85" width="120" height="50" rx="8" class="node-plain"/><text x="80" y="115" text-anchor="middle" class="svg-label">Human</text>
+      <rect x="180" y="85" width="120" height="50" rx="8" class="node-indigo"/><text x="240" y="115" text-anchor="middle" class="svg-label">AI</text>
+      <rect x="340" y="40" width="200" height="140" rx="10" class="node-plain"/><text x="440" y="62" text-anchor="middle" class="svg-label">TM1 IDE</text>
+      <rect x="360" y="85" width="160" height="50" rx="8" class="node-amber"/><text x="440" y="115" text-anchor="middle" class="svg-label">MCP</text>
+      <text x="440" y="160" text-anchor="middle" class="svg-sub">change sets · checks · deploy</text>
+      <rect x="580" y="85" width="120" height="50" rx="8" class="node-steel"/><text x="640" y="115" text-anchor="middle" class="svg-label">TM1 server</text>
+      <path d="M140 110 L180 110" class="edge"/><path d="M300 110 L360 110" class="edge"/><path d="M540 110 L580 110" class="edge"/>
+      <path d="M80 85 L80 20 L440 20 L440 40" class="edge-dash"/>
+      <text x="260" y="14" text-anchor="middle" class="svg-sub">reviews, tests, deploys</text>
+      <text x="80" y="155" text-anchor="middle" class="svg-sub">decides, checks</text>
+      <text x="240" y="155" text-anchor="middle" class="svg-sub">designs, builds</text>
+      <text x="640" y="155" text-anchor="middle" class="svg-sub">the model</text>
+    </svg>
+  </figure>
+</section>
+
+<section id="a3">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Build 1 — allocations: the mistakes</h2></div>
+  <p>The first end-to-end build was an operating-expense allocations model. It worked in the end. Getting there showed exactly where an AI goes wrong in TM1:</p>
+  <ul>
+    <li><b>Wrong dimensionality.</b> It baked the subsidiary into cost-centre names (“Benefits North”, “Benefits South”) instead of adding a dimension. That is a modelling mistake, not a TM1 quirk — and the hardest kind to undo later.</li>
+    <li><b>TM1 traps.</b> A three-argument attribute function that returned blank. Attributes written on elements created in the same Prolog, so “element not found” at run time. A three-deep IF in a rule that quietly returned zero with every input correct.</li>
+    <li><b>Views that would not render</b> in the IDE, until rebuilt as native views.</li>
+    <li><b>Checking by hand.</b> About 175 tool calls, about half of them reading cells to verify numbers. The checking was as much work as the building.</li>
+  </ul>
+</section>
+
+<section id="a4">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">Mistakes into rules</h2></div>
+  <p>Every mistake was turned into something that stops it happening again. Each lesson went to one of three places:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Where the lesson went</th><th>Example</th><th>Why there</th></tr></thead>
+    <tbody>
+      <tr><td><b>A lint rule</b> — checked before anything is written</td><td>Attributes on new elements belong in the Epilog</td><td>The AI cannot bypass it</td></tr>
+      <tr><td><b>The tool's own description</b></td><td>“Native views by default”</td><td>Seen on every call</td></tr>
+      <tr><td><b>The build guide</b> the AI reads first</td><td>“Get the dimensionality right first”</td><td>Judgement, not a check</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout key"><p><b>Learn once.</b> A mistake made twice is a process failure, not an AI failure. Write the rule down where the AI will meet it.</p></div>
+</section>
+
+<section id="a5">
+  <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Build 2 — workforce planning: deployment</h2></div>
+  <p>The second build was a workforce planning model: versions and assumptions, pay rates, a hiring plan, FX, and employee income tax through to gross-to-net pay. It went through several rounds — a design review and rebuild, then house conventions, then versions.</p>
+  <p>The real test was not the build. It was <b>deploying it</b>: through the IDE's pipeline, from a development server to a production server, then comparing the figures. They matched to the cent.</p>
+  <p>The first real deploy also exposed nine bugs in the deploy pipeline itself. All were fixed. That is the point of doing it for real.</p>
+</section>
+
+<section id="a6">
+  <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">Build 3 — consolidation: test first</h2></div>
+  <p>The third build was a statutory group consolidation: ownership and control at any depth, goodwill and non-controlling interests, step acquisitions and disposals, foreign currency translation, and consolidation of sub-groups.</p>
+  <p>This time the expected answers came <b>before</b> the build. Published worked examples — with their answers — were turned into stored checks first. Then the AI built until the checks passed.</p>
+  <ul>
+    <li>26 published worked examples, all matched.</li>
+    <li>Over 150 stored checks, run after every change.</li>
+    <li>One published answer turned out to be wrong. It was corrected from first principles, and the model matched the correction.</li>
+  </ul>
+  <p>Later additions — registers so each acquisition is entered once, and a way to set up groups — were built the same way: copy a proven test case, rebuild it the new way, and require the results to be identical, cell for cell. They were. The tests also found real bugs the reviews had missed.</p>
+  <div class="callout key"><p><b>From trusting to checking.</b> In build 1, I checked the AI's work by hand. In build 3, the checks were written before the work. The AI stopped being trusted and started being checked.</p></div>
+</section>
+
+<section id="a7">
+  <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">Working together</h2></div>
+  <p>This was a partnership, and both sides got better at it.</p>
+  <p><b>What I brought:</b> experience from more than 60 projects, design standards, and a clean process definition. Most of my work was reviewing and explaining, with some deeper insights that shaped the design.</p>
+  <p><b>What the AI brought:</b> speed, arithmetic, research, tireless checking, and written records of everything.</p>
+  <p>Corrections went both ways:</p>
+  <ul>
+    <li>The AI once described a sign-in route as “lab-proven” when it had never been tested. When that came to light, it was corrected — publicly, in the documentation.</li>
+    <li>I suggested checking production for out-of-band changes through Git itself. The AI set up a lab test; it worked; it is now the design.</li>
+    <li>The AI reviewed its own code before running it and caught real bugs — once, a rename that would have silently turned a sub-group into a top-level group.</li>
+    <li>The tests caught what neither of us did — for example, a company that bought another company before it was itself acquired.</li>
+  </ul>
+  <div class="callout key"><p><b>The rules made the partnership work.</b> Clear house rules, approval before changes, and evidence for every claim. Without them, speed would have been a risk.</p></div>
+</section>
+
+<section id="a8">
+  <div class="sec-head"><span class="sec-num">08</span><h2 class="sec-title">What changed, build by build</h2></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>1 — Allocations</th><th>2 — Workforce planning</th><th>3 — Consolidation</th></tr></thead>
+    <tbody>
+      <tr><td><b>Checking</b></td><td>By hand, half the effort</td><td>Stored checks plus spot checks</td><td>Written first; over 150, run every change</td></tr>
+      <tr><td><b>Rules the AI follows</b></td><td>Few — mistakes found the hard way</td><td>Lint rules, build guide</td><td>Lint, build guide, house standards, self-review</td></tr>
+      <tr><td><b>Proof</b></td><td>It works</td><td>Deployed; matches to the cent</td><td>Matches 26 published answers</td></tr>
+      <tr><td><b>Records</b></td><td>Notes afterwards</td><td>Change sets, build log</td><td>Change sets, design records, evidence for every step</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="a9">
+  <div class="sec-head"><span class="sec-num">09</span><h2 class="sec-title">What I learned</h2></div>
+  <ul>
+    <li><b>The AI did not get smarter. The system did.</b> Rules it cannot bypass, checks written before the work, changes in change sets, evidence for every claim.</li>
+    <li><b>Dimensionality is still the human's job.</b> The AI builds fast; it does not yet design well without guidance.</li>
+    <li><b>Known answers turn “looks right” into “is right”.</b> Find the test data before building.</li>
+    <li><b>Do it for real.</b> A deploy to a real server found nine bugs a demo never would.</li>
+    <li><b>Write everything down, as you go.</b> It made the next build better and made mistakes cheap to fix.</li>
+    <li><b>It still needs an expert.</b> Every decision that mattered came from experience. The AI made that experience go much further.</li>
+  </ul>
+</section>
+
+<section id="a10">
+  <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">Where it is going</h2></div>
+  <p>The same lessons are now moving into the tools themselves:</p>
+  <ul>
+    <li><b>Tests live in the model</b>, not in the tool — they travel with it, and run on development and production.</li>
+    <li><b>Deployment through TM1's own Git integration</b>, with the IDE adding what Git cannot do and a readiness check before every push.</li>
+    <li><b>An AI that builds inside the same gates as a person</b>: change sets, checks, approval.</li>
+  </ul>
+  <p>Three models in, the conclusion is simple. AI is genuinely useful for building TM1 models — when the guardrails come first.</p>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Three Models, One Lesson — build log.</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      AI &amp; MCP · IBM Planning Analytics<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
