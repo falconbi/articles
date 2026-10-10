@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Governed TM1 Deploys</title>
+<meta name="description" content="How we made TM1 deploys ship exactly one change set: from a home-built REST pipeline to TM1's built-in Git, the whole-branch problem we found, and the release-commit fix. With diagrams.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --paper:#fafaf9;
+    --panel:#ffffff;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+
+    --steel:#0f766e;        /* structure, hierarchy, base */
+    --steel-light:#f0fdfa;
+    --green:#166534;        /* valid flow, base data, counted-once */
+    --green-light:#f0fdf4;
+    --amber:#92400e;        /* contra, grouped, reversal */
+    --amber-light:#fef3c7;
+    --red:#991b1b;          /* double-count, warnings */
+    --red-light:#fee2e2;
+    --indigo:#4c1d95;       /* implementation, UI */
+    --indigo-light:#ede9fe;
+
+    --maxw:860px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    background:
+      linear-gradient(180deg,#ffffff 0%, var(--paper) 100%);
+  }
+  .masthead .wrap{padding-top:78px;padding-bottom:52px}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--steel);
+    font-weight:500;
+    margin:0 0 22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1.title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.3rem);
+    line-height:1.08;
+    letter-spacing:-.012em;
+    margin:0 0 22px;
+    color:var(--ink);
+  }
+  h1.title .accent{color:var(--steel)}
+  .standfirst{
+    font-size:1.18rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:64ch;
+    margin:0 0 30px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-size:13.5px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;
+    padding-top:8px;border-top:1px solid var(--rule-soft);
+  }
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  .prototype{
+    margin:34px 0 0;
+    background:var(--green-light);
+    border:1px solid #cfe6d8;
+    border-left:4px solid var(--green);
+    border-radius:6px;
+    padding:16px 20px;
+    font-size:15.5px;
+    color:#21422f;
+  }
+  .prototype b{color:var(--green);font-weight:600}
+
+  /* ---------- TOC ---------- */
+  /* falconbi.css sets .toc{position:sticky} for sidebar use — override for this horizontal bar */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;margin:0 0 18px;
+  }
+  nav.toc ol{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:2px 28px;
+    counter-reset:toc;
+  }
+  nav.toc li{counter-increment:toc}
+  nav.toc a{
+    display:flex;gap:12px;align-items:baseline;
+    text-decoration:none;color:var(--ink-soft);
+    padding:7px 4px;border-radius:4px;
+    border-bottom:1px solid transparent;
+    transition:color .15s,background .15s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--steel);
+    flex:none;width:2ch;
+  }
+  nav.toc a:hover{color:var(--steel);background:var(--steel-light)}
+
+  /* ---------- Sections ---------- */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:44px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin:0 0 18px}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;color:var(--steel);
+    flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-weight:600;font-size:1.16rem;
+    margin:34px 0 12px;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  p{margin:0 0 16px}
+  section > p, section > ul, section > ol, section > .fig, section > .tablewrap,
+  section > pre, section > blockquote, section > .callout{margin-left:0}
+  strong{font-weight:600;color:var(--ink)}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:#f1f0ec;
+    padding:.1em .38em;border-radius:4px;
+    color:#3a4750;
+  }
+  a{color:var(--steel)}
+
+  ul,ol{margin:0 0 16px;padding-left:1.3em}
+  li{margin:6px 0}
+  li::marker{color:var(--steel)}
+
+  blockquote{
+    margin:18px 0;padding:4px 0 4px 22px;
+    border-left:3px solid var(--rule);
+    color:var(--ink-soft);font-style:italic;
+    font-family:'DM Sans',system-ui,sans-serif;font-size:1.08rem;
+  }
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;margin:22px 0}
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink-soft);
+  }
+  tbody tr:hover{background:#f6f7f8}
+  td code{background:#eef0f2}
+  .pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    letter-spacing:.02em;
+  }
+  .pill.sub{background:var(--steel-light);color:var(--steel)}
+  .pill.assoc{background:var(--indigo-light);color:var(--indigo)}
+  .pill.inv{background:#eef1f3;color:var(--ink-soft)}
+  .pill.grp{background:var(--amber-light);color:var(--amber)}
+
+  /* ---------- Code / ASCII ---------- */
+  pre{
+    background:#1c2530;color:#d7e0e8;
+    font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.6;
+    padding:18px 20px;border-radius:8px;overflow-x:auto;margin:20px 0;
+    border:1px solid #283442;
+  }
+  pre .c{color:#7f8fa0}      /* comment / faint */
+  pre .k{color:#7fb3e0}      /* steel key */
+  pre .g{color:#7fd0a0}      /* green */
+  pre .a{color:#e3b766}      /* amber */
+  pre .r{color:#e89b94}      /* red */
+  pre.ascii{font-size:13px;line-height:1.5}
+
+  /* ---------- Figures ---------- */
+  .fig{margin:26px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  figcaption{
+    font-size:13px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+    margin-top:12px;text-align:center;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600}
+
+  /* SVG element styling */
+  .svg-label{font-family:'DM Sans',sans-serif;font-size:14px;fill:var(--ink)}
+  .svg-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-faint)}
+  .svg-edge{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .node-steel{fill:var(--steel-light);stroke:var(--steel);stroke-width:1.5}
+  .node-green{fill:var(--green-light);stroke:var(--green);stroke-width:1.5}
+  .node-amber{fill:var(--amber-light);stroke:var(--amber);stroke-width:1.5}
+  .node-red{fill:var(--red-light);stroke:var(--red);stroke-width:1.5}
+  .node-indigo{fill:var(--indigo-light);stroke:var(--indigo);stroke-width:1.5}
+  .node-plain{fill:#fff;stroke:var(--ink-soft);stroke-width:1.3}
+  .edge{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+  .edge-green{stroke:var(--green);stroke-width:1.8;fill:none}
+  .edge-red{stroke:var(--red);stroke-width:1.8;fill:none}
+  .edge-amber{stroke:var(--amber);stroke-width:1.8;fill:none}
+  .edge-dash{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:6px;padding:16px 20px;margin:22px 0;font-size:15.5px;
+    border:1px solid var(--rule);border-left:4px solid var(--ink-soft);
+    background:var(--panel);
+  }
+  .callout.warn{background:var(--red-light);border-color:#eccac6;border-left-color:var(--red)}
+  .callout.warn b{color:var(--red)}
+  .callout.note{background:var(--steel-light);border-color:#cfe0ee;border-left-color:var(--steel)}
+  .callout.note b{color:var(--steel)}
+  .callout.key{background:var(--amber-light);border-color:#e8d6a8;border-left-color:var(--amber)}
+  .callout.key b{color:var(--amber)}
+  .callout p{margin:0}
+  .callout p + p{margin-top:10px}
+
+  /* ---------- Signature: path encoding ---------- */
+  .signature{
+    margin:30px 0;padding:30px 26px;border-radius:10px;
+    background:linear-gradient(160deg,#1c2530 0%,#243140 100%);
+    border:1px solid #2b3a4a;color:#dbe4ec;
+  }
+  .signature .sig-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#8aa0b4;margin:0 0 18px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{background:#1c2530;color:#aebccb;border-top:3px solid var(--steel)}
+  footer .wrap{padding-top:48px;padding-bottom:54px}
+  footer h2{
+    font-family:'DM Sans',system-ui,sans-serif;color:#f0f4f8;font-weight:600;
+    font-size:1.3rem;margin:0 0 14px;
+  }
+  footer p{color:#aebccb;font-size:15px;max-width:62ch}
+  footer a{color:#9ec3e6}
+  .lic{
+    margin-top:22px;padding-top:20px;border-top:1px solid #2c3a48;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8294a4;
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+  }
+  .refs{font-size:15px;color:#c4d0db}
+  .refs cite{font-style:italic;color:#e6edf3}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .sec-head{gap:12px}
+    nav.toc ol{grid-template-columns:1fr}
+    .masthead .wrap{padding-top:54px;padding-bottom:40px}
+  }
+</style>
+<style>
+  /* gates diagram + small extras */
+  .svg-small{font-family:'DM Sans',sans-serif;font-size:12px;fill:var(--ink)}
+  .svg-tiny{font-family:'IBM Plex Mono',monospace;font-size:10px;fill:var(--ink-faint)}
+  .svg-red{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--red)}
+  .svg-green{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--green)}
+  ol.lessons{padding-left:1.2em}
+  ol.lessons li{margin:0 0 10px}
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">AI &amp; MCP &nbsp;·&nbsp; IBM Planning Analytics</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Deployment &nbsp;·&nbsp; TM1 Git</p>
+    <h1 class="title">Governed TM1 deploys:<br>from change sets to <span class="accent">TM1 Git</span></h1>
+    <p class="standfirst">A deploy to production must ship exactly one change set’s objects — no more. This is how we got there: a home-built pipeline that fought us on every object type, TM1’s built-in Git that solved the format but quietly shipped the whole of DEV, and the release commit that finally made the rule hold.</p>
+    <div class="meta-row">
+      <span><b>Tested on</b> TM1 v11 · DEV + PROD lab pair</span>
+      <span><b>Related</b> <a href="../three-models-ai-guardrails/">Three Models, One Lesson</a></span>
+      <span><b>Status</b> Published October 2026</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#a1">The goal</a></li>
+      <li><a href="#a2">Where we started: change sets over REST</a></li>
+      <li><a href="#a3">Why we moved to TM1 Git</a></li>
+      <li><a href="#a4">The discovery: a pull ships the whole branch</a></li>
+      <li><a href="#a5">The fix: a release commit per change set</a></li>
+      <li><a href="#a6">The safety design</a></li>
+      <li><a href="#a7">Lab lessons: TM1 Git quirks</a></li>
+      <li><a href="#a8">How the work was done</a></li>
+      <li><a href="#a9">Lessons learned</a></li>
+      <li><a href="#a10">What’s next</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<section id="a1">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">The goal</h2></div>
+  <p>We built a browser IDE for TM1 so that developers — and AI agents working for them — can build models fast. Speed is the easy part. The hard part is trusting what lands on production. Before anything reaches PROD, someone has to be able to answer four questions:</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 150" role="img" aria-label="Four questions every deploy must answer: scope, approval, drift and audit.">
+      <rect x="10" y="20" width="160" height="110" rx="8" class="node-steel"/>
+      <text x="90" y="55" text-anchor="middle" class="svg-label">Scope</text>
+      <text x="90" y="80" text-anchor="middle" class="svg-sub">what exactly changes —</text>
+      <text x="90" y="96" text-anchor="middle" class="svg-sub">and nothing else?</text>
+      <rect x="190" y="20" width="160" height="110" rx="8" class="node-green"/>
+      <text x="270" y="55" text-anchor="middle" class="svg-label">Approval</text>
+      <text x="270" y="80" text-anchor="middle" class="svg-sub">who approved it — and</text>
+      <text x="270" y="96" text-anchor="middle" class="svg-sub">exactly what shipped?</text>
+      <rect x="370" y="20" width="160" height="110" rx="8" class="node-amber"/>
+      <text x="450" y="55" text-anchor="middle" class="svg-label">Drift</text>
+      <text x="450" y="80" text-anchor="middle" class="svg-sub">has anyone changed</text>
+      <text x="450" y="96" text-anchor="middle" class="svg-sub">PROD by hand?</text>
+      <rect x="550" y="20" width="160" height="110" rx="8" class="node-indigo"/>
+      <text x="630" y="55" text-anchor="middle" class="svg-label">Audit</text>
+      <text x="630" y="80" text-anchor="middle" class="svg-sub">who did what,</text>
+      <text x="630" y="96" text-anchor="middle" class="svg-sub">when, and why?</text>
+    </svg>
+    <figcaption>Every governance claim rests on the <b>change set</b> being exactly what ships.</figcaption>
+  </figure>
+  <p>A <b>change set</b> is our unit of work: a named basket. While it is open, the IDE records every object you touch; tests run against it; then it is closed, approved and released. Approval, audit and accountability all hang on one rule:</p>
+  <div class="callout key"><p><b>Rule 1.</b> A release ships exactly its change set’s objects — no more, and nothing else may slip in with it.</p></div>
+</section>
+
+<section id="a2">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Where we started: change sets over REST</h2></div>
+  <p>The first pipeline was ours end to end. It was scoped to the change set from day one, but every object had to be read and re-created by our own code over the TM1 REST API.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 130" role="img" aria-label="The first pipeline: log, package, risk gate, deploy, baseline.">
+      <defs><marker id="ar1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <rect x="5"   y="30" width="120" height="50" rx="8" class="node-plain"/><text x="65"  y="60" text-anchor="middle" class="svg-label">Log</text>
+      <rect x="153" y="30" width="120" height="50" rx="8" class="node-plain"/><text x="213" y="60" text-anchor="middle" class="svg-label">Package</text>
+      <rect x="301" y="30" width="120" height="50" rx="8" class="node-amber"/><text x="361" y="60" text-anchor="middle" class="svg-label">Risk gate</text>
+      <rect x="449" y="30" width="120" height="50" rx="8" class="node-red"/><text x="509" y="60" text-anchor="middle" class="svg-label">Deploy</text>
+      <rect x="597" y="30" width="118" height="50" rx="8" class="node-plain"/><text x="656" y="60" text-anchor="middle" class="svg-label">Baseline</text>
+      <path d="M125 55 L151 55" class="edge" marker-end="url(#ar1)"/><path d="M273 55 L299 55" class="edge" marker-end="url(#ar1)"/>
+      <path d="M421 55 L447 55" class="edge" marker-end="url(#ar1)"/><path d="M569 55 L595 55" class="edge" marker-end="url(#ar1)"/>
+      <text x="65"  y="102" text-anchor="middle" class="svg-sub">every save</text>
+      <text x="213" y="102" text-anchor="middle" class="svg-sub">fetch from DEV</text>
+      <text x="361" y="102" text-anchor="middle" class="svg-sub">diff vs snapshot</text>
+      <text x="509" y="102" text-anchor="middle" class="svg-sub">re-create on PROD</text>
+      <text x="656" y="102" text-anchor="middle" class="svg-sub">snapshot PROD</text>
+      <text x="509" y="20" text-anchor="middle" class="svg-red">our own copy of IBM’s format</text>
+    </svg>
+    <figcaption>Scope was right — only logged objects shipped. <b>Fidelity</b> was the problem.</figcaption>
+  </figure>
+  <p>Every phase of a real workforce-planning model landed clean on DEV — then the deploy fought back:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Papercut</th><th>What went wrong</th></tr></thead>
+    <tbody>
+      <tr><td><b>Attribute values</b></td><td>Replayed only when the deploy created the dimension, not on a redeploy</td></tr>
+      <tr><td><b>Subset collisions</b></td><td>Subsets were keyed by name only, so two <code>Default</code> subsets on different dimensions collapsed into one</td></tr>
+      <tr><td><b>Lossy views</b></td><td>A named-subset axis read back as “all members”, so a phantom change entered the package</td></tr>
+      <tr><td><b>Unreadable views</b></td><td>A view with an unresolved axis could corrupt the target instead of being refused</td></tr>
+      <tr><td><b>Manual post-deploy steps</b></td><td>Seed, build, load, create subsets and reprocess feeders — by hand, after every deploy</td></tr>
+      <tr><td><b>Baseline timing</b></td><td>Verification ran before the manual seeding, failed, and left stale drift noise for next time</td></tr>
+    </tbody>
+  </table></div>
+  <p>The model grew three “scar tissue” processes whose only job was to rebuild what the deploy failed to carry. We fixed all six — but the pattern was clear: we were maintaining our own copy of IBM’s object format, and every object type was a new place to be wrong.</p>
+</section>
+
+<section id="a3">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Why we moved to TM1 Git</h2></div>
+  <p>Since TM1 11.4 / Planning Analytics 2.0.7, TM1 can push its own model to a Git repository and pull it back. That means <b>IBM owns the object format and the transport</b> — rules and TI become plain text files, every push is a commit, and any git tool can read the history. We tested it on a DEV and PROD pair sharing one private repository.</p>
+  <p>It does a lot — but not everything. So we split the job:</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 200" role="img" aria-label="The hybrid: TM1 Git moves structure and history; the IDE handles attribute values, deletes, drift and approval.">
+      <rect x="10" y="15" width="330" height="170" rx="10" class="node-steel"/>
+      <text x="175" y="45" text-anchor="middle" class="svg-label">TM1 Git moves</text>
+      <text x="175" y="78" text-anchor="middle" class="svg-small">cubes · dimensions · rules</text>
+      <text x="175" y="100" text-anchor="middle" class="svg-small">processes · chores</text>
+      <text x="175" y="122" text-anchor="middle" class="svg-small">full history as commits</text>
+      <text x="175" y="160" text-anchor="middle" class="svg-sub">IBM’s own format — nothing to maintain</text>
+      <rect x="380" y="15" width="330" height="170" rx="10" class="node-indigo"/>
+      <text x="545" y="45" text-anchor="middle" class="svg-label">The IDE handles</text>
+      <text x="545" y="78" text-anchor="middle" class="svg-small">attribute values (never travel)</text>
+      <text x="545" y="100" text-anchor="middle" class="svg-small">deletes (a pull never deletes)</text>
+      <text x="545" y="122" text-anchor="middle" class="svg-small">drift (no live-state check)</text>
+      <text x="545" y="144" text-anchor="middle" class="svg-small">scope · approval · tests</text>
+      <text x="545" y="170" text-anchor="middle" class="svg-sub">governance stays with the IDE</text>
+    </svg>
+    <figcaption>The <b>hybrid</b>: TM1 Git carries structure and history; the IDE carries everything Git can’t.</figcaption>
+  </figure>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Check</th><th>Result</th><th>Consequence</th></tr></thead>
+    <tbody>
+      <tr><td>Attribute values travel</td><td>No</td><td>A value change produced an empty commit — the IDE writes values itself</td></tr>
+      <tr><td>Deletes propagate</td><td>No</td><td>A pull never deletes — the IDE reconciles deletes</td></tr>
+      <tr><td>Drift detected</td><td>No</td><td>PROD pushes its live state to a <code>prod-live</code> branch; the IDE diffs it</td></tr>
+      <tr><td><b>Scoped to a change set</b></td><td><b>Partly</b></td><td>A pull applies <b>every change on the branch</b> since the target’s last deploy</td></tr>
+    </tbody>
+  </table></div>
+  <p>That last row is the one that mattered. The evaluation wrote it down plainly and marked it as a warning. We built the deploy anyway and treated it as a detail. It was not a detail.</p>
+</section>
+
+<section id="a4">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">The discovery: a pull ships the whole branch</h2></div>
+  <p>Here is the thing many TM1 developers new to Git won’t expect. <b>A pull doesn’t take objects — it takes a branch.</b> Whatever is on the branch, PROD gets. Our first version pushed all of DEV to the <code>dev</code> branch, the approver approved that commit, and PROD pulled it.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 210" role="img" aria-label="Developer A's finished change and developer B's unfinished work both sit on DEV; the push puts both on the branch, and PROD receives both.">
+      <defs><marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker>
+        <marker id="ar2r" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--red)"/></marker></defs>
+      <rect x="10" y="20" width="200" height="170" rx="10" class="node-plain"/>
+      <text x="110" y="45" text-anchor="middle" class="svg-label">DEV server</text>
+      <rect x="30" y="65" width="160" height="44" rx="6" class="node-green"/>
+      <text x="110" y="85" text-anchor="middle" class="svg-small">A: one process</text>
+      <text x="110" y="100" text-anchor="middle" class="svg-tiny">finished · approved</text>
+      <rect x="30" y="122" width="160" height="44" rx="6" class="node-amber"/>
+      <text x="110" y="142" text-anchor="middle" class="svg-small">B: rules, half-done</text>
+      <text x="110" y="157" text-anchor="middle" class="svg-tiny">not ready</text>
+      <rect x="270" y="65" width="170" height="100" rx="10" class="node-steel"/>
+      <text x="355" y="95" text-anchor="middle" class="svg-label">dev branch</text>
+      <text x="355" y="120" text-anchor="middle" class="svg-small">A + B</text>
+      <text x="355" y="140" text-anchor="middle" class="svg-tiny">the whole of DEV</text>
+      <rect x="500" y="65" width="210" height="100" rx="10" class="node-red"/>
+      <text x="605" y="95" text-anchor="middle" class="svg-label">PROD</text>
+      <text x="605" y="120" text-anchor="middle" class="svg-small">receives A + B</text>
+      <text x="605" y="140" text-anchor="middle" class="svg-red">B was never approved</text>
+      <path d="M210 115 L268 115" class="edge" marker-end="url(#ar2)"/><text x="239" y="105" text-anchor="middle" class="svg-tiny">push</text>
+      <path d="M440 115 L498 115" class="edge-red" marker-end="url(#ar2r)"/><text x="469" y="105" text-anchor="middle" class="svg-tiny">pull</text>
+    </svg>
+    <figcaption>The approver reviewed <b>A</b>. The commit they approved also held <b>B</b>.</figcaption>
+  </figure>
+  <p>With two developers sharing DEV, that breaks every goal at once:</p>
+  <ul>
+    <li><b>Scope</b> — A’s deploy ships B’s half-finished rules.</li>
+    <li><b>Approval</b> — the approver approved A; the commit contained B.</li>
+    <li><b>Audit</b> — the record says “A deployed change set 12”; PROD received more than change set 12.</li>
+    <li><b>Safety</b> — nobody should have to check other people’s unfinished work before deploying their own.</li>
+  </ul>
+  <p>The project owner asked the right question: <i>“I assumed only the change set’s objects were deployed.”</i> Every governance claim rested on that assumption. So the transport had to be bent to fit the rule — not the rule to fit the transport.</p>
+  <div class="callout warn"><p><b>Lesson.</b> An evaluation finding marked as a warning is a design decision waiting to be made. Ours was made by default — and found a week later by the person whose requirement it broke.</p></div>
+</section>
+
+<section id="a5">
+  <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">The fix: a release commit per change set</h2></div>
+  <p>TM1 still pulls a whole branch. So we build a branch that differs from what PROD already has by <b>exactly one change set</b>. We call it a release.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 250" role="img" aria-label="A release starts from what PROD already has, copies in only the change set's files from DEV, and is committed to the release branch; PROD's pull then updates only those objects and skips everything else.">
+      <defs><marker id="ar3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker>
+        <marker id="ar3g" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker></defs>
+      <rect x="10" y="20" width="190" height="70" rx="8" class="node-steel"/>
+      <text x="105" y="48" text-anchor="middle" class="svg-label">What PROD has</text>
+      <text x="105" y="70" text-anchor="middle" class="svg-tiny">the commit recorded at its last deploy</text>
+      <rect x="10" y="150" width="190" height="70" rx="8" class="node-green"/>
+      <text x="105" y="178" text-anchor="middle" class="svg-label">Change set A’s files</text>
+      <text x="105" y="200" text-anchor="middle" class="svg-tiny">copied from DEV — only these</text>
+      <rect x="260" y="80" width="190" height="90" rx="10" class="node-indigo"/>
+      <text x="355" y="112" text-anchor="middle" class="svg-label">release-PROD</text>
+      <text x="355" y="135" text-anchor="middle" class="svg-small">base + A</text>
+      <text x="355" y="153" text-anchor="middle" class="svg-tiny">approval bound to this commit</text>
+      <rect x="510" y="20" width="200" height="200" rx="10" class="node-plain"/>
+      <text x="610" y="48" text-anchor="middle" class="svg-label">PROD pull plan</text>
+      <rect x="530" y="68" width="160" height="34" rx="6" class="node-green"/><text x="610" y="90" text-anchor="middle" class="svg-small">Update — A’s objects</text>
+      <rect x="530" y="112" width="160" height="34" rx="6" class="node-plain"/><text x="610" y="134" text-anchor="middle" class="svg-small">Skip — everything else</text>
+      <rect x="530" y="156" width="160" height="34" rx="6" class="node-plain"/><text x="610" y="178" text-anchor="middle" class="svg-small">B never on the branch</text>
+      <path d="M200 60 Q235 70 258 105" class="edge" marker-end="url(#ar3)"/>
+      <path d="M200 185 Q235 175 258 145" class="edge" marker-end="url(#ar3)"/>
+      <path d="M450 125 L508 125" class="edge-green" marker-end="url(#ar3g)"/><text x="479" y="115" text-anchor="middle" class="svg-tiny">pull</text>
+    </svg>
+    <figcaption>Nothing differs from PROD except change set A — so nothing else can ship.</figcaption>
+  </figure>
+  <p>How a release is built:</p>
+  <ol>
+    <li><b>Start from what PROD has.</b> The base is the commit the IDE recorded at PROD’s last deploy — not TM1’s own “deployed commit”, which is overwritten whenever PROD pushes its live state for a drift check.</li>
+    <li><b>Map the change set to files.</b> A process is its <code>.json</code> and <code>.ti</code>; a cube its <code>.json</code> and <code>.rules</code>; an MDX view its <code>.json</code> and <code>.mdx</code>.</li>
+    <li><b>Copy only those files from DEV</b> onto the base. Deleted objects are removed. Nothing else moves.</li>
+    <li><b>Commit to <code>release-&lt;target&gt;</code></b> — one release branch per target.</li>
+    <li><b>Record it on the change set,</b> so the approval is bound to that exact commit.</li>
+  </ol>
+  <p>Two gaps needed their own answer:</p>
+  <ul>
+    <li><b>Subsets and views.</b> TM1 Git’s pull has no operation for them — they never land. So straight after the pull, the IDE applies each included subset and view from the release’s own files over REST: MDX subsets keep their expression, static subsets their elements, MDX views their query, native views their axes.</li>
+    <li><b>Deletes and attribute values.</b> A reconcile step applies only what the change set recorded.</li>
+  </ul>
+  <div class="callout note"><p><b>Proven in the lab.</b> Rule, dimension element, process, chore, MDX subset, static subset, native view and MDX view — all eight arrived on PROD, and nothing else did.</p></div>
+</section>
+
+<section id="a6">
+  <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">The safety design</h2></div>
+  <p>The deploy is a sequence of gates. It stops at the first one that doesn’t hold, and every refusal says in plain words what to do next.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 230" role="img" aria-label="Seven deploy steps with five refusal points: failing tests, a failed dependency or plan check, drift on PROD, an unapproved commit, and an operation outside the release.">
+      <defs><marker id="ar4" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker>
+        <marker id="ar4r" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--red)"/></marker></defs>
+      <g>
+        <rect x="5"   y="40" width="88" height="46" rx="7" class="node-plain"/><text x="49"  y="68" text-anchor="middle" class="svg-small">Test</text>
+        <rect x="108" y="40" width="88" height="46" rx="7" class="node-plain"/><text x="152" y="68" text-anchor="middle" class="svg-small">Close</text>
+        <rect x="211" y="40" width="88" height="46" rx="7" class="node-indigo"/><text x="255" y="62" text-anchor="middle" class="svg-small">Build</text><text x="255" y="77" text-anchor="middle" class="svg-small">release</text>
+        <rect x="314" y="40" width="88" height="46" rx="7" class="node-plain"/><text x="358" y="68" text-anchor="middle" class="svg-small">Review</text>
+        <rect x="417" y="40" width="88" height="46" rx="7" class="node-green"/><text x="461" y="68" text-anchor="middle" class="svg-small">Approve</text>
+        <rect x="520" y="40" width="88" height="46" rx="7" class="node-steel"/><text x="564" y="68" text-anchor="middle" class="svg-small">Deploy</text>
+        <rect x="623" y="40" width="92" height="46" rx="7" class="node-plain"/><text x="669" y="68" text-anchor="middle" class="svg-small">Verify</text>
+      </g>
+      <path d="M93 63 L106 63" class="edge" marker-end="url(#ar4)"/><path d="M196 63 L209 63" class="edge" marker-end="url(#ar4)"/>
+      <path d="M299 63 L312 63" class="edge" marker-end="url(#ar4)"/><path d="M402 63 L415 63" class="edge" marker-end="url(#ar4)"/>
+      <path d="M505 63 L518 63" class="edge" marker-end="url(#ar4)"/><path d="M608 63 L621 63" class="edge" marker-end="url(#ar4)"/>
+      <path d="M152 86 L152 128" class="edge-red" marker-end="url(#ar4r)"/>
+      <path d="M255 86 L255 128" class="edge-red" marker-end="url(#ar4r)"/>
+      <path d="M358 86 L358 128" class="edge-red" marker-end="url(#ar4r)"/>
+      <path d="M564 86 L564 128" class="edge-red" marker-end="url(#ar4r)"/>
+      <path d="M669 86 L669 128" class="edge-red" marker-end="url(#ar4r)"/>
+      <rect x="102" y="132" width="100" height="70" rx="6" class="node-red"/><text x="152" y="152" text-anchor="middle" class="svg-red">a blocking</text><text x="152" y="167" text-anchor="middle" class="svg-red">test fails</text>
+      <rect x="205" y="132" width="100" height="70" rx="6" class="node-red"/><text x="255" y="152" text-anchor="middle" class="svg-red">missing</text><text x="255" y="167" text-anchor="middle" class="svg-red">dependency or</text><text x="255" y="182" text-anchor="middle" class="svg-red">failed plan</text>
+      <rect x="308" y="132" width="100" height="70" rx="6" class="node-red"/><text x="358" y="152" text-anchor="middle" class="svg-red">PROD has</text><text x="358" y="167" text-anchor="middle" class="svg-red">drifted —</text><text x="358" y="182" text-anchor="middle" class="svg-red">pause</text>
+      <rect x="499" y="132" width="130" height="70" rx="6" class="node-red"/><text x="564" y="152" text-anchor="middle" class="svg-red">commit not approved,</text><text x="564" y="167" text-anchor="middle" class="svg-red">not a release, or an</text><text x="564" y="182" text-anchor="middle" class="svg-red">op outside it</text>
+      <rect x="634" y="132" width="82" height="70" rx="6" class="node-red"/><text x="675" y="152" text-anchor="middle" class="svg-red">object</text><text x="675" y="167" text-anchor="middle" class="svg-red">didn’t land</text><text x="675" y="182" text-anchor="middle" class="svg-red">= failed</text>
+      <text x="360" y="20" text-anchor="middle" class="svg-sub">seven steps · five places it refuses</text>
+    </svg>
+    <figcaption>Approval is bound to the <b>exact release commit</b>. Anything else is refused on the server, not just on screen.</figcaption>
+  </figure>
+  <p>Around the flow, three rules hold on the server itself:</p>
+  <ul>
+    <li><b>PROD is read-only to editing.</b> Saves from the IDE — and from the AI’s tools — are refused. The only way in is an approved release.</li>
+    <li><b>Only built releases deploy.</b> First-time setup is the only whole-model path, and it refuses once a target has been deployed.</li>
+    <li><b>Change sets are owned.</b> A change set belongs to one TM1 user on one server; nobody else’s work rides along.</li>
+  </ul>
+  <p>The drift pause is deliberate. When PROD has been changed by hand, the IDE doesn’t revert it or copy it back automatically. A developer re-applies the change on DEV in a change set, and it is released like any other. Slower — but nothing is lost, and everything is approved.</p>
+</section>
+
+<section id="a7">
+  <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">Lab lessons: TM1 Git quirks</h2></div>
+  <p>Every one of these was found by running real deploys against a DEV and PROD pair — not by reading documentation. Unit tests passed throughout; the lab is where the deploy actually broke.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Quirk</th><th>Symptom</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>TM1 forbids <code>/</code> in branch names</td><td>Pull refused for <code>release/PROD</code></td><td>Branches are named <code>release-&lt;target&gt;</code></td></tr>
+      <tr><td>Short vs full commit IDs</td><td>TM1 reports a short ID, git a full one — the approval check said “moved”</td><td>Exact match, or a prefix of 7+ characters</td></tr>
+      <tr><td><code>DeployedCommit</code> is overwritten</td><td>PROD’s drift push reset it, so the next release was built on the wrong base</td><td>The IDE records the deployed commit itself</td></tr>
+      <tr><td>Pull plans expire in seconds</td><td>A plan created early returned 404 on execute</td><td>Create, check and execute in one step</td></tr>
+      <tr><td>Plan operations are text</td><td><code>Update Cubes('X')</code>, <code>Skip …</code></td><td>Every non-<code>Skip</code> operation must be in the release, or the deploy refuses</td></tr>
+      <tr><td>Subsets and views never land</td><td>The plan has no operation for them</td><td>Applied over REST after the pull, then verified</td></tr>
+      <tr><td>First pull is a full overwrite</td><td>A never-pulled target gets every object</td><td>A separate first-time setup path, refused once deployed</td></tr>
+      <tr><td>A view title with a deleted member</td><td><code>Selected: null</code> blocks the whole pull</td><td>A readiness check refuses it before push</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn"><p><b>A check that cannot fail is worse than no check.</b> Our post-deploy verification read PROD’s “previous” commit after the deploy had already recorded the new one. The comparison was empty, so it verified nothing — and always passed. Because it always passed, it was trusted.</p></div>
+</section>
+
+<section id="a8">
+  <div class="sec-head"><span class="sec-num">08</span><h2 class="sec-title">How the work was done</h2></div>
+  <p>Three AI agents and one person built this, each with one job — and no agent both wrote and approved its own code.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 150" role="img" aria-label="OpenCode builds, local Claude checks and publishes, cloud Claude reviews, the project owner merges; the lab decides whether it works.">
+      <defs><marker id="ar5" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <rect x="5"   y="35" width="150" height="56" rx="8" class="node-indigo"/><text x="80"  y="60" text-anchor="middle" class="svg-label">OpenCode</text><text x="80"  y="78" text-anchor="middle" class="svg-tiny">builds &amp; tests</text>
+      <rect x="190" y="35" width="150" height="56" rx="8" class="node-steel"/><text x="265" y="60" text-anchor="middle" class="svg-label">Local Claude</text><text x="265" y="78" text-anchor="middle" class="svg-tiny">checks · privacy · publishes</text>
+      <rect x="375" y="35" width="150" height="56" rx="8" class="node-amber"/><text x="450" y="60" text-anchor="middle" class="svg-label">Cloud Claude</text><text x="450" y="78" text-anchor="middle" class="svg-tiny">reviews the pull request</text>
+      <rect x="560" y="35" width="155" height="56" rx="8" class="node-green"/><text x="637" y="60" text-anchor="middle" class="svg-label">Project owner</text><text x="637" y="78" text-anchor="middle" class="svg-tiny">requirements · merges</text>
+      <path d="M155 63 L188 63" class="edge" marker-end="url(#ar5)"/><path d="M340 63 L373 63" class="edge" marker-end="url(#ar5)"/><path d="M525 63 L558 63" class="edge" marker-end="url(#ar5)"/>
+      <path d="M80 91 L80 122 L637 122 L637 93" class="edge-dash"/>
+      <text x="360" y="140" text-anchor="middle" class="svg-sub">the lab — a real DEV + PROD pair — has the final word</text>
+    </svg>
+    <figcaption>Builder and reviewer are always <b>different</b>.</figcaption>
+  </figure>
+  <p>The publish step matters. The private working branch carries client model work, so its history is never pushed. Each batch is replayed onto a clean branch from the public copy, checked for private names and data, and only then published for review.</p>
+  <p>What the separation caught:</p>
+  <ul>
+    <li>A failed subset apply still showed “Applied” and marked the change set deployed — found in review, fixed before merge.</li>
+    <li>The verify-nothing bug above — found by reading the code, not by a failing test.</li>
+    <li>The whole-branch problem — found by the person, not by any agent. Agents check what they are asked to check; the requirement has to be stated.</li>
+  </ul>
+</section>
+
+<section id="a9">
+  <div class="sec-head"><span class="sec-num">09</span><h2 class="sec-title">Lessons learned</h2></div>
+  <ol class="lessons">
+    <li><b>Write the rule down first.</b> “A release ships exactly its change set’s objects” is now rule 1. Written on day one, it would have caught the whole-branch pull on day one.</li>
+    <li><b>A partial finding is a decision.</b> Resolve every warning in an evaluation before building on it.</li>
+    <li><b>Bend the transport, not the rule.</b> TM1 Git pulls branches, so we build branches that differ by exactly one change set.</li>
+    <li><b>Trust your own record over the tool’s.</b> TM1’s deployed commit moves under you; the IDE’s record doesn’t.</li>
+    <li><b>Refuse loudly; never succeed silently.</b> Every gap stops the deploy or marks it failed, with a plain message saying what to do.</li>
+    <li><b>Keep humans in charge of drift.</b> Every automated revert or promote we tried opened a new way to lose work.</li>
+    <li><b>The lab decides.</b> Unit tests passed while the deploy was still broken. Only a real DEV and PROD pair finds those.</li>
+    <li><b>Separate the builder from the reviewer.</b> The same agent should never write and approve a change.</li>
+  </ol>
+</section>
+
+<section id="a10">
+  <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">What’s next</h2></div>
+  <ul>
+    <li>Automatic checks on every pull request: tests, build and lint.</li>
+    <li>Safe handling of object names containing an apostrophe, everywhere.</li>
+    <li>Retire the automated drift revert and promote paths.</li>
+    <li>Split the 4,000-line server file into smaller modules.</li>
+  </ul>
+  <p>The deploy is open source and in preview: <a href="https://github.com/falconbi/tm1_ide">github.com/falconbi/tm1_ide</a>. Tested in the lab, not yet production-proven — try it on test servers and tell us what you find.</p>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Governed TM1 deploys: from change sets to TM1 Git.</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      Deployment · TM1 Git · IBM Planning Analytics<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
