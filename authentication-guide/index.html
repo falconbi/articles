@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>How signing in to TM1 works — a plain-English guide</title>
+<title>How Signing In to TM1 Works</title>
 <meta name="description" content="Every way a person or a program can sign in to IBM Planning Analytics (TM1): native, LDAP, CAM username/password and single sign-on, Windows integrated, v12 API keys and tokens, OpenID Connect, and PAW. How each works, how to set it up, and what goes wrong.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.png" type="image/png">
@@ -12,31 +12,302 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="falconbi.css">
 <style>
-  /* falconbi.css sets .toc sticky for sidebar use — this is a full-width article, so keep the TOC in flow */
-  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
-  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
   :root{
-    --ink:#1c1917; --ink-soft:#57534e; --ink-faint:#a8a29e;
-    --paper:#fafaf9; --panel:#ffffff; --rule:#e7e5e4; --rule-soft:#f5f5f4;
-    --steel:#0f766e; --steel-light:#f0fdfa;
-    --green:#166534; --green-light:#f0fdf4;
-    --amber:#92400e; --amber-light:#fef3c7;
-    --red:#991b1b; --red-light:#fee2e2;
-    --indigo:#4c1d95; --indigo-light:#ede9fe;
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --paper:#fafaf9;
+    --panel:#ffffff;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+
+    --steel:#0f766e;        /* structure, hierarchy, base */
+    --steel-light:#f0fdfa;
+    --green:#166534;        /* valid flow, base data, counted-once */
+    --green-light:#f0fdf4;
+    --amber:#92400e;        /* contra, grouped, reversal */
+    --amber-light:#fef3c7;
+    --red:#991b1b;          /* double-count, warnings */
+    --red-light:#fee2e2;
+    --indigo:#4c1d95;       /* implementation, UI */
+    --indigo-light:#ede9fe;
+
     --maxw:860px;
   }
-  .status{display:inline-block;padding:1px 9px;border-radius:999px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;margin-left:6px}
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    background:
+      linear-gradient(180deg,#ffffff 0%, var(--paper) 100%);
+  }
+  .masthead .wrap{padding-top:78px;padding-bottom:52px}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--steel);
+    font-weight:500;
+    margin:0 0 22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1.title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.3rem);
+    line-height:1.08;
+    letter-spacing:-.012em;
+    margin:0 0 22px;
+    color:var(--ink);
+  }
+  h1.title .accent{color:var(--steel)}
+  .standfirst{
+    font-size:1.18rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:64ch;
+    margin:0 0 30px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-size:13.5px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;
+    padding-top:8px;border-top:1px solid var(--rule-soft);
+  }
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  .prototype{
+    margin:34px 0 0;
+    background:var(--green-light);
+    border:1px solid #cfe6d8;
+    border-left:4px solid var(--green);
+    border-radius:6px;
+    padding:16px 20px;
+    font-size:15.5px;
+    color:#21422f;
+  }
+  .prototype b{color:var(--green);font-weight:600}
+
+  /* ---------- TOC ---------- */
+  /* falconbi.css sets .toc{position:sticky} for sidebar use — override for this horizontal bar */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;margin:0 0 18px;
+  }
+  nav.toc ol{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:2px 28px;
+    counter-reset:toc;
+  }
+  nav.toc li{counter-increment:toc}
+  nav.toc a{
+    display:flex;gap:12px;align-items:baseline;
+    text-decoration:none;color:var(--ink-soft);
+    padding:7px 4px;border-radius:4px;
+    border-bottom:1px solid transparent;
+    transition:color .15s,background .15s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--steel);
+    flex:none;width:2ch;
+  }
+  nav.toc a:hover{color:var(--steel);background:var(--steel-light)}
+
+  /* ---------- Sections ---------- */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:44px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin:0 0 18px}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;color:var(--steel);
+    flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-weight:600;font-size:1.16rem;
+    margin:34px 0 12px;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  p{margin:0 0 16px}
+  section > p, section > ul, section > ol, section > .fig, section > .tablewrap,
+  section > pre, section > blockquote, section > .callout{margin-left:0}
+  strong{font-weight:600;color:var(--ink)}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:#f1f0ec;
+    padding:.1em .38em;border-radius:4px;
+    color:#3a4750;
+  }
+  a{color:var(--steel)}
+
+  ul,ol{margin:0 0 16px;padding-left:1.3em}
+  li{margin:6px 0}
+  li::marker{color:var(--steel)}
+
+  blockquote{
+    margin:18px 0;padding:4px 0 4px 22px;
+    border-left:3px solid var(--rule);
+    color:var(--ink-soft);font-style:italic;
+    font-family:'DM Sans',system-ui,sans-serif;font-size:1.08rem;
+  }
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;margin:22px 0}
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink-soft);
+  }
+  tbody tr:hover{background:#f6f7f8}
+  td code{background:#eef0f2}
+  .pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    letter-spacing:.02em;
+  }
+  .pill.sub{background:var(--steel-light);color:var(--steel)}
+  .pill.assoc{background:var(--indigo-light);color:var(--indigo)}
+  .pill.inv{background:#eef1f3;color:var(--ink-soft)}
+  .pill.grp{background:var(--amber-light);color:var(--amber)}
+
+  /* ---------- Code / ASCII ---------- */
+  pre{
+    background:#1c2530;color:#d7e0e8;
+    font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.6;
+    padding:18px 20px;border-radius:8px;overflow-x:auto;margin:20px 0;
+    border:1px solid #283442;
+  }
+  pre .c{color:#7f8fa0}      /* comment / faint */
+  pre .k{color:#7fb3e0}      /* steel key */
+  pre .g{color:#7fd0a0}      /* green */
+  pre .a{color:#e3b766}      /* amber */
+  pre .r{color:#e89b94}      /* red */
+  pre.ascii{font-size:13px;line-height:1.5}
+
+  /* ---------- Figures ---------- */
+  .fig{margin:26px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  figcaption{
+    font-size:13px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+    margin-top:12px;text-align:center;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600}
+
+  /* SVG element styling */
+  .svg-label{font-family:'DM Sans',sans-serif;font-size:14px;fill:var(--ink)}
+  .svg-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-faint)}
+  .svg-edge{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .node-steel{fill:var(--steel-light);stroke:var(--steel);stroke-width:1.5}
+  .node-green{fill:var(--green-light);stroke:var(--green);stroke-width:1.5}
+  .node-amber{fill:var(--amber-light);stroke:var(--amber);stroke-width:1.5}
+  .node-red{fill:var(--red-light);stroke:var(--red);stroke-width:1.5}
+  .node-indigo{fill:var(--indigo-light);stroke:var(--indigo);stroke-width:1.5}
+  .node-plain{fill:#fff;stroke:var(--ink-soft);stroke-width:1.3}
+  .edge{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+  .edge-green{stroke:var(--green);stroke-width:1.8;fill:none}
+  .edge-red{stroke:var(--red);stroke-width:1.8;fill:none}
+  .edge-amber{stroke:var(--amber);stroke-width:1.8;fill:none}
+  .edge-dash{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:6px;padding:16px 20px;margin:22px 0;font-size:15.5px;
+    border:1px solid var(--rule);border-left:4px solid var(--ink-soft);
+    background:var(--panel);
+  }
+  .callout.warn{background:var(--red-light);border-color:#eccac6;border-left-color:var(--red)}
+  .callout.warn b{color:var(--red)}
+  .callout.note{background:var(--steel-light);border-color:#cfe0ee;border-left-color:var(--steel)}
+  .callout.note b{color:var(--steel)}
+  .callout.key{background:var(--amber-light);border-color:#e8d6a8;border-left-color:var(--amber)}
+  .callout.key b{color:var(--amber)}
+  .callout p{margin:0}
+  .callout p + p{margin-top:10px}
+
+  /* ---------- Signature: path encoding ---------- */
+  .signature{
+    margin:30px 0;padding:30px 26px;border-radius:10px;
+    background:linear-gradient(160deg,#1c2530 0%,#243140 100%);
+    border:1px solid #2b3a4a;color:#dbe4ec;
+  }
+  .signature .sig-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#8aa0b4;margin:0 0 18px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{background:#1c2530;color:#aebccb;border-top:3px solid var(--steel)}
+  footer .wrap{padding-top:48px;padding-bottom:54px}
+  footer h2{
+    font-family:'DM Sans',system-ui,sans-serif;color:#f0f4f8;font-weight:600;
+    font-size:1.3rem;margin:0 0 14px;
+  }
+  footer p{color:#aebccb;font-size:15px;max-width:62ch}
+  footer a{color:#9ec3e6}
+  .lic{
+    margin-top:22px;padding-top:20px;border-top:1px solid #2c3a48;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8294a4;
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+  }
+  .refs{font-size:15px;color:#c4d0db}
+  .refs cite{font-style:italic;color:#e6edf3}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .sec-head{gap:12px}
+    nav.toc ol{grid-template-columns:1fr}
+    .masthead .wrap{padding-top:54px;padding-bottom:40px}
+  }
+</style>
+<style>
+  /* status badges: Documented / Proven in practice / Unconfirmed */
+  .status{display:inline-block;padding:1px 9px;border-radius:999px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;margin-left:4px;white-space:nowrap}
   .status.doc{background:var(--steel-light);color:var(--steel)}
   .status.proven{background:var(--green-light);color:var(--green)}
   .status.unconfirmed{background:var(--amber-light);color:var(--amber)}
-  .subsec h3{font-size:1.14rem;font-weight:600;margin:34px 0 8px;color:var(--ink)}
-  .subsec h3 .n{color:var(--steel);font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.06em;margin-right:8px}
-  th,td{vertical-align:top}
-  .table-wrap{overflow-x:auto}
-  table{width:100%;min-width:0;table-layout:fixed}
-  th,td{overflow-wrap:anywhere}
-  thead th{white-space:normal}
+  h3 .n{color:var(--steel);font-family:'IBM Plex Mono',monospace;font-size:.8em;letter-spacing:.04em;margin-right:8px}
+  dl.method{display:grid;grid-template-columns:150px minmax(0,1fr);gap:6px 16px;margin:12px 0 4px}
+  dl.method dt{font-weight:600;color:var(--ink-soft)}
+  dl.method dd{margin:0}
+  @media (max-width:640px){dl.method{grid-template-columns:minmax(0,1fr)}dl.method dt{margin-top:6px}}
 </style>
+
 </head>
 <body>
 
@@ -83,8 +354,8 @@
 <main>
 <div class="wrap">
 
-<p>This guide is about <b>TM1 itself</b> — it applies whatever tool you use (PAW, Architect, TM1py, ARC, TM1 IDE, your own scripts). Where a fact comes from IBM, a vendor or a well-used open-source library it is linked under <a href="#s10">Sources</a>. Where something has not been confirmed on a real server it says so.
-<span class="status doc">Documented</span> = stated by IBM · <span class="status proven">Proven in practice</span> = shown by widely used open-source code or confirmed on a real server · <span class="status unconfirmed">Unconfirmed</span> = believed correct, not yet checked.</p>
+<p>This guide is about <b>TM1 itself</b> — it applies whatever tool you use (PAW, TM1py, TM1 IDE, vendor tools or your own scripts). Facts from IBM, vendors or well-used open-source libraries are linked under <a href="#s10">Sources</a>, and anything not yet confirmed on a real server says so.</p>
+<div class="callout note"><p><b>How sure is each statement?</b> <span class="status doc">Documented</span> stated by IBM · <span class="status proven">Proven in practice</span> shown by widely used open-source code or confirmed on a real server · <span class="status unconfirmed">Unconfirmed</span> believed correct, not yet checked.</p></div>
 
 <section id="s1">
   <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">The big picture</h2></div>
@@ -94,7 +365,7 @@
     <li><b>What may you do?</b> — <i>authorisation</i>. In TM1 this is always decided <b>inside TM1</b>, by the security groups a user belongs to (<code>}ClientGroups</code>). However someone signs in, TM1&rsquo;s own security still decides what they see.</li>
   </ol>
   <p>Once TM1 is satisfied about <i>who</i>, it hands back a <b>session ticket</b> — a cookie called <code>TM1SessionId</code>. A well-behaved program sends that ticket with every later request instead of signing in again. Think of it like a hotel key card: you show your passport once at the desk, then use the card for the rest of your stay.</p>
-<pre>
+<pre class="ascii">
   you / your tool                      TM1 server
   ───────────────                      ──────────
   1. "Here's proof of who I am"  ───▶  checks it (itself, or asks a directory / Cognos)
@@ -106,7 +377,7 @@
 
 <section id="s2">
   <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Words you&rsquo;ll meet</h2></div>
-  <div class="table-wrap"><table>
+  <div class="tablewrap"><table>
     <thead><tr><th>Word</th><th>Plain meaning</th></tr></thead>
     <tbody>
       <tr><td><b>Authentication</b></td><td>Proving who you are.</td></tr>
@@ -134,33 +405,33 @@
   <div class="subsec">
   <h3>TM1 v11 (Planning Analytics Local 2.0.x)</h3>
   <p>Look in the server&rsquo;s <code>tm1s.cfg</code>:</p>
-  <div class="table-wrap"><table>
+  <div class="tablewrap"><table>
     <thead><tr><th>Setting</th><th>Meaning</th><th>Section</th></tr></thead>
     <tbody>
-      <tr><td><code>IntegratedSecurityMode=1</code></td><td>TM1&rsquo;s own users and passwords</td><td><a href="#s4">4.1</a></td></tr>
-      <tr><td><code>IntegratedSecurityMode=1</code> + <code>PasswordSource=LDAP</code></td><td>TM1&rsquo;s own users, passwords checked against the directory</td><td><a href="#s4">4.2</a></td></tr>
-      <tr><td><code>IntegratedSecurityMode=2</code></td><td>Users may choose: TM1 password <b>or</b> Windows sign-in</td><td><a href="#s4">4.1 / 4.5</a></td></tr>
-      <tr><td><code>IntegratedSecurityMode=3</code></td><td>Windows sign-in only</td><td><a href="#s4">4.5</a></td></tr>
-      <tr><td><code>IntegratedSecurityMode=4</code></td><td>Cognos (CAM) signs people in; TM1&rsquo;s groups decide rights</td><td><a href="#s4">4.3 / 4.4</a></td></tr>
-      <tr><td><code>IntegratedSecurityMode=5</code></td><td>Cognos (CAM) signs people in; groups can come from Cognos <b>and</b> TM1</td><td><a href="#s4">4.3 / 4.4</a></td></tr>
-      <tr><td><code>SupportOpenConnect=T</code></td><td>The server also accepts <b>OpenID Connect</b> sign-in (a company identity provider)</td><td><a href="#s4">4.9</a></td></tr>
+      <tr><td><code>IntegratedSecurityMode=1</code></td><td>TM1&rsquo;s own users and passwords</td><td><a href="#m1">4.1</a></td></tr>
+      <tr><td><code>IntegratedSecurityMode=1</code> + <code>PasswordSource=LDAP</code></td><td>TM1&rsquo;s own users, passwords checked against the directory</td><td><a href="#m2">4.2</a></td></tr>
+      <tr><td><code>IntegratedSecurityMode=2</code></td><td>Users may choose: TM1 password <b>or</b> Windows sign-in</td><td><a href="#m1">4.1</a> / <a href="#m5">4.5</a></td></tr>
+      <tr><td><code>IntegratedSecurityMode=3</code></td><td>Windows sign-in only</td><td><a href="#m5">4.5</a></td></tr>
+      <tr><td><code>IntegratedSecurityMode=4</code></td><td>Cognos (CAM) signs people in; TM1&rsquo;s groups decide rights</td><td><a href="#m3">4.3</a> / <a href="#m4">4.4</a></td></tr>
+      <tr><td><code>IntegratedSecurityMode=5</code></td><td>Cognos (CAM) signs people in; groups can come from Cognos <b>and</b> TM1</td><td><a href="#m3">4.3</a> / <a href="#m4">4.4</a></td></tr>
+      <tr><td><code>SupportOpenConnect=T</code></td><td>The server also accepts <b>OpenID Connect</b> sign-in (a company identity provider)</td><td><a href="#m6">4.6</a></td></tr>
     </tbody>
   </table></div>
   <p>Modes 4 and 5 also need <code>ServerCAMURI</code> and <code>ClientCAMURI</code> — the addresses of the Cognos services. <span class="status doc">Documented</span></p>
 
   <h3>TM1 v12 (Planning Analytics Engine / TM1 Database 12)</h3>
   <p>There is <b>no <code>tm1s.cfg</code> security mode, no CAM and no Architect</b>. Identity always comes from the platform:</p>
-  <div class="table-wrap"><table>
+  <div class="tablewrap"><table>
     <thead><tr><th>Where v12 runs</th><th>Method</th><th>Section</th></tr></thead>
     <tbody>
-      <tr><td>IBM&rsquo;s cloud (Planning Analytics as a Service)</td><td>Your IBM / company sign-in in the browser; <b>API key</b> for programs</td><td><a href="#s4">4.6</a></td></tr>
-      <tr><td>On-premises or Cloud Pak for Data</td><td>The platform&rsquo;s identity provider; <b>app ID + secret &rarr; token</b> for programs</td><td><a href="#s4">4.7</a></td></tr>
+      <tr><td>IBM&rsquo;s cloud (Planning Analytics as a Service)</td><td>Your IBM / company sign-in in the browser; <b>API key</b> for programs</td><td><a href="#m7">4.7</a></td></tr>
+      <tr><td>On-premises or Cloud Pak for Data</td><td>The platform&rsquo;s identity provider; <b>app ID + secret &rarr; token</b> for programs</td><td><a href="#m8">4.8</a></td></tr>
     </tbody>
   </table></div>
 
   <h3>Asking the server (no password needed)</h3>
   <p>A tool can ask a TM1 v11 server which method it uses <b>without signing in</b>: send any request with no credentials and read the <code>WWW-Authenticate</code> line of the &ldquo;401 Unauthorized&rdquo; answer. Because no username is sent, this does <b>not</b> count as a failed login.</p>
-  <div class="table-wrap"><table>
+  <div class="tablewrap"><table>
     <thead><tr><th>Answer contains</th><th>Meaning</th><th>Status</th></tr></thead>
     <tbody>
       <tr><td><code>Basic realm="TM1"</code></td><td>TM1&rsquo;s own security (native, or the LDAP password check)</td><td><span class="status proven">Proven</span> — TM1 v11.8, mode 1</td></tr>
@@ -169,7 +440,7 @@
     </tbody>
   </table></div>
   <p>Real example (native server):</p>
-<pre>
+<pre class="ascii">
 HTTP/1.1 401 Unauthorized
 WWW-Authenticate: Basic realm="TM1"
 Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
@@ -177,7 +448,7 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
   <p>Note the server hands out a session cookie even on the refusal — it is not signed in until credentials are sent.</p>
 
   <h3>Through PAW</h3>
-  <p>Planning Analytics Workspace can sit in front of TM1 and sign people in itself — see <a href="#s4">4.8</a>.</p>
+  <p>Planning Analytics Workspace can sit in front of TM1 and sign people in itself — see <a href="#m9">4.9</a>.</p>
   </div>
 </section>
 
@@ -185,10 +456,10 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
   <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">The methods, one by one</h2></div>
   <div class="subsec">
 
-  <h3><span class="n">4.1</span>TM1 native security</h3>
+  <h3 id="m1"><span class="n">4.1</span>TM1 native security</h3>
   <p><b>In one sentence:</b> TM1 keeps its own list of users and passwords. <span class="status doc">Documented</span></p>
   <p><b>When you&rsquo;ll see it:</b> labs, smaller sites, and any brand-new server before it is switched to something else.</p>
-<pre>
+<pre class="ascii">
   tool ── "Authorization: Basic &lt;name:password&gt;" ──▶ TM1   (checks its own }Clients list)
   tool ◀────────────── TM1SessionId ──────────────── TM1
 </pre>
@@ -196,10 +467,10 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
   <p><b>Setting it up:</b> the default. Users are <code>}Clients</code> elements; passwords are set by an admin (TI <code>AssignClientPassword</code>, or the REST API).</p>
   <p><b>Common problems:</b> wrong password three times &rarr; the account is locked (<a href="#s7">section 7</a>).</p>
 
-  <h3><span class="n">4.2</span>TM1 users, LDAP password check</h3>
+  <h3 id="m2"><span class="n">4.2</span>TM1 users, LDAP password check</h3>
   <p><b>In one sentence:</b> users still live in TM1, but TM1 asks the company directory whether the password is right. <span class="status doc">Documented</span></p>
   <p><b>When you&rsquo;ll see it:</b> sites that want company passwords without installing Cognos.</p>
-<pre>
+<pre class="ascii">
   tool ── Basic &lt;name:password&gt; ──▶ TM1 ── "is this password right?" ──▶ directory (LDAP)
   tool ◀──────── TM1SessionId ───── TM1 ◀──────────── "yes" ─────────── directory
 </pre>
@@ -207,10 +478,10 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
   <p><b>Setting it up (<code>tm1s.cfg</code>):</b> <code>PasswordSource=LDAP</code>, <code>LDAPHost</code>, <code>LDAPPort</code> (636 for secure LDAP), <code>LDAPSearchBase</code> (where users live), <code>LDAPSearchField</code> (usually <code>sAMAccountName</code> = the Windows user ID), <code>LDAPUseServerAccount</code>. Users must already exist in TM1 — add them by hand or import them with IBM&rsquo;s <b>ETLDAP</b> utility, which only <i>adds</i> users (it never updates or deletes).</p>
   <p><b>Common problems:</b> user exists in AD but not in TM1 &rarr; can&rsquo;t sign in; wrong search base &rarr; every login fails.</p>
 
-  <h3><span class="n">4.3</span>CAM — username and password</h3>
+  <h3 id="m3"><span class="n">4.3</span>CAM — username and password</h3>
   <p><b>In one sentence:</b> TM1 trusts Cognos to check who you are; you type your company (directory) password. <span class="status doc">Documented</span>; the header format is <span class="status proven">proven in practice</span> by TM1py.</p>
   <p><b>When you&rsquo;ll see it:</b> very common at larger sites — Cognos Analytics connected to Active Directory, TM1 in mode 4 or 5.</p>
-<pre>
+<pre class="ascii">
   tool ── "Authorization: CAMNamespace &lt;name:password:namespace&gt;" ──▶ TM1
                                           TM1 ── asks Cognos ──▶ Cognos ── checks ──▶ Active Directory
   tool ◀──────────────────── TM1SessionId ─────────────────── TM1
@@ -220,28 +491,37 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
   <p><b>Setting it up:</b> <code>IntegratedSecurityMode=4</code> or <code>5</code>, plus <code>ServerCAMURI</code> (Cognos&rsquo;s internal dispatcher, e.g. <code>http://cognos:9300/p2pd/servlet/dispatch</code>) and <code>ClientCAMURI</code> (Cognos&rsquo;s address for users, e.g. <code>http://cognos/ibmcognos/bi/v1/disp</code>). The first administrator needs a special routine — see <a href="#s6">section 6</a>.</p>
   <p><b>Common problems:</b> wrong or missing namespace &rarr; 401; Cognos down &rarr; nobody can sign in to TM1; a user&rsquo;s TM1 groups only refresh when they sign in again.</p>
 
-  <h3><span class="n">4.4</span>CAM — single sign-on</h3>
+  <h3 id="m4"><span class="n">4.4</span>CAM — single sign-on</h3>
   <p><b>In one sentence:</b> you&rsquo;ve already signed in to Windows; Cognos recognises you and gives you a passport, which TM1 accepts — no password typed. <span class="status doc">Documented</span>; flow <span class="status proven">proven in practice</span> by TM1py&rsquo;s &ldquo;gateway&rdquo; option.</p>
-  <p><b>When you&rsquo;ll see it:</b> the same sites as 4.3, where Cognos is set up for Windows sign-in (Kerberos).</p>
-<pre>
+  <p><b>When you&rsquo;ll see it:</b> the same sites as <a href="#m3">4.3</a>, where Cognos is set up for Windows sign-in (Kerberos).</p>
+<pre class="ascii">
   1. tool ── GET gateway?CAMNamespace=&lt;namespace&gt;, with Windows sign-in (Negotiate) ──▶ Cognos gateway
   2. tool ◀────── passport (cookie "cam_passport") ───── Cognos
   3. tool ── "Authorization: CAMPassport &lt;passport&gt;" ──▶ TM1 ── checks with Cognos
   4. tool ◀──────────────── TM1SessionId ────────────── TM1
 </pre>
   <p>When TM1 refuses a request it tells the tool where to get a passport: its &ldquo;please sign in&rdquo; answer includes the Cognos address. <span class="status doc">Documented</span></p>
+  <p><b>Setting it up:</b> TM1 as for <a href="#m3">4.3</a> (mode 4 or 5 with the CAM addresses); on the Cognos side, the namespace and gateway set up for Windows sign-in (Kerberos), and the user&rsquo;s PC on the domain.</p>
   <p><b>Common problems:</b> works in the browser but not from a script &rarr; the script isn&rsquo;t doing the Windows sign-in to the gateway; passport expired &rarr; get a new one.</p>
 
-  <h3><span class="n">4.5</span>Windows integrated login</h3>
+  <h3 id="m5"><span class="n">4.5</span>Windows integrated login</h3>
   <p><b>In one sentence:</b> TM1 trusts your Windows sign-in directly, with no Cognos involved. <span class="status doc">Documented</span></p>
   <p><b>When you&rsquo;ll see it:</b> Windows-centred sites without Cognos; <code>IntegratedSecurityMode=2</code> (choice) or <code>3</code> (Windows only).</p>
   <p><b>How it works:</b> the tool and TM1 use Windows&rsquo; own sign-in exchange (<b>Negotiate</b> — Kerberos, or the older NTLM). Your PC gets a ticket from the domain controller and shows it to TM1; <b>no password crosses the network</b>.</p>
   <p><b>Setting it up:</b> users exist in TM1 as <code>DOMAIN\user</code>; the TM1 service may need a <i>service principal name</i> (SPN) registered in Active Directory for Kerberos. A program can only do this when it runs <b>as the Windows user</b>, on a domain-joined machine (TM1py, for example, uses the Windows-only SSPI library for it).</p>
   <p><b>Common problems:</b> works on one PC but not another &rarr; SPN or delegation; mode 3 locks out anything that can&rsquo;t do Windows sign-in (scripts on Linux, many web tools).</p>
 
-  <h3><span class="n">4.6</span>v12 in IBM&rsquo;s cloud — API keys</h3>
+  <h3 id="m6"><span class="n">4.6</span>v11 OpenID Connect</h3>
+  <p><b>In one sentence:</b> a v11 server can be told to accept sign-in from a company identity provider (Entra ID, Okta &hellip;) using the OpenID Connect standard. <span class="status doc">Documented</span> that it exists; how a tool hands the result to TM1 — <span class="status unconfirmed">Unconfirmed</span>.</p>
+  <p><b>When you&rsquo;ll see it:</b> v11 sites standardising on a cloud identity provider; tools that offer &ldquo;sign in with your company account&rdquo; against a v11 server.</p>
+  <p><b>How it works</b> (as Cubewise documents it for its Canvas product): the tool is registered in the identity provider (client ID, client secret, the provider&rsquo;s &ldquo;discovery&rdquo; address). When a user needs data, the browser is sent to the provider&rsquo;s sign-in page (single sign-on passes straight through), comes back with a one-time <b>code</b>, and the tool uses that code to sign in to TM1.</p>
+  <p><b>Setting it up:</b> <code>SupportOpenConnect=T</code> in <code>tm1s.cfg</code> (default off), plus registering the tool in the identity provider. <b>Not available in v12</b>, where the platform handles identity instead (<a href="#m7">4.7</a>, <a href="#m8">4.8</a>).</p>
+  <p><b>Common problems:</b> the tool&rsquo;s return address doesn&rsquo;t match what is registered in the provider &rarr; sign-in fails after the provider page; the user exists in the provider but not in TM1 &rarr; signed in, but no access.</p>
+
+  <h3 id="m7"><span class="n">4.7</span>v12 in IBM&rsquo;s cloud — API keys</h3>
   <p><b>In one sentence:</b> people sign in through the browser with their IBM/company account; programs use an <b>API key</b> that carries the same rights as the person who made it. <span class="status doc">Documented</span> by IBM; usage <span class="status proven">proven in practice</span> by TM1py.</p>
-<pre>
+  <p><b>When you&rsquo;ll see it:</b> Planning Analytics as a Service (IBM&rsquo;s cloud), for scripts, schedulers and tools that run without a person.</p>
+<pre class="ascii">
   tool ── Basic "apikey" : &lt;the key&gt; ──▶ https://&lt;region&gt;.planninganalytics.saas.ibm.com/api/&lt;tenant&gt;/v0/...
   tool ◀──────────── session ──────────
   TM1 database API: .../api/&lt;tenant&gt;/v0/tm1/&lt;database&gt;/api/v1
@@ -249,26 +529,25 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
   <p><b>Setting it up:</b> in Planning Analytics: your name &rarr; <b>Manage API key</b> &rarr; <b>Generate key</b>. Copy it straight away — it can&rsquo;t be shown again. Sessions time out after 60 minutes idle.</p>
   <p><b>Common problems:</b> the key works but data is missing &rarr; the key has exactly its creator&rsquo;s rights; key lost &rarr; make a new one and revoke the old.</p>
 
-  <h3><span class="n">4.7</span>v12 on-premises and Cloud Pak for Data — app credentials and tokens</h3>
+  <h3 id="m8"><span class="n">4.8</span>v12 on-premises and Cloud Pak for Data — app credentials and tokens</h3>
   <p><b>In one sentence:</b> the platform&rsquo;s identity provider signs people in; programs use an <b>application ID and secret</b> (or a ready-made access token) to get a short-lived token. <span class="status proven">Proven in practice</span> by TM1py; IBM details vary by deployment — partly <span class="status unconfirmed">Unconfirmed</span>.</p>
-<pre>
+  <p><b>When you&rsquo;ll see it:</b> TM1 Database 12 run on-premises or on Cloud Pak for Data, with the company&rsquo;s identity provider (Entra ID, Okta, Authentik &hellip;).</p>
+<pre class="ascii">
   1. tool ── app ID + secret ──▶ platform's sign-in service
   2. tool ◀──── access token ──
   3. tool ── "Authorization: Bearer &lt;token&gt;" ──▶ TM1 database (instance + database name in the address)
 </pre>
   <p><b>First administrator:</b> comes from the platform — e.g. on Cloud Pak for Data, platform administrators become Workspace administrators and TM1 admins on first sign-in; other users are added to TM1 with TI <code>AddClient</code>. <span class="status doc">Documented</span></p>
-  <p><b>Note:</b> IBM&rsquo;s &ldquo;authorized applications&rdquo; (OAuth) for Planning Analytics support only <b>interactive</b> sign-in (a person signs in in a browser); the non-interactive &ldquo;client credentials&rdquo; flow is documented as <b>not supported</b> there. IBM documents this for Planning Analytics Workspace on Cloud; an <b>on-premises PAW v12</b> admin console checked on 4 Oct 2026 had <b>no</b> &ldquo;authorized applications&rdquo; page, so on-premises app registration happens elsewhere — in a lab with Authentik as the identity provider, applications (client ID + secret) are registered <b>in the identity provider</b>; PAW itself is one such application. Whether PAW and the v12 engine accept tokens issued to <i>another</i> application is <span class="status unconfirmed">Unconfirmed</span>.</p>
-  <p><b>For people with single sign-on:</b> a tool signs you in by sending your browser to PAW, which sends it on to the company&rsquo;s identity provider (Entra ID, Okta, Authentik &hellip;). If you&rsquo;re already signed in there, it comes straight back — no password typed — and the tool receives a token carrying your identity. The tool must be registered once (an ID, a secret and its return address) by an administrator; nothing is needed per user.</p>
+  <p><b>Setting it up:</b> the tool is registered once as an application <b>in the identity provider</b> (an ID, a secret and its return address); nothing is needed per user. For single sign-on, the tool sends your browser to PAW, which sends it on to the identity provider — if you&rsquo;re already signed in there, it comes straight back with a token carrying your identity, no password typed.</p>
+  <p><b>Good to know:</b> IBM&rsquo;s &ldquo;authorized applications&rdquo; (OAuth) for Planning Analytics support only <b>interactive</b> sign-in (a person in a browser); the non-interactive &ldquo;client credentials&rdquo; flow is documented as <b>not supported</b> there. <span class="status doc">Documented</span> for PAW on Cloud. Whether PAW and the v12 engine accept tokens issued to a <i>different</i> registered application is <span class="status unconfirmed">Unconfirmed</span>.</p>
+  <p><b>Common problems:</b> a scheduled job can&rsquo;t sign in &rarr; it needs app credentials, since the interactive flow needs a person; the token expires &rarr; the tool must fetch a new one.</p>
 
-  <h3><span class="n">4.8</span>Through Planning Analytics Workspace (PAW)</h3>
+  <h3 id="m9"><span class="n">4.9</span>Through Planning Analytics Workspace (PAW)</h3>
   <p><b>In one sentence:</b> PAW signs you in once and passes your requests on to TM1 for you. <span class="status proven">Proven in practice</span> — lab.</p>
+  <p><b>When you&rsquo;ll see it:</b> wherever people use Planning Analytics Workspace — and for tools that reach TM1 through PAW rather than directly.</p>
   <p><b>How it works:</b> you sign in to PAW (which checks your login against its configured <i>TM1 login server</i>, or Cognos, or an identity provider); PAW keeps your session in cookies and forwards TM1 requests at <code>&lt;PAW&gt;/api/v0/tm1/&lt;server&gt;/api/v1/&hellip;</code>. Programs using this route must send PAW&rsquo;s anti-forgery value (cookie <code>ba-sso-csrf</code>) back in a header (<code>ba-sso-authenticity</code>).</p>
+  <p><b>Setting it up:</b> in PAW&rsquo;s administration, the authentication mode (TM1 login server, Cognos, or an identity provider) and the TM1 servers it can reach.</p>
   <p><b>Common problems:</b> you can sign in to PAW but see no data on a server &rarr; you&rsquo;re not a user on <i>that</i> server; PAW&rsquo;s login server down &rarr; nobody can sign in to PAW.</p>
-
-  <h3><span class="n">4.9</span>v11 OpenID Connect</h3>
-  <p><b>In one sentence:</b> a v11 server can be told to accept sign-in from a company identity provider (Entra ID, Okta &hellip;) using the OpenID Connect standard. <span class="status doc">Documented</span> that it exists; how a tool hands the result to TM1 — <span class="status unconfirmed">Unconfirmed</span>.</p>
-  <p><b>Setting it up:</b> <code>SupportOpenConnect=T</code> in <code>tm1s.cfg</code> (default off). <b>Not available in v12</b>, where the platform handles identity instead (4.6, 4.7).</p>
-  <p><b>How tools use it (Cubewise Canvas, from its documentation):</b> the tool is registered in the identity provider (client ID, client secret, the provider&rsquo;s &ldquo;discovery&rdquo; address); when a user needs data, the browser is sent to the provider&rsquo;s sign-in page (single sign-on passes straight through), comes back with a one-time <b>code</b>, and the tool uses that code to sign in to TM1.</p>
 
   </div>
 </section>
@@ -276,7 +555,7 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
 <section id="s5">
   <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Directory, CAM and single sign-on — how they fit together</h2></div>
   <p>They are three different things:</p>
-  <div class="table-wrap"><table>
+  <div class="tablewrap"><table>
     <thead><tr><th>Term</th><th>What it is</th><th>Role</th></tr></thead>
     <tbody>
       <tr><td><b>LDAP / Active Directory</b></td><td>The <b>directory</b> — where users and passwords live</td><td>&ldquo;Who exists, and is this password right?&rdquo;</td></tr>
@@ -285,7 +564,7 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
     </tbody>
   </table></div>
   <p>How they combine in TM1 v11:</p>
-  <div class="table-wrap"><table>
+  <div class="tablewrap"><table>
     <thead><tr><th>Setup</th><th>What the user does</th><th>SSO?</th></tr></thead>
     <tbody>
       <tr><td><b>CAM + AD/LDAP namespace</b></td><td>Types their AD username + password; Cognos checks them against the directory</td><td>No</td></tr>
@@ -299,14 +578,14 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
 
 <section id="s6">
   <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">The very first administrator on a new server</h2></div>
-  <div class="table-wrap"><table>
+  <div class="tablewrap"><table>
     <thead><tr><th>Setup</th><th>How the first admin is created</th></tr></thead>
     <tbody>
-      <tr><td><b>Native (mode 1)</b></td><td>A new server has user <code>admin</code> with a <b>blank password</b>. Sign in that way once and set a password immediately (TI <code>AssignClientPassword(&apos;admin&rsquo;,&hellip;)</code>, or REST <code>PATCH Users(&apos;admin&rsquo;)</code> with <code>{"Password":"&hellip;"}</code>).</td></tr>
+      <tr><td><b>Native (mode 1)</b></td><td>A new server has user <code>admin</code> with a <b>blank password</b>. Sign in that way once and set a password immediately (TI <code>AssignClientPassword('admin', '&hellip;')</code>, or REST <code>PATCH Users('admin')</code> with <code>{"Password":"&hellip;"}</code>).</td></tr>
       <tr><td><b>CAM (mode 4/5)</b></td><td>TM1 only lists a CAM user after they have tried to sign in once. So: set <b>mode 4</b> with the CAM settings &rarr; restart &rarr; sign in once with your CAM account (you get no rights yet) &rarr; set <b>mode 1</b> &rarr; restart &rarr; sign in as <code>admin</code> &rarr; add your CAM user to the <code>ADMIN</code> group &rarr; set <b>mode 5</b> &rarr; restart &rarr; sign in with your CAM account, now as administrator. <i>(Practitioner-documented; an Architect-only shortcut uses mode 2 to browse the namespace instead.)</i></td></tr>
       <tr><td><b>Windows (mode 2/3)</b></td><td>In mode 1 as <code>admin</code>, add your <code>DOMAIN\user</code> as a client in <code>ADMIN</code>, then switch to mode 2 or 3.</td></tr>
       <tr><td><b>LDAP password check</b></td><td>Users must exist in TM1 first — add them in mode 1, or import them with ETLDAP.</td></tr>
-      <tr><td><b>v12</b></td><td>Comes from the platform&rsquo;s administrators, not from TM1 — see <a href="#s4">4.7</a>.</td></tr>
+      <tr><td><b>v12</b></td><td>Comes from the platform&rsquo;s administrators, not from TM1 — see <a href="#m8">4.8</a>.</td></tr>
     </tbody>
   </table></div>
   <div class="callout warn"><p><b>A warning about blank and sample passwords.</b> A brand-new TM1 server with <code>admin</code> and a blank password — or an IBM sample server (24Retail, Planning Sample) still on its published <code>admin</code> / <code>apple</code> login — is open to anyone who can reach it on the network. Set a real password before the server is reachable by anyone else, and change or remove the sample servers on any shared machine.</p></div>
@@ -323,7 +602,7 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
 <section id="s8">
   <div class="sec-head"><span class="sec-num">08</span><h2 class="sec-title">Keeping the connection private (TLS)</h2></div>
   <p>Basic and CAM credentials are only <i>encoded</i>, so the connection itself must be encrypted (<b>HTTPS / TLS</b>) on any network you don&rsquo;t fully control. Three ways a tool can treat the server&rsquo;s certificate:</p>
-  <div class="table-wrap"><table>
+  <div class="tablewrap"><table>
     <thead><tr><th>Setting</th><th>Meaning</th><th>Use</th></tr></thead>
     <tbody>
       <tr><td><b>Full check</b></td><td>Certificate signed by a trusted authority <b>and</b> issued for that server&rsquo;s name</td><td>Production</td></tr>
@@ -336,7 +615,7 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
 <section id="s9">
   <div class="sec-head"><span class="sec-num">09</span><h2 class="sec-title">What the common tools support</h2></div>
   <p>From each project&rsquo;s own documentation (see <a href="#s10">Sources</a>) — ARC&rsquo;s column uses Cubewise&rsquo;s own wording, which lists native, Windows, CAM, OpenID, IBM ID and PA SaaS v12 keys. Check each project for the current state.</p>
-  <div class="table-wrap"><table>
+  <div class="tablewrap"><table>
     <thead><tr><th>Method</th><th>TM1py (open source)</th><th>Cubewise ARC (vendor&rsquo;s description)</th><th>TM1 IDE</th></tr></thead>
     <tbody>
       <tr><td>Native / LDAP check</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
