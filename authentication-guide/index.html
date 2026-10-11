@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How signing in to TM1 works — a plain-English guide</title>
+<meta name="description" content="Every way a person or a program can sign in to IBM Planning Analytics (TM1): native, LDAP, CAM username/password and single sign-on, Windows integrated, v12 API keys and tokens, OpenID Connect, and PAW. How each works, how to set it up, and what goes wrong.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ink:#1c1917; --ink-soft:#57534e; --ink-faint:#a8a29e;
+    --paper:#fafaf9; --panel:#ffffff; --rule:#e7e5e4; --rule-soft:#f5f5f4;
+    --steel:#0f766e; --steel-light:#f0fdfa;
+    --green:#166534; --green-light:#f0fdf4;
+    --amber:#92400e; --amber-light:#fef3c7;
+    --red:#991b1b; --red-light:#fee2e2;
+    --indigo:#4c1d95; --indigo-light:#ede9fe;
+    --maxw:860px;
+  }
+  .status{display:inline-block;padding:1px 9px;border-radius:999px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;margin-left:6px}
+  .status.doc{background:var(--steel-light);color:var(--steel)}
+  .status.proven{background:var(--green-light);color:var(--green)}
+  .status.unconfirmed{background:var(--amber-light);color:var(--amber)}
+  .subsec h3{font-size:1.14rem;font-weight:600;margin:34px 0 8px;color:var(--ink)}
+  .subsec h3 .n{color:var(--steel);font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.06em;margin-right:8px}
+  th,td{vertical-align:top}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">Security &nbsp;·&nbsp; IBM Planning Analytics</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Authentication &nbsp;·&nbsp; TM1</p>
+    <h1 class="title">How signing in to TM1 works:<br><span class="accent">a plain-English guide</span></h1>
+    <p class="standfirst">Every way a person or a program can sign in to IBM Planning Analytics (TM1), explained so anyone can follow it: what each method is, when you&rsquo;ll meet it, how it works step by step, how to set it up, and what goes wrong.</p>
+    <div class="meta-row">
+      <span><b>Status</b> Published October 2026</span>
+      <span><b>Covers</b> TM1 v11 and v12 · native, LDAP, CAM, Windows, OIDC, PAW</span>
+      <span><b>Related</b> <a href="../governed-tm1-deploys/">Governed TM1 deploys</a></span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#s1">The big picture</a></li>
+      <li><a href="#s2">Words you&rsquo;ll meet</a></li>
+      <li><a href="#s3">Which method does my server use?</a></li>
+      <li><a href="#s4">The methods, one by one</a></li>
+      <li><a href="#s5">Directory, CAM and single sign-on</a></li>
+      <li><a href="#s6">The very first administrator</a></li>
+      <li><a href="#s7">Sessions and lock-outs</a></li>
+      <li><a href="#s8">Keeping the connection private (TLS)</a></li>
+      <li><a href="#s9">What the common tools support</a></li>
+      <li><a href="#s10">Sources</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<p>This guide is about <b>TM1 itself</b> — it applies whatever tool you use (PAW, Architect, TM1py, ARC, TM1 IDE, your own scripts). Where a fact comes from IBM, a vendor or a well-used open-source library it is linked under <a href="#s10">Sources</a>. Where something has not been confirmed on a real server it says so.
+<span class="status doc">Documented</span> = stated by IBM · <span class="status proven">Proven in practice</span> = shown by widely used open-source code or confirmed on a real server · <span class="status unconfirmed">Unconfirmed</span> = believed correct, not yet checked.</p>
+
+<section id="s1">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">The big picture</h2></div>
+  <p>Signing in always answers two questions:</p>
+  <ol>
+    <li><b>Who are you?</b> — <i>authentication</i>. Proven with a password, a key, a ticket from Windows, or a pass from another system that already knows you.</li>
+    <li><b>What may you do?</b> — <i>authorisation</i>. In TM1 this is always decided <b>inside TM1</b>, by the security groups a user belongs to (<code>}ClientGroups</code>). However someone signs in, TM1&rsquo;s own security still decides what they see.</li>
+  </ol>
+  <p>Once TM1 is satisfied about <i>who</i>, it hands back a <b>session ticket</b> — a cookie called <code>TM1SessionId</code>. A well-behaved program sends that ticket with every later request instead of signing in again. Think of it like a hotel key card: you show your passport once at the desk, then use the card for the rest of your stay.</p>
+<pre>
+  you / your tool                      TM1 server
+  ───────────────                      ──────────
+  1. "Here's proof of who I am"  ───▶  checks it (itself, or asks a directory / Cognos)
+  2.                             ◀───  "OK — here's your session ticket (TM1SessionId)"
+  3. "Get me this view" + ticket ───▶  recognises the ticket, applies your security
+</pre>
+  <p>Everything in the rest of this article is about <b>step 1</b> — the different ways of proving who you are.</p>
+</section>
+
+<section id="s2">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Words you&rsquo;ll meet</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Word</th><th>Plain meaning</th></tr></thead>
+    <tbody>
+      <tr><td><b>Authentication</b></td><td>Proving who you are.</td></tr>
+      <tr><td><b>Authorisation</b></td><td>Deciding what you&rsquo;re allowed to do. In TM1, always TM1&rsquo;s own security groups.</td></tr>
+      <tr><td><b>Directory</b></td><td>The company&rsquo;s list of people and passwords — usually <b>Active Directory (AD)</b>, spoken to using <b>LDAP</b>.</td></tr>
+      <tr><td><b>LDAP</b></td><td>The standard &ldquo;language&rdquo; for asking a directory &ldquo;does this user exist, is this password right?&rdquo;.</td></tr>
+      <tr><td><b>CAM</b></td><td><i>Cognos Access Manager</i> — the sign-in service of IBM Cognos Analytics. TM1 can be told to trust it.</td></tr>
+      <tr><td><b>Namespace</b></td><td>A directory as seen by Cognos (e.g. &ldquo;AD&rdquo; or &ldquo;LDAP&rdquo;). A CAM user is always &ldquo;user X in namespace Y&rdquo;.</td></tr>
+      <tr><td><b>Passport</b></td><td>A pass Cognos gives you once you&rsquo;ve signed in to it. TM1 accepts it instead of a password.</td></tr>
+      <tr><td><b>SSO</b> (single sign-on)</td><td>Not typing a password, because you already signed in somewhere TM1 trusts (usually Windows).</td></tr>
+      <tr><td><b>Kerberos / NTLM</b></td><td>The ways Windows proves who you are to other machines, without sending your password.</td></tr>
+      <tr><td><b>Session / <code>TM1SessionId</code></b></td><td>TM1&rsquo;s ticket meaning &ldquo;already signed in&rdquo;.</td></tr>
+      <tr><td><b>Token</b></td><td>A short-lived pass obtained by proving who you are once. Used instead of a password; expires on its own.</td></tr>
+      <tr><td><b>API key</b></td><td>A long random secret made for one user, used by programs instead of their password. Can be revoked.</td></tr>
+      <tr><td><b>OAuth / OIDC</b></td><td>Modern standards for &ldquo;sign in with your company account&rdquo; and for handing tokens to apps.</td></tr>
+      <tr><td><b>TLS / HTTPS</b></td><td>Encryption of the connection itself, so nobody on the network can read what&rsquo;s sent.</td></tr>
+      <tr><td><b>Admin server</b></td><td>The small TM1 service (default port 5895) that lists the TM1 servers on a machine and their ports.</td></tr>
+      <tr><td><b><code>tm1s.cfg</code></b></td><td>Each TM1 server&rsquo;s configuration file — where its security method is set.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s3">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Which method does my server use?</h2></div>
+  <div class="subsec">
+  <h3>TM1 v11 (Planning Analytics Local 2.0.x)</h3>
+  <p>Look in the server&rsquo;s <code>tm1s.cfg</code>:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Setting</th><th>Meaning</th><th>Section</th></tr></thead>
+    <tbody>
+      <tr><td><code>IntegratedSecurityMode=1</code></td><td>TM1&rsquo;s own users and passwords</td><td><a href="#s4">4.1</a></td></tr>
+      <tr><td><code>IntegratedSecurityMode=1</code> + <code>PasswordSource=LDAP</code></td><td>TM1&rsquo;s own users, passwords checked against the directory</td><td><a href="#s4">4.2</a></td></tr>
+      <tr><td><code>IntegratedSecurityMode=2</code></td><td>Users may choose: TM1 password <b>or</b> Windows sign-in</td><td><a href="#s4">4.1 / 4.5</a></td></tr>
+      <tr><td><code>IntegratedSecurityMode=3</code></td><td>Windows sign-in only</td><td><a href="#s4">4.5</a></td></tr>
+      <tr><td><code>IntegratedSecurityMode=4</code></td><td>Cognos (CAM) signs people in; TM1&rsquo;s groups decide rights</td><td><a href="#s4">4.3 / 4.4</a></td></tr>
+      <tr><td><code>IntegratedSecurityMode=5</code></td><td>Cognos (CAM) signs people in; groups can come from Cognos <b>and</b> TM1</td><td><a href="#s4">4.3 / 4.4</a></td></tr>
+      <tr><td><code>SupportOpenConnect=T</code></td><td>The server also accepts <b>OpenID Connect</b> sign-in (a company identity provider)</td><td><a href="#s4">4.9</a></td></tr>
+    </tbody>
+  </table></div>
+  <p>Modes 4 and 5 also need <code>ServerCAMURI</code> and <code>ClientCAMURI</code> — the addresses of the Cognos services. <span class="status doc">Documented</span></p>
+
+  <h3>TM1 v12 (Planning Analytics Engine / TM1 Database 12)</h3>
+  <p>There is <b>no <code>tm1s.cfg</code> security mode, no CAM and no Architect</b>. Identity always comes from the platform:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Where v12 runs</th><th>Method</th><th>Section</th></tr></thead>
+    <tbody>
+      <tr><td>IBM&rsquo;s cloud (Planning Analytics as a Service)</td><td>Your IBM / company sign-in in the browser; <b>API key</b> for programs</td><td><a href="#s4">4.6</a></td></tr>
+      <tr><td>On-premises or Cloud Pak for Data</td><td>The platform&rsquo;s identity provider; <b>app ID + secret &rarr; token</b> for programs</td><td><a href="#s4">4.7</a></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Asking the server (no password needed)</h3>
+  <p>A tool can ask a TM1 v11 server which method it uses <b>without signing in</b>: send any request with no credentials and read the <code>WWW-Authenticate</code> line of the &ldquo;401 Unauthorized&rdquo; answer. Because no username is sent, this does <b>not</b> count as a failed login.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Answer contains</th><th>Meaning</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td><code>Basic realm="TM1"</code></td><td>TM1&rsquo;s own security (native, or the LDAP password check)</td><td><span class="status proven">Proven</span> — TM1 v11.8, mode 1</td></tr>
+      <tr><td>A CAM scheme and the Cognos address to get a passport</td><td>CAM (mode 4/5)</td><td><span class="status doc">Documented</span> by IBM; exact wording <span class="status unconfirmed">Unconfirmed</span></td></tr>
+      <tr><td><code>Negotiate</code></td><td>Windows integrated login (mode 2/3)</td><td><span class="status unconfirmed">Unconfirmed</span></td></tr>
+    </tbody>
+  </table></div>
+  <p>Real example (native server):</p>
+<pre>
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Basic realm="TM1"
+Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
+</pre>
+  <p>Note the server hands out a session cookie even on the refusal — it is not signed in until credentials are sent.</p>
+
+  <h3>Through PAW</h3>
+  <p>Planning Analytics Workspace can sit in front of TM1 and sign people in itself — see <a href="#s4">4.8</a>.</p>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">The methods, one by one</h2></div>
+  <div class="subsec">
+
+  <h3><span class="n">4.1</span>TM1 native security</h3>
+  <p><b>In one sentence:</b> TM1 keeps its own list of users and passwords. <span class="status doc">Documented</span></p>
+  <p><b>When you&rsquo;ll see it:</b> labs, smaller sites, and any brand-new server before it is switched to something else.</p>
+<pre>
+  tool ── "Authorization: Basic &lt;name:password&gt;" ──▶ TM1   (checks its own }Clients list)
+  tool ◀────────────── TM1SessionId ──────────────── TM1
+</pre>
+  <p>The name and password are only <i>encoded</i> (base64), not encrypted — which is why TLS (<a href="#s8">section 8</a>) matters.</p>
+  <p><b>Setting it up:</b> the default. Users are <code>}Clients</code> elements; passwords are set by an admin (TI <code>AssignClientPassword</code>, or the REST API).</p>
+  <p><b>Common problems:</b> wrong password three times &rarr; the account is locked (<a href="#s7">section 7</a>).</p>
+
+  <h3><span class="n">4.2</span>TM1 users, LDAP password check</h3>
+  <p><b>In one sentence:</b> users still live in TM1, but TM1 asks the company directory whether the password is right. <span class="status doc">Documented</span></p>
+  <p><b>When you&rsquo;ll see it:</b> sites that want company passwords without installing Cognos.</p>
+<pre>
+  tool ── Basic &lt;name:password&gt; ──▶ TM1 ── "is this password right?" ──▶ directory (LDAP)
+  tool ◀──────── TM1SessionId ───── TM1 ◀──────────── "yes" ─────────── directory
+</pre>
+  <p>To a tool it looks <b>exactly like native security</b> — same header. Never single sign-on: a password is always typed.</p>
+  <p><b>Setting it up (<code>tm1s.cfg</code>):</b> <code>PasswordSource=LDAP</code>, <code>LDAPHost</code>, <code>LDAPPort</code> (636 for secure LDAP), <code>LDAPSearchBase</code> (where users live), <code>LDAPSearchField</code> (usually <code>sAMAccountName</code> = the Windows user ID), <code>LDAPUseServerAccount</code>. Users must already exist in TM1 — add them by hand or import them with IBM&rsquo;s <b>ETLDAP</b> utility, which only <i>adds</i> users (it never updates or deletes).</p>
+  <p><b>Common problems:</b> user exists in AD but not in TM1 &rarr; can&rsquo;t sign in; wrong search base &rarr; every login fails.</p>
+
+  <h3><span class="n">4.3</span>CAM — username and password</h3>
+  <p><b>In one sentence:</b> TM1 trusts Cognos to check who you are; you type your company (directory) password. <span class="status doc">Documented</span>; the header format is <span class="status proven">proven in practice</span> by TM1py.</p>
+  <p><b>When you&rsquo;ll see it:</b> very common at larger sites — Cognos Analytics connected to Active Directory, TM1 in mode 4 or 5.</p>
+<pre>
+  tool ── "Authorization: CAMNamespace &lt;name:password:namespace&gt;" ──▶ TM1
+                                          TM1 ── asks Cognos ──▶ Cognos ── checks ──▶ Active Directory
+  tool ◀──────────────────── TM1SessionId ─────────────────── TM1
+</pre>
+  <p>The <b>namespace</b> tells Cognos which directory to check (a site can have several).</p>
+  <p><b>Exact format</b> (as used by TM1py): the word <code>CAMNamespace</code>, a space, then <code>user:password:namespace</code> encoded in base64 — e.g. <code>jsmith:secret:AD</code> becomes <code>CAMNamespace anNtaXRoOnNlY3JldDpBRA==</code>.</p>
+  <p><b>Setting it up:</b> <code>IntegratedSecurityMode=4</code> or <code>5</code>, plus <code>ServerCAMURI</code> (Cognos&rsquo;s internal dispatcher, e.g. <code>http://cognos:9300/p2pd/servlet/dispatch</code>) and <code>ClientCAMURI</code> (Cognos&rsquo;s address for users, e.g. <code>http://cognos/ibmcognos/bi/v1/disp</code>). The first administrator needs a special routine — see <a href="#s6">section 6</a>.</p>
+  <p><b>Common problems:</b> wrong or missing namespace &rarr; 401; Cognos down &rarr; nobody can sign in to TM1; a user&rsquo;s TM1 groups only refresh when they sign in again.</p>
+
+  <h3><span class="n">4.4</span>CAM — single sign-on</h3>
+  <p><b>In one sentence:</b> you&rsquo;ve already signed in to Windows; Cognos recognises you and gives you a passport, which TM1 accepts — no password typed. <span class="status doc">Documented</span>; flow <span class="status proven">proven in practice</span> by TM1py&rsquo;s &ldquo;gateway&rdquo; option.</p>
+  <p><b>When you&rsquo;ll see it:</b> the same sites as 4.3, where Cognos is set up for Windows sign-in (Kerberos).</p>
+<pre>
+  1. tool ── GET gateway?CAMNamespace=&lt;namespace&gt;, with Windows sign-in (Negotiate) ──▶ Cognos gateway
+  2. tool ◀────── passport (cookie "cam_passport") ───── Cognos
+  3. tool ── "Authorization: CAMPassport &lt;passport&gt;" ──▶ TM1 ── checks with Cognos
+  4. tool ◀──────────────── TM1SessionId ────────────── TM1
+</pre>
+  <p>When TM1 refuses a request it tells the tool where to get a passport: its &ldquo;please sign in&rdquo; answer includes the Cognos address. <span class="status doc">Documented</span></p>
+  <p><b>Common problems:</b> works in the browser but not from a script &rarr; the script isn&rsquo;t doing the Windows sign-in to the gateway; passport expired &rarr; get a new one.</p>
+
+  <h3><span class="n">4.5</span>Windows integrated login</h3>
+  <p><b>In one sentence:</b> TM1 trusts your Windows sign-in directly, with no Cognos involved. <span class="status doc">Documented</span></p>
+  <p><b>When you&rsquo;ll see it:</b> Windows-centred sites without Cognos; <code>IntegratedSecurityMode=2</code> (choice) or <code>3</code> (Windows only).</p>
+  <p><b>How it works:</b> the tool and TM1 use Windows&rsquo; own sign-in exchange (<b>Negotiate</b> — Kerberos, or the older NTLM). Your PC gets a ticket from the domain controller and shows it to TM1; <b>no password crosses the network</b>.</p>
+  <p><b>Setting it up:</b> users exist in TM1 as <code>DOMAIN\user</code>; the TM1 service may need a <i>service principal name</i> (SPN) registered in Active Directory for Kerberos. A program can only do this when it runs <b>as the Windows user</b>, on a domain-joined machine (TM1py, for example, uses the Windows-only SSPI library for it).</p>
+  <p><b>Common problems:</b> works on one PC but not another &rarr; SPN or delegation; mode 3 locks out anything that can&rsquo;t do Windows sign-in (scripts on Linux, many web tools).</p>
+
+  <h3><span class="n">4.6</span>v12 in IBM&rsquo;s cloud — API keys</h3>
+  <p><b>In one sentence:</b> people sign in through the browser with their IBM/company account; programs use an <b>API key</b> that carries the same rights as the person who made it. <span class="status doc">Documented</span> by IBM; usage <span class="status proven">proven in practice</span> by TM1py.</p>
+<pre>
+  tool ── Basic "apikey" : &lt;the key&gt; ──▶ https://&lt;region&gt;.planninganalytics.saas.ibm.com/api/&lt;tenant&gt;/v0/...
+  tool ◀──────────── session ──────────
+  TM1 database API: .../api/&lt;tenant&gt;/v0/tm1/&lt;database&gt;/api/v1
+</pre>
+  <p><b>Setting it up:</b> in Planning Analytics: your name &rarr; <b>Manage API key</b> &rarr; <b>Generate key</b>. Copy it straight away — it can&rsquo;t be shown again. Sessions time out after 60 minutes idle.</p>
+  <p><b>Common problems:</b> the key works but data is missing &rarr; the key has exactly its creator&rsquo;s rights; key lost &rarr; make a new one and revoke the old.</p>
+
+  <h3><span class="n">4.7</span>v12 on-premises and Cloud Pak for Data — app credentials and tokens</h3>
+  <p><b>In one sentence:</b> the platform&rsquo;s identity provider signs people in; programs use an <b>application ID and secret</b> (or a ready-made access token) to get a short-lived token. <span class="status proven">Proven in practice</span> by TM1py; IBM details vary by deployment — partly <span class="status unconfirmed">Unconfirmed</span>.</p>
+<pre>
+  1. tool ── app ID + secret ──▶ platform's sign-in service
+  2. tool ◀──── access token ──
+  3. tool ── "Authorization: Bearer &lt;token&gt;" ──▶ TM1 database (instance + database name in the address)
+</pre>
+  <p><b>First administrator:</b> comes from the platform — e.g. on Cloud Pak for Data, platform administrators become Workspace administrators and TM1 admins on first sign-in; other users are added to TM1 with TI <code>AddClient</code>. <span class="status doc">Documented</span></p>
+  <p><b>Note:</b> IBM&rsquo;s &ldquo;authorized applications&rdquo; (OAuth) for Planning Analytics support only <b>interactive</b> sign-in (a person signs in in a browser); the non-interactive &ldquo;client credentials&rdquo; flow is documented as <b>not supported</b> there. IBM documents this for Planning Analytics Workspace on Cloud; an <b>on-premises PAW v12</b> admin console checked on 4 Oct 2026 had <b>no</b> &ldquo;authorized applications&rdquo; page, so on-premises app registration happens elsewhere — in a lab with Authentik as the identity provider, applications (client ID + secret) are registered <b>in the identity provider</b>; PAW itself is one such application. Whether PAW and the v12 engine accept tokens issued to <i>another</i> application is <span class="status unconfirmed">Unconfirmed</span>.</p>
+  <p><b>For people with single sign-on:</b> a tool signs you in by sending your browser to PAW, which sends it on to the company&rsquo;s identity provider (Entra ID, Okta, Authentik &hellip;). If you&rsquo;re already signed in there, it comes straight back — no password typed — and the tool receives a token carrying your identity. The tool must be registered once (an ID, a secret and its return address) by an administrator; nothing is needed per user.</p>
+
+  <h3><span class="n">4.8</span>Through Planning Analytics Workspace (PAW)</h3>
+  <p><b>In one sentence:</b> PAW signs you in once and passes your requests on to TM1 for you. <span class="status proven">Proven in practice</span> — lab.</p>
+  <p><b>How it works:</b> you sign in to PAW (which checks your login against its configured <i>TM1 login server</i>, or Cognos, or an identity provider); PAW keeps your session in cookies and forwards TM1 requests at <code>&lt;PAW&gt;/api/v0/tm1/&lt;server&gt;/api/v1/&hellip;</code>. Programs using this route must send PAW&rsquo;s anti-forgery value (cookie <code>ba-sso-csrf</code>) back in a header (<code>ba-sso-authenticity</code>).</p>
+  <p><b>Common problems:</b> you can sign in to PAW but see no data on a server &rarr; you&rsquo;re not a user on <i>that</i> server; PAW&rsquo;s login server down &rarr; nobody can sign in to PAW.</p>
+
+  <h3><span class="n">4.9</span>v11 OpenID Connect</h3>
+  <p><b>In one sentence:</b> a v11 server can be told to accept sign-in from a company identity provider (Entra ID, Okta &hellip;) using the OpenID Connect standard. <span class="status doc">Documented</span> that it exists; how a tool hands the result to TM1 — <span class="status unconfirmed">Unconfirmed</span>.</p>
+  <p><b>Setting it up:</b> <code>SupportOpenConnect=T</code> in <code>tm1s.cfg</code> (default off). <b>Not available in v12</b>, where the platform handles identity instead (4.6, 4.7).</p>
+  <p><b>How tools use it (Cubewise Canvas, from its documentation):</b> the tool is registered in the identity provider (client ID, client secret, the provider&rsquo;s &ldquo;discovery&rdquo; address); when a user needs data, the browser is sent to the provider&rsquo;s sign-in page (single sign-on passes straight through), comes back with a one-time <b>code</b>, and the tool uses that code to sign in to TM1.</p>
+
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Directory, CAM and single sign-on — how they fit together</h2></div>
+  <p>They are three different things:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Term</th><th>What it is</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><b>LDAP / Active Directory</b></td><td>The <b>directory</b> — where users and passwords live</td><td>&ldquo;Who exists, and is this password right?&rdquo;</td></tr>
+      <tr><td><b>CAM</b></td><td>Cognos&rsquo;s <b>sign-in service</b> — TM1 trusts it in mode 4/5</td><td>&ldquo;Cognos vouches for this person&rdquo;</td></tr>
+      <tr><td><b>SSO</b> (single sign-on)</td><td><b>Not typing a password</b> — a sign-in that already happened is reused</td><td>&ldquo;You&rsquo;re already signed in&rdquo;</td></tr>
+    </tbody>
+  </table></div>
+  <p>How they combine in TM1 v11:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Setup</th><th>What the user does</th><th>SSO?</th></tr></thead>
+    <tbody>
+      <tr><td><b>CAM + AD/LDAP namespace</b></td><td>Types their AD username + password; Cognos checks them against the directory</td><td>No</td></tr>
+      <tr><td><b>CAM + SSO</b></td><td>Nothing — Cognos trusts their Windows login (Kerberos), issues a passport, TM1 accepts it. The most common SSO at larger sites</td><td>Yes — through CAM</td></tr>
+      <tr><td><b>Windows integrated (mode 3)</b></td><td>Nothing — TM1 trusts their Windows login directly, no Cognos</td><td>Yes — without CAM</td></tr>
+      <tr><td><b>TM1&rsquo;s own LDAP check</b> (<code>PasswordSource=LDAP</code>)</td><td>Types a password; TM1 checks it against the directory</td><td>Never</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>In short: single sign-on comes through CAM (or Windows integrated), never through LDAP alone.</b> LDAP/AD is usually the directory <i>behind</i> CAM, whether or not single sign-on is switched on.</p>
+</section>
+
+<section id="s6">
+  <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">The very first administrator on a new server</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Setup</th><th>How the first admin is created</th></tr></thead>
+    <tbody>
+      <tr><td><b>Native (mode 1)</b></td><td>A new server has user <code>admin</code> with a <b>blank password</b>. Sign in that way once and set a password immediately (TI <code>AssignClientPassword(&apos;admin&rsquo;,&hellip;)</code>, or REST <code>PATCH Users(&apos;admin&rsquo;)</code> with <code>{"Password":"&hellip;"}</code>).</td></tr>
+      <tr><td><b>CAM (mode 4/5)</b></td><td>TM1 only lists a CAM user after they have tried to sign in once. So: set <b>mode 4</b> with the CAM settings &rarr; restart &rarr; sign in once with your CAM account (you get no rights yet) &rarr; set <b>mode 1</b> &rarr; restart &rarr; sign in as <code>admin</code> &rarr; add your CAM user to the <code>ADMIN</code> group &rarr; set <b>mode 5</b> &rarr; restart &rarr; sign in with your CAM account, now as administrator. <i>(Practitioner-documented; an Architect-only shortcut uses mode 2 to browse the namespace instead.)</i></td></tr>
+      <tr><td><b>Windows (mode 2/3)</b></td><td>In mode 1 as <code>admin</code>, add your <code>DOMAIN\user</code> as a client in <code>ADMIN</code>, then switch to mode 2 or 3.</td></tr>
+      <tr><td><b>LDAP password check</b></td><td>Users must exist in TM1 first — add them in mode 1, or import them with ETLDAP.</td></tr>
+      <tr><td><b>v12</b></td><td>Comes from the platform&rsquo;s administrators, not from TM1 — see <a href="#s4">4.7</a>.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn"><p><b>A warning about blank and sample passwords.</b> A brand-new TM1 server with <code>admin</code> and a blank password — or an IBM sample server (24Retail, Planning Sample) still on its published <code>admin</code> / <code>apple</code> login — is open to anyone who can reach it on the network. Set a real password before the server is reachable by anyone else, and change or remove the sample servers on any shared machine.</p></div>
+</section>
+
+<section id="s7">
+  <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">Sessions and lock-outs</h2></div>
+  <p><b>Lock-outs.</b> TM1 v11 allows <b>3 failed sign-ins by default</b> (<code>MaximumLoginAttempts</code> in <code>tm1s.cfg</code>). After that the account is refused until an administrator resets its password or the server restarts. <span class="status doc">Documented</span> — not applicable to v12.</p>
+  <div class="callout warn"><p><b>Watch out for tools that keep retrying.</b> Any program that keeps trying a stored password that has since changed — a scheduler, a dashboard that refreshes, an IDE polling in the background — will lock the account within seconds. A well-behaved tool tries once, reports the failure, and waits for a person.</p></div>
+  <p><b>Leaked sessions.</b> Every successful sign-in creates a session. A program that sends the password with <b>every</b> request, instead of reusing the <code>TM1SessionId</code> ticket, creates a new session each time; they pile up until TM1&rsquo;s session timeout. A real example: a lab server was found with <b>538 open sessions</b> left by a tool doing exactly this. They show up in the <code>Sessions</code> list, in TM1 Top and in <code>}StatsByClient</code>, and they waste memory. A well-behaved tool signs in once per server, reuses the ticket, and closes the session (REST: <code>POST ActiveSession/tm1.Close</code>) when it&rsquo;s done. <span class="status proven">Proven on a real v11.8 server</span></p>
+  <p><b>Measured, before and after fixing a tool to reuse its ticket</b> (same server, v11.8): before — a new session on every request, 538 left open; after — a user browsing cubes, views and dimensions for several minutes added <b>no</b> sessions beyond the one created at sign-in. To check your own server, compare the <code>Sessions</code> list before and after using a tool — and remember that every <i>separate</i> program you run (including a quick check script) signs in once itself.</p>
+</section>
+
+<section id="s8">
+  <div class="sec-head"><span class="sec-num">08</span><h2 class="sec-title">Keeping the connection private (TLS)</h2></div>
+  <p>Basic and CAM credentials are only <i>encoded</i>, so the connection itself must be encrypted (<b>HTTPS / TLS</b>) on any network you don&rsquo;t fully control. Three ways a tool can treat the server&rsquo;s certificate:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Setting</th><th>Meaning</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><b>Full check</b></td><td>Certificate signed by a trusted authority <b>and</b> issued for that server&rsquo;s name</td><td>Production</td></tr>
+      <tr><td><b>Chain only</b></td><td>Signed by a trusted authority, server name not checked</td><td>IBM&rsquo;s stock TM1 certificate, which carries no server name</td></tr>
+      <tr><td><b>No check</b></td><td>Anything accepted</td><td>Throwaway labs only — anyone on the network could intercept</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s9">
+  <div class="sec-head"><span class="sec-num">09</span><h2 class="sec-title">What the common tools support</h2></div>
+  <p>From each project&rsquo;s own documentation (see <a href="#s10">Sources</a>) — ARC&rsquo;s column uses Cubewise&rsquo;s own wording, which lists native, Windows, CAM, OpenID, IBM ID and PA SaaS v12 keys. Check each project for the current state.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Method</th><th>TM1py (open source)</th><th>Cubewise ARC (vendor&rsquo;s description)</th><th>TM1 IDE</th></tr></thead>
+    <tbody>
+      <tr><td>Native / LDAP check</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>CAM — username + password</td><td>Yes</td><td>Yes</td><td>Built to TM1py&rsquo;s format — not yet confirmed on a CAM server</td></tr>
+      <tr><td>CAM — single sign-on</td><td>Yes (&ldquo;gateway&rdquo;)</td><td>Yes</td><td>Planned</td></tr>
+      <tr><td>Windows integrated</td><td>Yes</td><td>Yes (mode 3, from v4.1.1)</td><td>Planned</td></tr>
+      <tr><td>v12 cloud — API key</td><td>Yes</td><td>Yes</td><td>Planned</td></tr>
+      <tr><td>v12 on-prem / Cloud Pak — app credentials / tokens</td><td>Yes</td><td>Vendor lists &ldquo;OpenID&rdquo; and &ldquo;IBM ID&rdquo;</td><td>Via PAW in the lab; direct planned</td></tr>
+      <tr><td>v11 OpenID Connect (<code>SupportOpenConnect</code>)</td><td>Not found in its docs</td><td>Vendor lists &ldquo;OpenID&rdquo; (sister product Canvas documents the flow)</td><td>Planned</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s10">
+  <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">Sources</h2></div>
+  <ul>
+    <li>IBM — <a href="https://ibm.com/support/knowledgecenter/SSD29G_2.0.0/com.ibm.swg.ba.cognos.tm1_inst.2.0.0.doc/c_maximumloginattempts_tm1.html">MaximumLoginAttempts</a></li>
+    <li>IBM — <a href="https://www.ibm.com/docs/SSD29G_2.0.0/com.ibm.swg.ba.cognos.tm1_inst.2.0.0.doc/t_tm1_inst_config_ldap_validation.html">Configuring LDAP validation</a></li>
+    <li>IBM — <a href="https://www.ibm.com/docs/en/SSD29G_2.0.0/com.ibm.swg.ba.cognos.tm1_rest_api.2.0.0.doc/tm1_rest_api.pdf">TM1 REST API (v11)</a></li>
+    <li>IBM — <a href="https://www.ibm.com/docs/en/planning-analytics/2.1.0?topic=api-authorized-applications-oauth">Authorized applications (OAuth), Planning Analytics 2.1</a></li>
+    <li>IBM — <a href="https://www.ibm.com/support/pages/cloud-pak-data-planning-analytics-2049-user-management-and-authentication">Cloud Pak for Data: user management and authentication</a></li>
+    <li>IBM Community — <a href="https://community.ibm.com/community/user/businessanalytics/blogs/jessica-nicholls/2025/02/03/managing-paaas-with-apis">Managing Planning Analytics as a Service with API requests</a></li>
+    <li>TM1py — <a href="https://github.com/cubewise-code/tm1py">project</a> · <a href="https://tm1py.org/latest/reference/services/restservice/">RestService reference</a></li>
+    <li>IBM — <a href="https://www.ibm.com/docs/en/planning-analytics/2.0.0?topic=padcp-supportopenconnect">SupportOpenConnect</a></li>
+    <li>Cubewise — <a href="https://code.cubewise.com/blog/setting-up-open-id-with-canvas/">Setting up Open ID with Canvas</a></li>
+    <li>Cubewise — <a href="https://code.cubewise.com/arc-docs/setting-up-sso-with-cam-and-arc">Setting up SSO with CAM and Arc</a> · <a href="https://forum.cubewise.com/t/arc-compatibility-with-integrated-security/3603">Arc and Integrated Security</a> · <a href="https://code.cubewise.com/blog/connecting-to-the-ibm-cloud-remotely-with-arc/">Arc and IBM Cloud</a></li>
+    <li>Exploring TM1 — <a href="https://exploringtm1.com/change-tm1-use-cognos-security-cam/">How to set TM1 to use Cognos security (CAM)</a></li>
+    <li>cogknowhow — <a href="https://cogknowhow.tm1.dk/archives/1394">Setup of PAX (first CAM admin)</a> · <a href="https://cogknowhow.tm1.dk/archives/307">SSO against Active Directory</a></li>
+    <li>TM1 Forum — <a href="https://www.tm1forum.com/viewtopic.php?t=13227">CAMNamespace header / 401</a> · <a href="https://tm1forum.com/viewtopic.php?t=16073">REST API and mode 5</a> · <a href="https://tm1forum.com/viewtopic.php?t=2310">Configuring TM1 with AD</a> · <a href="https://www.tm1forum.com/viewtopic.php?t=8106">ETLDAP</a></li>
+  </ul>
+  <p><i>Corrections welcome — this guide is meant to be a shared reference. Last reviewed 4 Oct 2026.</i></p>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>How signing in to TM1 works — a plain-English guide.</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      Authentication · TM1 · IBM Planning Analytics<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
