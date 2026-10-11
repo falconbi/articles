@@ -12,6 +12,9 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="falconbi.css">
 <style>
+  /* falconbi.css sets .toc sticky for sidebar use — this is a full-width article, so keep the TOC in flow */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
   :root{
     --ink:#1c1917; --ink-soft:#57534e; --ink-faint:#a8a29e;
     --paper:#fafaf9; --panel:#ffffff; --rule:#e7e5e4; --rule-soft:#f5f5f4;
