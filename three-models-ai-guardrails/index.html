@@ -397,7 +397,7 @@
 <section id="a5">
   <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Build 2 — workforce planning: deployment</h2></div>
   <p>The second build was a workforce planning model: versions and assumptions, pay rates, a hiring plan, FX, and employee income tax through to gross-to-net pay. It went through several rounds — a design review and rebuild, then house conventions, then versions.</p>
-  <p>The real test was not the build. It was <b>deploying it</b>: through the IDE's pipeline, from a development server to a production server, then comparing the figures. They matched to the cent.</p>
+  <p>The real test was not the build. It was <b>deploying it</b>: through a governed deploy pipeline, from a development server to a production server, then comparing the figures. They matched to the cent.</p>
   <p>The first real deploy also exposed nine bugs in the deploy pipeline itself. All were fixed. That is the point of doing it for real.</p>
 </section>
 
@@ -459,7 +459,7 @@
   <p>The same lessons are now moving into the tools themselves:</p>
   <ul>
     <li><b>Tests live in the model</b>, not in the tool — they travel with it, and run on development and production.</li>
-    <li><b>Deployment through TM1's own Git integration</b>, with the IDE adding what Git cannot do and a readiness check before every push.</li>
+    <li><b>Deployment through TM1's own Git integration</b>, with our own tooling adding what Git cannot do and a readiness check before every push.</li>
     <li><b>An AI that builds inside the same gates as a person</b>: change sets, checks, approval.</li>
   </ul>
   <p>Three models in, the conclusion is simple. AI is genuinely useful for building TM1 models — when the guardrails come first.</p>

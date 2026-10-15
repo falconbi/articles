@@ -353,7 +353,7 @@
 
 <section id="a1">
   <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">The goal</h2></div>
-  <p>We built a browser IDE for TM1 so that developers — and AI agents working for them — can build models fast. Speed is the easy part. The hard part is trusting what lands on production. Before anything reaches PROD, someone has to be able to answer four questions:</p>
+  <p>TM1 models can now be built fast — by developers, and more and more by AI agents working for them. Speed is the easy part. The hard part is trusting what lands on production. Before anything reaches PROD, someone has to be able to answer four questions:</p>
   <figure class="fig">
     <svg viewBox="0 0 720 150" role="img" aria-label="Four questions every deploy must answer: scope, approval, drift and audit.">
       <rect x="10" y="20" width="160" height="110" rx="8" class="node-steel"/>
@@ -375,7 +375,7 @@
     </svg>
     <figcaption>Every governance claim rests on the <b>change set</b> being exactly what ships.</figcaption>
   </figure>
-  <p>A <b>change set</b> is our unit of work: a named basket. While it is open, the IDE records every object you touch; tests run against it; then it is closed, approved and released. Approval, audit and accountability all hang on one rule:</p>
+  <p>A <b>change set</b> is our unit of work: a named basket. While it is open, the tooling records every object you touch; tests run against it; then it is closed, approved and released. Approval, audit and accountability all hang on one rule:</p>
   <div class="callout key"><p><b>Rule 1.</b> A release ships exactly its change set’s objects — no more, and nothing else may slip in with it.</p></div>
 </section>
 
@@ -421,7 +421,7 @@
   <p>Since TM1 11.4 / Planning Analytics 2.0.7, TM1 can push its own model to a Git repository and pull it back. That means <b>IBM owns the object format and the transport</b> — rules and TI become plain text files, every push is a commit, and any git tool can read the history. We tested it on a DEV and PROD pair sharing one private repository.</p>
   <p>It does a lot — but not everything. So we split the job:</p>
   <figure class="fig">
-    <svg viewBox="0 0 720 200" role="img" aria-label="The hybrid: TM1 Git moves structure and history; the IDE handles attribute values, deletes, drift and approval.">
+    <svg viewBox="0 0 720 200" role="img" aria-label="The hybrid: TM1 Git moves structure and history; your own deploy tooling handles attribute values, deletes, drift and approval.">
       <rect x="10" y="15" width="330" height="170" rx="10" class="node-steel"/>
       <text x="175" y="45" text-anchor="middle" class="svg-label">TM1 Git moves</text>
       <text x="175" y="78" text-anchor="middle" class="svg-small">cubes · dimensions · rules</text>
@@ -429,21 +429,21 @@
       <text x="175" y="122" text-anchor="middle" class="svg-small">full history as commits</text>
       <text x="175" y="160" text-anchor="middle" class="svg-sub">IBM’s own format — nothing to maintain</text>
       <rect x="380" y="15" width="330" height="170" rx="10" class="node-indigo"/>
-      <text x="545" y="45" text-anchor="middle" class="svg-label">The IDE handles</text>
+      <text x="545" y="45" text-anchor="middle" class="svg-label">Your tooling handles</text>
       <text x="545" y="78" text-anchor="middle" class="svg-small">attribute values (never travel)</text>
       <text x="545" y="100" text-anchor="middle" class="svg-small">deletes (a pull never deletes)</text>
       <text x="545" y="122" text-anchor="middle" class="svg-small">drift (no live-state check)</text>
       <text x="545" y="144" text-anchor="middle" class="svg-small">scope · approval · tests</text>
-      <text x="545" y="170" text-anchor="middle" class="svg-sub">governance stays with the IDE</text>
+      <text x="545" y="170" text-anchor="middle" class="svg-sub">governance stays with your tooling</text>
     </svg>
-    <figcaption>The <b>hybrid</b>: TM1 Git carries structure and history; the IDE carries everything Git can’t.</figcaption>
+    <figcaption>The <b>hybrid</b>: TM1 Git carries structure and history; your own tooling carries everything Git can’t.</figcaption>
   </figure>
   <div class="tablewrap"><table>
     <thead><tr><th>Check</th><th>Result</th><th>Consequence</th></tr></thead>
     <tbody>
-      <tr><td>Attribute values travel</td><td>No</td><td>A value change produced an empty commit — the IDE writes values itself</td></tr>
-      <tr><td>Deletes propagate</td><td>No</td><td>A pull never deletes — the IDE reconciles deletes</td></tr>
-      <tr><td>Drift detected</td><td>No</td><td>PROD pushes its live state to a <code>prod-live</code> branch; the IDE diffs it</td></tr>
+      <tr><td>Attribute values travel</td><td>No</td><td>A value change produced an empty commit — the tooling writes values itself</td></tr>
+      <tr><td>Deletes propagate</td><td>No</td><td>A pull never deletes — the tooling reconciles deletes</td></tr>
+      <tr><td>Drift detected</td><td>No</td><td>PROD pushes its live state to a <code>prod-live</code> branch; the tooling diffs it</td></tr>
       <tr><td><b>Scoped to a change set</b></td><td><b>Partly</b></td><td>A pull applies <b>every change on the branch</b> since the target’s last deploy</td></tr>
     </tbody>
   </table></div>
@@ -519,7 +519,7 @@
   </figure>
   <p>How a release is built:</p>
   <ol>
-    <li><b>Start from what PROD has.</b> The base is the commit the IDE recorded at PROD’s last deploy — not TM1’s own “deployed commit”, which is overwritten whenever PROD pushes its live state for a drift check.</li>
+    <li><b>Start from what PROD has.</b> The base is the commit the tooling recorded at PROD’s last deploy — not TM1’s own “deployed commit”, which is overwritten whenever PROD pushes its live state for a drift check.</li>
     <li><b>Map the change set to files.</b> A process is its <code>.json</code> and <code>.ti</code>; a cube its <code>.json</code> and <code>.rules</code>; an MDX view its <code>.json</code> and <code>.mdx</code>.</li>
     <li><b>Copy only those files from DEV</b> onto the base. Deleted objects are removed. Nothing else moves.</li>
     <li><b>Commit to <code>release-&lt;target&gt;</code></b> — one release branch per target.</li>
@@ -527,7 +527,7 @@
   </ol>
   <p>Two gaps needed their own answer:</p>
   <ul>
-    <li><b>Subsets and views.</b> TM1 Git’s pull has no operation for them — they never land. So straight after the pull, the IDE applies each included subset and view from the release’s own files over REST: MDX subsets keep their expression, static subsets their elements, MDX views their query, native views their axes.</li>
+    <li><b>Subsets and views.</b> TM1 Git’s pull has no operation for them — they never land. So straight after the pull, the tooling applies each included subset and view from the release’s own files over REST: MDX subsets keep their expression, static subsets their elements, MDX views their query, native views their axes.</li>
     <li><b>Deletes and attribute values.</b> A reconcile step applies only what the change set recorded.</li>
   </ul>
   <div class="callout note"><p><b>Proven in the lab.</b> Rule, dimension element, process, chore, MDX subset, static subset, native view and MDX view — all eight arrived on PROD, and nothing else did.</p></div>
@@ -568,11 +568,11 @@
   </figure>
   <p>Around the flow, three rules hold on the server itself:</p>
   <ul>
-    <li><b>PROD is read-only to editing.</b> Saves from the IDE — and from the AI’s tools — are refused. The only way in is an approved release.</li>
+    <li><b>PROD is read-only to editing.</b> Saves from the development tools — and from the AI’s tools — are refused. The only way in is an approved release.</li>
     <li><b>Only built releases deploy.</b> First-time setup is the only whole-model path, and it refuses once a target has been deployed.</li>
     <li><b>Change sets are owned.</b> A change set belongs to one TM1 user on one server; nobody else’s work rides along.</li>
   </ul>
-  <p>The drift pause is deliberate. When PROD has been changed by hand, the IDE doesn’t revert it or copy it back automatically. A developer re-applies the change on DEV in a change set, and it is released like any other. Slower — but nothing is lost, and everything is approved.</p>
+  <p>The drift pause is deliberate. When PROD has been changed by hand, nothing reverts it or copy it back automatically. A developer re-applies the change on DEV in a change set, and it is released like any other. Slower — but nothing is lost, and everything is approved.</p>
 </section>
 
 <section id="a7">
@@ -583,7 +583,7 @@
     <tbody>
       <tr><td>TM1 forbids <code>/</code> in branch names</td><td>Pull refused for <code>release/PROD</code></td><td>Branches are named <code>release-&lt;target&gt;</code></td></tr>
       <tr><td>Short vs full commit IDs</td><td>TM1 reports a short ID, git a full one — the approval check said “moved”</td><td>Exact match, or a prefix of 7+ characters</td></tr>
-      <tr><td><code>DeployedCommit</code> is overwritten</td><td>PROD’s drift push reset it, so the next release was built on the wrong base</td><td>The IDE records the deployed commit itself</td></tr>
+      <tr><td><code>DeployedCommit</code> is overwritten</td><td>PROD’s drift push reset it, so the next release was built on the wrong base</td><td>Record the deployed commit yourself</td></tr>
       <tr><td>Pull plans expire in seconds</td><td>A plan created early returned 404 on execute</td><td>Create, check and execute in one step</td></tr>
       <tr><td>Plan operations are text</td><td><code>Update Cubes('X')</code>, <code>Skip …</code></td><td>Every non-<code>Skip</code> operation must be in the release, or the deploy refuses</td></tr>
       <tr><td>Subsets and views never land</td><td>The plan has no operation for them</td><td>Applied over REST after the pull, then verified</td></tr>
@@ -625,7 +625,7 @@
     <li><b>Write the rule down first.</b> “A release ships exactly its change set’s objects” is now rule 1. Written on day one, it would have caught the whole-branch pull on day one.</li>
     <li><b>A partial finding is a decision.</b> Resolve every warning in an evaluation before building on it.</li>
     <li><b>Bend the transport, not the rule.</b> TM1 Git pulls branches, so we build branches that differ by exactly one change set.</li>
-    <li><b>Trust your own record over the tool’s.</b> TM1’s deployed commit moves under you; the IDE’s record doesn’t.</li>
+    <li><b>Trust your own record over the tool’s.</b> TM1’s deployed commit moves under you; a record you keep yourself doesn’t.</li>
     <li><b>Refuse loudly; never succeed silently.</b> Every gap stops the deploy or marks it failed, with a plain message saying what to do.</li>
     <li><b>Keep humans in charge of drift.</b> Every automated revert or promote we tried opened a new way to lose work.</li>
     <li><b>The lab decides.</b> Unit tests passed while the deploy was still broken. Only a real DEV and PROD pair finds those.</li>
@@ -634,14 +634,13 @@
 </section>
 
 <section id="a10">
-  <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">What’s next</h2></div>
+  <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">Still open</h2></div>
   <ul>
-    <li>Automatic checks on every pull request: tests, build and lint.</li>
-    <li>Safe handling of object names containing an apostrophe, everywhere.</li>
-    <li>Retire the automated drift revert and promote paths.</li>
-    <li>Split the 4,000-line server file into smaller modules.</li>
+    <li><b>Checks on every change, before review.</b> Tests, build and lint run automatically, so a reviewer starts from something that works.</li>
+    <li><b>Drift without automation.</b> Automatic reverts and promotes each opened a new way to lose work, so today a person re-applies hand changes on DEV. Whether drift can be handled safely with less manual effort is still an open question.</li>
+    <li><b>Single-commit pulls.</b> If TM1 Git could pull one commit instead of a whole branch, release branches would no longer be needed. Until then, they are the workaround.</li>
   </ul>
-  <p>The deploy is open source and in preview: <a href="https://github.com/falconbi/tm1_ide">github.com/falconbi/tm1_ide</a>. Tested in the lab, not yet production-proven — try it on test servers and tell us what you find.</p>
+  <div class="callout note"><p><b>How we tested this.</b> The ideas here were built and tested in an open-source browser IDE for TM1 (<a href="https://github.com/falconbi/tm1_ide">github.com/falconbi/tm1_ide</a>), on a TM1 v11 DEV + PROD lab pair. None of them depends on that tool: any tooling that keeps a change log and talks to the TM1 REST API can apply them. Tested in a lab, not yet proven in production.</p></div>
 </section>
 
 </div>

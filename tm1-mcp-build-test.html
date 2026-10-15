@@ -63,13 +63,13 @@
   <span class="snum">01 — The setup</span>
   <h2>The setup</h2>
   <div class="prose">
-<p>This ran on a browser-based IDE I have been building for Planning Analytics. The MCP approach does not depend on that specific IDE — it depends on the IDE having the parts that matter. For this to work you need an IDE that already has: a full TM1 REST client, a connection and authentication layer through PAW, and a change-set log.</p>
-<p>The MCP server is a small piece inside that. A set of operations — create a dimension, build a cube, write a rule, run a process, read cells back — each one a thin wrapper over machinery the IDE already had. The AI never touches TM1. It calls an operation, the operation calls the IDE's client, the client talks to TM1.</p>
-<p>So when I say the plumbing is quick, that is only true because the client layer was already there. Starting from nothing, you would build the client, the auth, and the change log first, and that is most of the work. The IDE is also where I checked the result — I opened every view and read every cell back through it.</p>
-<p>To try this yourself you need that client layer. Whether it is your own IDE or a third-party one, it must give you: read and write access to the TM1 REST API under your own identity, a change set that captures every change, and a way to read cells back. The MCP server on its own is not enough.</p>
+<p>The idea: the AI never touches TM1 directly. It is given a small set of operations — create a dimension, build a cube, write a rule, run a process, read cells back — and every operation goes through the same governed path a person would use. That approach doesn't depend on any particular tool. It depends on three parts underneath: a full TM1 REST client, a connection and authentication layer, and a change-set log that records every change.</p>
+<p>The MCP server is a small piece on top of those parts — each operation a thin wrapper over machinery that already exists. The AI calls an operation, the operation calls the client, the client talks to TM1.</p>
+<p>So when I say the plumbing is quick, that is only true because the client layer was already there. Starting from nothing, you would build the client, the auth and the change log first, and that is most of the work. For this test the parts came from a browser-based tool I have been building for Planning Analytics, which is also where I checked the result — opening every view and reading every cell back.</p>
+<p>To try this yourself you need that client layer. Whether it is your own tool or a third-party one, it must give you: read and write access to the TM1 REST API under your own identity, a change set that captures every change, and a way to read cells back. The MCP server on its own is not enough.</p>
   </div>
-  <img src="mcp-screenshots/IDE open with CubeMap.png" alt="The IDE showing the workforce planning model and its cube map" class="shot">
-  <p class="shot-caption">The IDE with the model open — the cube map shows how the model is wired together</p>
+  <img src="mcp-screenshots/IDE open with CubeMap.png" alt="The workforce planning model as built, with its cube map" class="shot">
+  <p class="shot-caption">The model as built — the cube map shows how it is wired together</p>
 </section>
 
 <!-- 02 WHAT AN MCP IS -->
@@ -125,7 +125,7 @@
     <p>This was a completely blank test server — no period dimension, nothing. No TI library, no existing processes or conventions to draw on. Every dimension, every cube, every process, every convention was built from zero, through conversation.</p>
     <p>Each phase was iterative. I was building up the standards as I went — all my conventions and the way I develop models — so the AI was learning them from scratch on this second model. Every step refined how the next was built.</p>
     <p>The result was a real model: seven cubes, twenty-two dimensions, the engine cube carrying cost, currency, capitalisation and variance in one place, and a headcount bridge that reconciles opening, hires, leavers and closing headcount by month.</p>
-    <p>It took two days — and that includes the iterations, improving the IDE, and building up the MCP operations as we went.</p>
+    <p>It took two days — and that includes the iterations, improving the tooling, and building up the MCP operations as we went.</p>
   </div>
   <div class="callout steel">
     <span class="co-label">How the build ran</span>
@@ -225,7 +225,7 @@
     <table>
       <thead><tr><th>Pillar</th><th>Rule</th></tr></thead>
       <tbody>
-        <tr><td>One write path</td><td>AI and IDE write through the same client and log; no ungoverned route</td></tr>
+        <tr><td>One write path</td><td>The AI and people write through the same client and log; no ungoverned route</td></tr>
         <tr><td>Change-set gate</td><td>No open change set, no write; the whole build is one attributable unit</td></tr>
         <tr><td>One grain</td><td>Engine cube holds cost, currency, capex, variance at position × period</td></tr>
         <tr><td>Verify, then trust</td><td>Expected results run on every close; checked against "right", not just syntax</td></tr>
@@ -242,7 +242,7 @@
       <tbody>
         <tr><td>Metadata write</td><td>Requires an open change set; refused otherwise</td></tr>
         <tr><td>Change capture</td><td>object, action, before/after, timestamp, session</td></tr>
-        <tr><td>Review</td><td>Everything appears in the IDE's change-set list</td></tr>
+        <tr><td>Review</td><td>Everything appears in the change-set list for review</td></tr>
       </tbody>
     </table>
   </div>
@@ -274,7 +274,7 @@
   </div>
   <div class="callout steel">
     <span class="co-label">Caveats</span>
-    <p>Evolving; second test. Security is the open question — service identity, no per-action permissions. Separate subject. The TM1 IDE (falconbi) is in development and not yet committed to GitHub.</p>
+    <p>Evolving; this was the second test (September 2026). Security was the open question at the time — a service identity, no per-action permissions. Since then, reads have been tightened: the AI can read as a named TM1 user, so TM1's own security applies; there is a read-only mode with no write tools at all; and every read is recorded. Writes are still gated by the change set. The tool used is open source: <a href="https://github.com/falconbi/tm1_ide">github.com/falconbi/tm1_ide</a>.</p>
   </div>
 </section>
 
