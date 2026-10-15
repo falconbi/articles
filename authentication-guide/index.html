@@ -743,7 +743,7 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
   <div class="tablewrap"><table>
     <thead><tr><th>Where it runs</th><th>Signs in</th><th>Notes</th></tr></thead>
     <tbody>
-      <tr><td><b>Chores and TI processes inside TM1</b></td><td>No sign-in — they run inside the server</td><td>The simplest option when the work can live in TM1.</td></tr>
+      <tr><td><b>Chores and TI processes inside TM1</b></td><td>No separate sign-in — they run inside the server, under the name of whoever started them</td><td>The simplest option when the work can live in TM1 — but see the box below.</td></tr>
       <tr><td>Script against v11, native or LDAP check</td><td>Its own TM1 user and password (<a href="#m1">5.1</a>, <a href="#m2">5.2</a>)</td><td>Use a dedicated account, not a person&rsquo;s.</td></tr>
       <tr><td>Script against v11 with CAM</td><td>A service account in the namespace, by username and password (<a href="#m3">5.3</a>)</td><td>Single sign-on (<a href="#m4">5.4</a>) only works if the script runs as that Windows user on the domain.</td></tr>
       <tr><td>Script against v11, Windows only (mode 3)</td><td>Must run as a Windows user (<a href="#m5">5.5</a>)</td><td>Scripts on Linux can&rsquo;t sign in at all.</td></tr>
@@ -751,6 +751,15 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
       <tr><td>Script against v12 on-prem / Cloud Pak</td><td>App ID + secret &rarr; token (<a href="#m8">5.8</a>)</td><td>The interactive browser sign-in can&rsquo;t be used unattended.</td></tr>
     </tbody>
   </table></div>
+  <div class="callout warn"><p><b>A TI process ignores the data security of the person who runs it.</b> We tested this on a TM1 v11.8 server with a non-admin user who can see 4 of 36 cubes. A process they were allowed to run:</p>
+  <ul style="margin:8px 0 0;padding-left:20px">
+    <li>ran under <b>their</b> name — <code>TM1User()</code> and the transaction log both recorded the user, not Admin;</li>
+    <li><b>read</b> a cube the user cannot see, and <b>wrote</b> to it;</li>
+    <li><b>wrote</b> a cell that cell security locks for that user;</li>
+    <li>but was <b>refused</b> when it tried to change security (<code>ElementSecurityPut</code>: &ldquo;No Security Access&rdquo;).</li>
+  </ul>
+  <p style="margin-top:10px">A chore created and run by Admin ran as Admin. <span class="status proven">Proven on a real v11.8 server</span></p>
+  <p style="margin-top:10px">So <b>permission to run a process is permission to change whatever data that process touches</b>, whatever the person&rsquo;s own cube and cell security says. Grant it (process security, <code>}ProcessSecurity</code>) as carefully as write access, and keep powerful processes away from ordinary users. Element-level security and v12 were not part of the test.</p></div>
   <p>Good practice, whatever the method (general security practice, not TM1-specific rules):</p>
   <ul class="check">
     <li><b>One account per job or tool</b>, never a real person&rsquo;s login — so a password change or a leaver doesn&rsquo;t silently break the overnight load.</li>
@@ -812,6 +821,7 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
       <tr><td>A new starter in the directory can&rsquo;t sign in</td><td>With the LDAP password check, users must also exist in TM1</td><td><a href="#m2">5.2</a></td></tr>
       <tr><td>Nobody can sign in at all</td><td>The thing that checks IDs is down — Cognos, the identity provider, or PAW&rsquo;s login server</td><td><a href="#m3">5.3</a>, <a href="#m9">5.9</a></td></tr>
       <tr><td>Certificate or &ldquo;not secure&rdquo; errors</td><td>The tool checks the server name, and IBM&rsquo;s stock certificate doesn&rsquo;t carry one</td><td><a href="#s8">10</a></td></tr>
+      <tr><td>A user changed data they shouldn&rsquo;t be able to touch</td><td>They ran a TI process — processes ignore the runner&rsquo;s cube and cell security</td><td><a href="#programs">7</a></td></tr>
       <tr><td>The server is slow; hundreds of open sessions</td><td>A tool signing in on every request instead of reusing its session</td><td><a href="#s7">9</a></td></tr>
     </tbody>
   </table></div>
@@ -826,6 +836,7 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
     <li>Encrypt connections with TLS, using certificates your tools can check (<a href="#s8">10</a>).</li>
     <li>Give programs their own accounts with only the rights they need (<a href="#programs">7</a>).</li>
     <li>Review who is in <code>ADMIN</code> and other powerful groups on every server, not just PROD.</li>
+    <li>Treat permission to <b>run a process</b> like write access to everything the process touches — TI ignores the runner&rsquo;s data security (<a href="#programs">7</a>).</li>
     <li>Watch the session list now and then; a steady climb means a tool is leaking sessions (<a href="#s7">9</a>).</li>
   </ul>
   <h3>If you write a tool or script that signs in</h3>
