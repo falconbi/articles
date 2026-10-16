@@ -374,7 +374,7 @@
 <main>
 <div class="wrap">
 
-<p>This guide is about <b>TM1 itself</b> — it applies whatever tool you use (PAW, TM1py, TM1 IDE, vendor tools or your own scripts). Facts from IBM, vendors or well-used open-source libraries are linked under <a href="#s10">Sources</a>, and anything not yet confirmed on a real server says so.</p>
+<p>This guide is about <b>TM1 itself</b> — it applies whatever tool you use (PAW, TM1py, vendor tools or your own scripts). Facts from IBM, vendors or well-used open-source libraries are linked under <a href="#s10">Sources</a>, and anything not yet confirmed on a real server says so.</p>
 <div class="callout key"><p><b>The two-minute version.</b></p>
 <ul style="margin:8px 0 0;padding-left:20px">
   <li>Signing in proves <b>who you are</b>. What you may see and change is always decided <b>inside TM1</b>, by its own security groups — however you signed in.</li>
@@ -789,7 +789,7 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
   <div class="sec-head"><span class="sec-num">09</span><h2 class="sec-title">Sessions and lock-outs</h2></div>
   <p><b>Lock-outs.</b> TM1 v11 allows <b>3 failed sign-ins by default</b> (<code>MaximumLoginAttempts</code> in <code>tm1s.cfg</code>). After that the account is refused until an administrator resets its password or the server restarts. <span class="status doc">Documented</span> — not applicable to v12.</p>
   <div class="callout warn"><p><b>Watch out for tools that keep retrying.</b> Any program that keeps trying a stored password that has since changed — a scheduler, a dashboard that refreshes, an IDE polling in the background — will lock the account within seconds. A well-behaved tool tries once, reports the failure, and waits for a person.</p></div>
-  <p><b>Leaked sessions.</b> Every successful sign-in creates a session. A program that sends the password with <b>every</b> request, instead of reusing the <code>TM1SessionId</code> ticket, creates a new session each time; they pile up until TM1&rsquo;s session timeout. A real example: a lab server was found with <b>538 open sessions</b>, left by an early version of the author&rsquo;s own tool (the TM1 IDE) doing exactly this — careful code still gets it wrong. They show up in the <code>Sessions</code> list, in TM1 Top and in <code>}StatsByClient</code>, and they waste memory. A well-behaved tool signs in once per server, reuses the ticket, and closes the session (REST: <code>POST ActiveSession/tm1.Close</code>) when it&rsquo;s done. <span class="status proven">Proven on a real v11.8 server</span></p>
+  <p><b>Leaked sessions.</b> Every successful sign-in creates a session. A program that sends the password with <b>every</b> request, instead of reusing the <code>TM1SessionId</code> ticket, creates a new session each time; they pile up until TM1&rsquo;s session timeout. A real example: a lab server was found with <b>538 open sessions</b>, left by an early version of a tool we built ourselves doing exactly this — careful code still gets it wrong. They show up in the <code>Sessions</code> list, in TM1 Top and in <code>}StatsByClient</code>, and they waste memory. A well-behaved tool signs in once per server, reuses the ticket, and closes the session (REST: <code>POST ActiveSession/tm1.Close</code>) when it&rsquo;s done. <span class="status proven">Proven on a real v11.8 server</span></p>
   <p><b>Measured, before and after fixing a tool to reuse its ticket</b> (same server, v11.8): before — a new session on every request, 538 left open; after — a user browsing cubes, views and dimensions for several minutes added <b>no</b> sessions beyond the one created at sign-in. To check your own server, compare the <code>Sessions</code> list before and after using a tool — and remember that every <i>separate</i> program you run (including a quick check script) signs in once itself.</p>
 </section>
 
@@ -853,17 +853,17 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
 
 <section id="s9">
   <div class="sec-head"><span class="sec-num">13</span><h2 class="sec-title">What the common tools support</h2></div>
-  <p>From each project&rsquo;s own documentation (see <a href="#s10">Sources</a>) — ARC&rsquo;s column uses Cubewise&rsquo;s own wording, which lists native, Windows, CAM, OpenID, IBM ID and PA SaaS v12 keys. The TM1 IDE is the author&rsquo;s own open-source project; its column states only what has been built and tested. Check each project for the current state.</p>
+  <p>From each project&rsquo;s own documentation (see <a href="#s10">Sources</a>) — ARC&rsquo;s column uses Cubewise&rsquo;s own wording, which lists native, Windows, CAM, OpenID, IBM ID and PA SaaS v12 keys. Check each project for the current state.</p>
   <div class="tablewrap"><table>
-    <thead><tr><th>Method</th><th>TM1py (open source)</th><th>Cubewise ARC (vendor&rsquo;s description)</th><th>TM1 IDE</th></tr></thead>
+    <thead><tr><th>Method</th><th>TM1py (open source)</th><th>Cubewise ARC (vendor&rsquo;s description)</th></tr></thead>
     <tbody>
-      <tr><td>Native / LDAP check</td><td>Yes</td><td>Yes</td><td>Yes — direct, or through PAW on v11</td></tr>
-      <tr><td>CAM — username + password</td><td>Yes</td><td>Yes</td><td>Built to TM1py&rsquo;s format — not yet confirmed on a CAM server</td></tr>
-      <tr><td>CAM — single sign-on</td><td>Yes (&ldquo;gateway&rdquo;)</td><td>Yes</td><td>Planned</td></tr>
-      <tr><td>Windows integrated</td><td>Yes</td><td>Yes (mode 3, from v4.1.1)</td><td>Planned</td></tr>
-      <tr><td>v12 cloud — API key</td><td>Yes</td><td>Yes</td><td>Planned</td></tr>
-      <tr><td>v12 on-prem / Cloud Pak — app credentials / tokens</td><td>Yes</td><td>Vendor lists &ldquo;OpenID&rdquo; and &ldquo;IBM ID&rdquo;</td><td>Not built (planned)</td></tr>
-      <tr><td>v11 OpenID Connect (<code>SupportOpenConnect</code>)</td><td>Not found in its docs</td><td>Vendor lists &ldquo;OpenID&rdquo; (sister product Canvas documents the flow)</td><td>Planned</td></tr>
+      <tr><td>Native / LDAP check</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>CAM — username + password</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>CAM — single sign-on</td><td>Yes (&ldquo;gateway&rdquo;)</td><td>Yes</td></tr>
+      <tr><td>Windows integrated</td><td>Yes</td><td>Yes (mode 3, from v4.1.1)</td></tr>
+      <tr><td>v12 cloud — API key</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>v12 on-prem / Cloud Pak — app credentials / tokens</td><td>Yes</td><td>Vendor lists &ldquo;OpenID&rdquo; and &ldquo;IBM ID&rdquo;</td></tr>
+      <tr><td>v11 OpenID Connect (<code>SupportOpenConnect</code>)</td><td>Not found in its docs</td><td>Vendor lists &ldquo;OpenID&rdquo; (sister product Canvas documents the flow)</td></tr>
     </tbody>
   </table></div>
 </section>
