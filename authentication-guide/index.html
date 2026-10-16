@@ -760,6 +760,7 @@ Set-Cookie: TM1SessionId=...; Path=/api/; HttpOnly
   </ul>
   <p style="margin-top:10px">A chore created and run by Admin ran as Admin. <span class="status proven">Proven on a real v11.8 server</span></p>
   <p style="margin-top:10px">So <b>permission to run a process is permission to change whatever data that process touches</b>, whatever the person&rsquo;s own cube and cell security says. Grant it (process security, <code>}ProcessSecurity</code>) as carefully as write access, and keep powerful processes away from ordinary users. Element-level security and v12 were not part of the test.</p></div>
+  <div class="callout note"><p><b>AI agents and MCP servers sign in too.</b> An MCP server — the piece that plugs an AI assistant into TM1 — is a program signing in on behalf of whoever is talking to the AI. Everything in this section applies to it, plus one more question: does it sign in <b>as each person</b>, so TM1&rsquo;s own security decides what the AI can see, or as <b>one shared account</b>, so everyone who asks the AI borrows that account&rsquo;s access? More in <a href="../mcp-for-fpa/">MCP for FP&amp;A</a></p></div>
   <p>Good practice, whatever the method (general security practice, not TM1-specific rules):</p>
   <ul class="check">
     <li><b>One account per job or tool</b>, never a real person&rsquo;s login — so a password change or a leaver doesn&rsquo;t silently break the overnight load.</li>

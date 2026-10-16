@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP for IBM Planning Analytics (TM1)</title>
+<meta name="description" content="How MCP connects AI assistants to IBM Planning Analytics and TM1: what it is, what it can do, how to get it, what working with one is like, and the security questions to settle before you switch it on.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --paper:#fafaf9;
+    --panel:#ffffff;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+
+    --steel:#0f766e;        /* structure, hierarchy, base */
+    --steel-light:#f0fdfa;
+    --green:#166534;        /* valid flow, base data, counted-once */
+    --green-light:#f0fdf4;
+    --amber:#92400e;        /* contra, grouped, reversal */
+    --amber-light:#fef3c7;
+    --red:#991b1b;          /* double-count, warnings */
+    --red-light:#fee2e2;
+    --indigo:#4c1d95;       /* implementation, UI */
+    --indigo-light:#ede9fe;
+
+    --maxw:860px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    background:
+      linear-gradient(180deg,#ffffff 0%, var(--paper) 100%);
+  }
+  .masthead .wrap{padding-top:78px;padding-bottom:52px}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--steel);
+    font-weight:500;
+    margin:0 0 22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1.title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.3rem);
+    line-height:1.08;
+    letter-spacing:-.012em;
+    margin:0 0 22px;
+    color:var(--ink);
+  }
+  h1.title .accent{color:var(--steel)}
+  .standfirst{
+    font-size:1.18rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:64ch;
+    margin:0 0 30px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-size:13.5px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;
+    padding-top:8px;border-top:1px solid var(--rule-soft);
+  }
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  .prototype{
+    margin:34px 0 0;
+    background:var(--green-light);
+    border:1px solid #cfe6d8;
+    border-left:4px solid var(--green);
+    border-radius:6px;
+    padding:16px 20px;
+    font-size:15.5px;
+    color:#21422f;
+  }
+  .prototype b{color:var(--green);font-weight:600}
+
+  /* ---------- TOC ---------- */
+  /* falconbi.css sets .toc{position:sticky} for sidebar use — override for this horizontal bar */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;margin:0 0 18px;
+  }
+  nav.toc ol{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:2px 28px;
+    counter-reset:toc;
+  }
+  nav.toc li{counter-increment:toc}
+  nav.toc a{
+    display:flex;gap:12px;align-items:baseline;
+    text-decoration:none;color:var(--ink-soft);
+    padding:7px 4px;border-radius:4px;
+    border-bottom:1px solid transparent;
+    transition:color .15s,background .15s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--steel);
+    flex:none;width:2ch;
+  }
+  nav.toc a:hover{color:var(--steel);background:var(--steel-light)}
+
+  /* ---------- Sections ---------- */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:44px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin:0 0 18px}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;color:var(--steel);
+    flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-weight:600;font-size:1.16rem;
+    margin:34px 0 12px;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  p{margin:0 0 16px}
+  section > p, section > ul, section > ol, section > .fig, section > .tablewrap,
+  section > pre, section > blockquote, section > .callout{margin-left:0}
+  strong{font-weight:600;color:var(--ink)}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:#f1f0ec;
+    padding:.1em .38em;border-radius:4px;
+    color:#3a4750;
+  }
+  a{color:var(--steel)}
+
+  ul,ol{margin:0 0 16px;padding-left:1.3em}
+  li{margin:6px 0}
+  li::marker{color:var(--steel)}
+
+  blockquote{
+    margin:18px 0;padding:4px 0 4px 22px;
+    border-left:3px solid var(--rule);
+    color:var(--ink-soft);font-style:italic;
+    font-family:'DM Sans',system-ui,sans-serif;font-size:1.08rem;
+  }
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;margin:22px 0}
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink-soft);
+  }
+  tbody tr:hover{background:#f6f7f8}
+  td code{background:#eef0f2}
+  .pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    letter-spacing:.02em;
+  }
+  .pill.sub{background:var(--steel-light);color:var(--steel)}
+  .pill.assoc{background:var(--indigo-light);color:var(--indigo)}
+  .pill.inv{background:#eef1f3;color:var(--ink-soft)}
+  .pill.grp{background:var(--amber-light);color:var(--amber)}
+
+  /* ---------- Code / ASCII ---------- */
+  pre{
+    background:#1c2530;color:#d7e0e8;
+    font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.6;
+    padding:18px 20px;border-radius:8px;overflow-x:auto;margin:20px 0;
+    border:1px solid #283442;
+  }
+  pre .c{color:#7f8fa0}      /* comment / faint */
+  pre .k{color:#7fb3e0}      /* steel key */
+  pre .g{color:#7fd0a0}      /* green */
+  pre .a{color:#e3b766}      /* amber */
+  pre .r{color:#e89b94}      /* red */
+  pre.ascii{font-size:13px;line-height:1.5}
+
+  /* ---------- Figures ---------- */
+  .fig{margin:26px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  figcaption{
+    font-size:13px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+    margin-top:12px;text-align:center;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600}
+
+  /* SVG element styling */
+  .svg-label{font-family:'DM Sans',sans-serif;font-size:14px;fill:var(--ink)}
+  .svg-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-faint)}
+  .svg-edge{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .node-steel{fill:var(--steel-light);stroke:var(--steel);stroke-width:1.5}
+  .node-green{fill:var(--green-light);stroke:var(--green);stroke-width:1.5}
+  .node-amber{fill:var(--amber-light);stroke:var(--amber);stroke-width:1.5}
+  .node-red{fill:var(--red-light);stroke:var(--red);stroke-width:1.5}
+  .node-indigo{fill:var(--indigo-light);stroke:var(--indigo);stroke-width:1.5}
+  .node-plain{fill:#fff;stroke:var(--ink-soft);stroke-width:1.3}
+  .edge{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+  .edge-green{stroke:var(--green);stroke-width:1.8;fill:none}
+  .edge-red{stroke:var(--red);stroke-width:1.8;fill:none}
+  .edge-amber{stroke:var(--amber);stroke-width:1.8;fill:none}
+  .edge-dash{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:6px;padding:16px 20px;margin:22px 0;font-size:15.5px;
+    border:1px solid var(--rule);border-left:4px solid var(--ink-soft);
+    background:var(--panel);
+  }
+  .callout.warn{background:var(--red-light);border-color:#eccac6;border-left-color:var(--red)}
+  .callout.warn b{color:var(--red)}
+  .callout.note{background:var(--steel-light);border-color:#cfe0ee;border-left-color:var(--steel)}
+  .callout.note b{color:var(--steel)}
+  .callout.key{background:var(--amber-light);border-color:#e8d6a8;border-left-color:var(--amber)}
+  .callout.key b{color:var(--amber)}
+  .callout p{margin:0}
+  .callout p + p{margin-top:10px}
+
+  /* ---------- Signature: path encoding ---------- */
+  .signature{
+    margin:30px 0;padding:30px 26px;border-radius:10px;
+    background:linear-gradient(160deg,#1c2530 0%,#243140 100%);
+    border:1px solid #2b3a4a;color:#dbe4ec;
+  }
+  .signature .sig-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#8aa0b4;margin:0 0 18px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{background:#1c2530;color:#aebccb;border-top:3px solid var(--steel)}
+  footer .wrap{padding-top:48px;padding-bottom:54px}
+  footer h2{
+    font-family:'DM Sans',system-ui,sans-serif;color:#f0f4f8;font-weight:600;
+    font-size:1.3rem;margin:0 0 14px;
+  }
+  footer p{color:#aebccb;font-size:15px;max-width:62ch}
+  footer a{color:#9ec3e6}
+  .lic{
+    margin-top:22px;padding-top:20px;border-top:1px solid #2c3a48;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8294a4;
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+  }
+  .refs{font-size:15px;color:#c4d0db}
+  .refs cite{font-style:italic;color:#e6edf3}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .sec-head{gap:12px}
+    nav.toc ol{grid-template-columns:1fr}
+    .masthead .wrap{padding-top:54px;padding-bottom:40px}
+  }
+</style>
+<style>
+  /* status badges: Documented / Proven in practice / Unconfirmed */
+  .status{display:inline-block;padding:1px 9px;border-radius:999px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;margin-left:4px;white-space:nowrap}
+  .status.doc{background:var(--steel-light);color:var(--steel)}
+  .status.proven{background:var(--green-light);color:var(--green)}
+  .status.unconfirmed{background:var(--amber-light);color:var(--amber)}
+  h3 .n{color:var(--steel);font-family:'IBM Plex Mono',monospace;font-size:.8em;letter-spacing:.04em;margin-right:8px}
+  dl.method{display:grid;grid-template-columns:150px minmax(0,1fr);gap:6px 16px;margin:12px 0 4px}
+  dl.method dt{font-weight:600;color:var(--ink-soft)}
+  dl.method dd{margin:0}
+  .svg-num{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;fill:#fff}
+  .num-dot{fill:var(--steel)}
+  .svg-band{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;fill:var(--ink-faint)}
+  .svg-ref{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--steel)}
+  ol.steps{padding-left:0;list-style:none;counter-reset:st}
+  ol.steps li{counter-increment:st;position:relative;padding-left:38px;margin:0 0 12px}
+  ol.steps li::before{content:counter(st);position:absolute;left:0;top:1px;width:24px;height:24px;border-radius:50%;background:var(--steel);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center}
+  .ref{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--steel);white-space:nowrap}
+  .paths{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:18px 0 6px}
+  .paths div{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:12px 14px;font-size:15px}
+  .paths b{display:block;color:var(--ink);margin-bottom:2px}
+  ul.check{list-style:none;padding-left:0}
+  ul.check li{position:relative;padding-left:26px;margin:0 0 8px}
+  ul.check li::before{content:"\2713";position:absolute;left:2px;color:var(--green);font-weight:700}
+  .yes{color:var(--green);font-weight:600}
+  .no{color:var(--ink-faint)}
+  @media (max-width:640px){dl.method{grid-template-columns:minmax(0,1fr)}dl.method dt{margin-top:6px}}
+</style>
+
+<style>
+  .x-unused{background:var(--panel);border:1px solid var(--rule);border-left:4px solid var(--amber);border-radius:8px;padding:16px 18px 16px 18px;margin:14px 0;display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 14px}
+  .story.red{border-left-color:var(--red)}
+  .story .ico{grid-row:1 / span 3;width:40px;height:40px;border-radius:10px;background:var(--amber-light);display:flex;align-items:center;justify-content:center;color:var(--amber)}
+  .story.red .ico{background:var(--red-light);color:var(--red)}
+  .story .ico svg{width:22px;height:22px}
+  .story h3,.story p{grid-column:2}
+  .story h3{margin:0 0 2px;font-size:1.05rem}
+  .story p{margin:0}
+  .shift{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:22px 0}
+  .shift .card{border-radius:10px;padding:18px 20px;border:1px solid var(--rule);background:var(--panel)}
+  .shift .card .ctag{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:6px}
+  .shift .card .q{font-size:1.1rem;font-weight:600;color:var(--ink);margin:0 0 8px;line-height:1.35}
+  .shift .card p{margin:0;font-size:15px;color:var(--ink-soft)}
+  .shift .out{border-top:4px solid var(--green)}
+  .shift .out .ctag{color:var(--green)}
+  .shift .in{border-top:4px solid var(--amber);background:var(--amber-light)}
+  .shift .in .ctag{color:var(--amber)}
+  .pull{margin:30px 0;padding:6px 0 6px 22px;border-left:4px solid var(--steel);font-size:1.35rem;line-height:1.4;font-weight:600;color:var(--ink);text-wrap:balance}
+  .pull small{display:block;font-size:14px;font-weight:400;color:var(--ink-faint);margin-top:6px}
+  .qgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin:20px 0;padding:0;list-style:none;counter-reset:q}
+  .qgrid li{counter-increment:q;background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:16px 18px 16px 62px;position:relative}
+  .qgrid li::before{content:counter(q);position:absolute;left:16px;top:16px;width:32px;height:32px;border-radius:50%;background:var(--steel);color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:600;display:flex;align-items:center;justify-content:center}
+  .qgrid .lab{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--steel);display:block;margin-bottom:2px}
+  .qgrid b{display:block;color:var(--ink);line-height:1.35;margin-bottom:6px}
+  .qgrid span.why{color:var(--ink-soft);font-size:15px;display:block}
+  .story .lesson{margin:8px 0 0;color:var(--ink-soft);font-size:15px}
+  .story .when{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-faint);margin-left:6px}
+  ol.questions{counter-reset:q;list-style:none;padding-left:0}
+  ol.questions li{counter-increment:q;position:relative;padding-left:44px;margin:0 0 16px}
+  ol.questions li::before{content:counter(q);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--steel);color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:600;display:flex;align-items:center;justify-content:center}
+  ol.questions li b{display:block}
+  ol.questions li span{color:var(--ink-soft);font-size:15.5px}
+</style>
+<style>
+  .words{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:20px 0}
+  .words div{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 16px}
+  .words b{display:block;color:var(--ink);margin-bottom:4px}
+  .words span{color:var(--ink-soft);font-size:15px}
+  .diff{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 14px;margin:18px 0;padding:16px 18px;background:var(--panel);border:1px solid var(--rule);border-left:4px solid var(--amber);border-radius:8px}
+  .diff .ico{grid-row:1 / span 3;width:40px;height:40px;border-radius:10px;background:var(--amber-light);color:var(--amber);display:flex;align-items:center;justify-content:center}
+  .diff .ico svg{width:22px;height:22px}
+  .diff h3{grid-column:2;margin:0 0 2px;font-size:1.05rem}
+  .diff p{grid-column:2;margin:0}
+  .diff p + p{margin-top:8px}
+  .diff .eg{font-size:15px;color:var(--ink-soft)}
+</style>
+<style>
+  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:18px 0}
+  .grid3 .c{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 16px}
+  .grid3 .c b{display:block;color:var(--ink);margin-bottom:4px}
+  .grid3 .c span{color:var(--ink-soft);font-size:15px;display:block}
+  .grid3 .c .lab{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--steel);margin-bottom:4px}
+  .grid3 .c.route{border-top:4px solid var(--steel)}
+  .grid3 .c.route.r2{border-top-color:var(--green)} .grid3 .c.route.r3{border-top-color:var(--amber)}
+  .consider h3{margin:26px 0 8px}
+  .consider h3 .n{color:var(--steel);font-family:'IBM Plex Mono',monospace;font-size:.85em;margin-right:8px}
+  .eg{font-size:15px;color:var(--ink-soft);border-left:3px solid var(--rule);padding-left:12px;margin:10px 0}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">AI &amp; Security &nbsp;·&nbsp; IBM Planning Analytics</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">AI &nbsp;·&nbsp; MCP &nbsp;·&nbsp; FP&amp;A &nbsp;·&nbsp; TM1</p>
+    <h1 class="title">MCP for FP&amp;A:<br><span class="accent">what it is, and what to think about first</span></h1>
+    <p class="standfirst">Everyone is suddenly talking about MCP. Here&rsquo;s what it actually is, what it can do with a planning model like TM1, how you get it, and the things worth thinking about before you switch it on — in plain English. And why, if you build TM1 models, you can set one up yourself.</p>
+    <div class="meta-row">
+      <span><b>Status</b> Published October 2026 · reviewed 16 Oct 2026</span>
+      <span><b>Read</b> about 15 minutes</span>
+      <span><b>Related</b> <a href="../three-models-ai-guardrails/">Three Models, One Lesson</a> · <a href="../authentication-guide/#programs">How signing in to TM1 works</a></span>
+    </div>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+<section id="have-a-go">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">You can do this</h2></div>
+  <p>If you&rsquo;re a TM1 developer or consultant, you&rsquo;re much closer to this than you might think — you don&rsquo;t need to be a software engineer. You already know the hard part: how TM1 hangs together, how its security works, and all the ways a model quietly goes wrong. You don&rsquo;t need deep knowledge of TM1&rsquo;s REST API either — some familiarity is enough to start, and free libraries such as TM1py can carry you through the early steps while you learn the rest. The MCP part — the bit that sounds new, explained below — is the small part. What you really need is a keen interest to learn.</p>
+  <p>And it costs next to nothing. The MCP standard is open, the official toolkits are free, and so are the libraries that help you talk to TM1. The real costs are an AI app subscription and your own time. You don&rsquo;t need permission from a vendor, and you don&rsquo;t need to build everything at once.</p>
+  <p>A gentle way in, one step at a time:</p>
+  <ol class="qgrid">
+    <li><span class="lab">A weekend</span><b>Read-only, on a copy</b><span class="why">Point a tiny server at a development copy with a limited login. Two tools: list the cubes, read some cells. Ask it questions you already know the answers to.</span></li>
+    <li><span class="lab">The next few weeks</span><b>Teach it to explain</b><span class="why">Add tools to read rules, processes and views. Ask it to explain a model you know well, and see where it&rsquo;s right and where it isn&rsquo;t.</span></li>
+    <li><span class="lab">Then</span><b>Add your checks</b><span class="why">Store the expected answers for your key numbers and give it a tool to run them. Now it can check itself — and so can you.</span></li>
+    <li><span class="lab">When you&rsquo;re ready</span><b>Let it build, on development only</b><span class="why">Add tools that change things, behind your own review: every change listed, checked and approved by you before it goes anywhere.</span></li>
+  </ol>
+    <p class="pull">Your own setup means your own guardrails. Start small, add a little at a time, and learn as you go. It&rsquo;s more doable than it sounds.</p>
+  <p>It does take two things. <b>Patience</b>, because the AI gets things wrong and you&rsquo;ll go round the loop more than once. And <b>discipline</b>, because the checks, the reviews and the written-down conventions are what make it work. Skip those, and it&rsquo;s a toy. Keep to them, and it&rsquo;s a genuinely useful colleague.</p>
+  </section>
+
+<section id="what">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">What is MCP?</h2></div>
+  <p>Until recently, using AI on planning numbers meant copy and paste. You exported something, pasted it into a chat assistant, and asked a question. The AI only knew what you showed it, and it couldn&rsquo;t touch anything.</p>
+  <p><b>MCP</b> — the <b>Model Context Protocol</b> — changes that. It&rsquo;s an open standard for plugging AI assistants into other systems: your planning model, your databases, your files. A common way to describe it is <b>a USB-C port for AI</b>. Before it, every AI tool needed its own custom link to every system. With MCP, a system gets one standard plug, and any AI app that speaks MCP can use it.</p>
+  <p>It was introduced as an open standard in late 2024 and has since been taken up across the industry — by the major AI companies, by Microsoft, by Google, and by IBM. That&rsquo;s why you&rsquo;re hearing about it everywhere.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 200" role="img" aria-label="The three pieces: an AI app you talk to, an MCP server that plugs it into a system and decides what it may do, and the system itself, such as TM1.">
+      <defs><marker id="ar-a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <rect x="20" y="50" width="190" height="90" rx="10" class="node-indigo"/>
+      <text x="115" y="85" text-anchor="middle" class="svg-label">AI app</text>
+      <text x="115" y="104" text-anchor="middle" class="svg-sub">Claude, ChatGPT, Copilot&#8230;</text>
+      <text x="115" y="120" text-anchor="middle" class="svg-sub">where you ask</text>
+      <rect x="265" y="50" width="190" height="90" rx="10" class="node-amber"/>
+      <text x="360" y="85" text-anchor="middle" class="svg-label">MCP server</text>
+      <text x="360" y="104" text-anchor="middle" class="svg-sub">the plug for one system</text>
+      <text x="360" y="120" text-anchor="middle" class="svg-sub">decides what&#8217;s allowed</text>
+      <rect x="510" y="50" width="190" height="90" rx="10" class="node-green"/>
+      <text x="605" y="85" text-anchor="middle" class="svg-label">TM1</text>
+      <text x="605" y="104" text-anchor="middle" class="svg-sub">your planning model</text>
+      <text x="605" y="120" text-anchor="middle" class="svg-sub">its data and its security</text>
+      <path d="M210 95 L259 95" class="edge" marker-end="url(#ar-a)"/>
+      <path d="M455 95 L504 95" class="edge-green" marker-end="url(#ar-a)"/>
+      <text x="360" y="176" text-anchor="middle" class="svg-sub">ask a question &#8594; the AI picks a tool the MCP server offers &#8594; the server asks TM1 &#8594; the answer comes back</text>
+    </svg>
+    <figcaption>Three pieces. The <b>MCP server</b> in the middle is the one that matters most: it decides what the AI can do, and with whose access.</figcaption>
+  </figure>
+  <p>An MCP server offers the AI a short menu of <b>tools</b> — things it&rsquo;s allowed to do in that system. For TM1 the menu might be &ldquo;list the cubes&rdquo;, &ldquo;read these cells&rdquo;, &ldquo;show me this rule&rdquo; and, if you allow it, &ldquo;change this rule&rdquo;. The AI reads your question, picks the tools it needs, uses them, and answers. What&rsquo;s on the menu is decided by whoever sets up the server.</p>
+</section>
+
+<section id="does">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">What can it do with a planning model?</h2></div>
+  <p>Once an AI can reach TM1 through an MCP server, the useful things it can do fall into a few groups:</p>
+  <div class="grid3">
+    <div class="c"><span class="lab">Ask</span><b>Answer questions from live numbers</b><span>&ldquo;Why is Opex over in the East this quarter?&rdquo; — from the model itself, not last week&rsquo;s export.</span></div>
+    <div class="c"><span class="lab">Explain</span><b>Explain how the model works</b><span>&ldquo;Where does this number come from?&rdquo; Read a rule or a process and explain it in plain words.</span></div>
+    <div class="c"><span class="lab">Find</span><b>Find things across the model</b><span>Which processes write to this cube? What uses this dimension? Handy before changing anything.</span></div>
+    <div class="c"><span class="lab">Check</span><b>Health-check a model</b><span>Spot rules without feeders, views that no longer work, processes nobody runs.</span></div>
+    <div class="c"><span class="lab">Draft</span><b>Draft commentary</b><span>First-pass variance commentary from the real figures, for a person to edit.</span></div>
+    <div class="c"><span class="lab">Build · custom servers</span><b>Help build and change models</b><span>Dimensions, rules, processes — with every change reviewed by a person before it goes anywhere. Needs an open-source or home-built server that offers these tools.</span></div>
+  </div>
+  <p><b>Which server can do what.</b> What&rsquo;s possible depends entirely on the tools a server offers. IBM&rsquo;s own MCP tools focus on exploring and analysing: browsing cubes, AI-generated MDX queries, cube analysis and performance metrics. Building and changing models needs an open-source or home-built server that offers those tools — and deserves the most care.</p>
+  <p><b>What it doesn&rsquo;t do.</b> It doesn&rsquo;t make the AI understand your business; it only gives it a way in. It doesn&rsquo;t replace PAW or your reports. And it doesn&rsquo;t make the AI right — it can still misread a number or pick the wrong version, just faster and more confidently.</p>
+</section>
+
+<section id="get">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">How do you get it?</h2></div>
+  <p>For TM1 there are three routes today:</p>
+  <div class="grid3">
+    <div class="c route"><span class="lab">Route 1</span><b>IBM&rsquo;s own MCP tools</b><span>IBM documents MCP tools from Planning Analytics 3.1.7 onwards — exploring cubes, AI-generated MDX queries, cube analysis and performance metrics — reached through one MCP endpoint with an agent key. Supported by IBM. Availability depends on your edition (IBM&rsquo;s cloud service and certified containers are documented); check with IBM or your partner for yours.</span></div>
+    <div class="c route r2"><span class="lab">Route 2</span><b>An open-source MCP server</b><span>Several are freely available. Someone technical can install one and point it at TM1 in an afternoon. You&rsquo;re responsible for checking what it does and keeping it up to date.</span></div>
+    <div class="c route r3"><span class="lab">Route 3</span><b>Build your own</b><span>For teams that need it to fit their own controls — their review process, their standards. More work; most teams won&rsquo;t need to.</span></div>
+  </div>
+  <p>Whichever route, you&rsquo;ll need the same four things:</p>
+  <ul>
+    <li><b>An AI app that supports MCP</b> — several do, including Claude, ChatGPT, Microsoft Copilot and developer tools like VS Code, but how they connect and what they allow varies by product, plan and company policy. Check that your app supports the kind of MCP server you plan to use before buying anything, and use your company&rsquo;s business account, not a personal one.</li>
+    <li><b>A way for it to reach TM1</b> — through TM1&rsquo;s REST API (explained just below).</li>
+    <li><b>A TM1 login for it to use</b> — and this choice matters more than anything else (see below).</li>
+    <li><b>A yes from IT and security</b> — it&rsquo;s a new route into your planning data, and they will want to know.</li>
+  </ul>
+  <h3>What an MCP server actually is, and where it runs</h3>
+  <p>An MCP server sounds grand, but it&rsquo;s just a <b>small program</b>. It knows how to talk to TM1 on one side and to an AI app on the other. It runs in one of three places:</p>
+  <div class="grid3">
+    <div class="c"><span class="lab">On your computer</span><b>Started by your AI app</b><span>You add it to your AI app&rsquo;s settings, and the app starts it quietly in the background whenever you open it. Only you use it. Quick to try — but it sits outside your normal systems, and holds whatever TM1 login was put into it.</span></div>
+    <div class="c"><span class="lab">On a server</span><b>Running for everyone</b><span>Installed once on a company server, running all the time, and several people&rsquo;s AI apps connect to it over the network. It can be looked after, updated and reviewed like any other system.</span></div>
+    <div class="c"><span class="lab">Inside Planning Analytics</span><b>IBM&rsquo;s built-in tools</b><span>Nothing to install: the MCP server is part of Planning Analytics itself, and you switch it on and connect your AI app to it.</span></div>
+  </div>
+  <p>Pilots usually start on someone&rsquo;s computer. Anything that lasts belongs on a server, where it has an owner.</p>
+  <h3>Do people really use open-source ones?</h3>
+  <p>Yes — they&rsquo;re the most common way to try MCP today, mostly by developers, consultants and technical finance people. Setting one up typically looks like this:</p>
+  <ol>
+    <li>Download it — open-source MCP servers are usually shared on GitHub and installed with a single command.</li>
+    <li>Tell it where TM1 is: the server&rsquo;s address.</li>
+    <li>Give it a TM1 login to use.</li>
+    <li>Choose what it may do — many offer a read-only setting.</li>
+    <li>Add it to your AI app&rsquo;s settings, restart the app, and start asking questions.</li>
+  </ol>
+  <p>That&rsquo;s the appeal — and the catch. You are running <b>someone else&rsquo;s code with a key to your planning model</b>. Know who wrote it and whether it&rsquo;s maintained, stick to a known version, and keep the TM1 password out of the settings file. In 2025 a fake MCP server, posing as an email tool, was caught copying every email it handled to an outsider.</p>
+  <h3>How hard is it to build one for TM1?</h3>
+  <p>Anthropic, which created MCP, published it as an open standard, and official free <b>toolkits</b> (SDKs) are available for Python, TypeScript and other languages, plus example servers for everyday things like files. There&rsquo;s no ready-made TM1 server in there — but the toolkit does the hard protocol work, so building one splits into three very different jobs:</p>
+  <div class="grid3">
+    <div class="c"><span class="lab">The MCP part</span><b>The protocol is the easy part</b><span>The toolkit handles talking to the AI app. A minimal demonstration with one tool is about fifteen lines of code — a demonstration, not a working TM1 integration.</span></div>
+    <div class="c"><span class="lab">The TM1 part</span><b>Real work</b><span>Reading cubes and rules through TM1&rsquo;s REST API, signing in (TM1 security, CAM, PAW, cloud keys — every method is explained in <a href="../authentication-guide/">How signing in to TM1 works</a>), keeping answers small enough for the AI to use, and error messages it can act on. Python&rsquo;s open-source TM1py library does much of this for you.</span></div>
+    <div class="c"><span class="lab">The guardrails</span><b>Most of the effort</b><span>Read-only by default, the right login, cubes kept out of reach, every look and change recorded, changes reviewed, every tool tested. This is what turns a demo into something you&rsquo;d let near real data.</span></div>
+  </div>
+  <p>A realistic sense of effort, for someone who knows both TM1 and a little programming:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Goal</th><th>Rough effort</th></tr></thead>
+    <tbody>
+      <tr><td>A first experiment: list cubes and read a few cells, read-only, on a development copy</td><td>An afternoon</td></tr>
+      <tr><td>A useful read-only server: cubes, rules, processes, views, answers kept small</td><td>A few days</td></tr>
+      <tr><td>Something a team can rely on: proper sign-in, limits, recording, tests</td><td>Weeks</td></tr>
+      <tr><td>Letting the AI build and change models, with every change reviewed and released properly</td><td>Considerably more — this is where most of the real design work is</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Two ways to talk to TM1.</b> Use a ready-made library such as TM1py, which handles signing in and much of the REST API for you, or call TM1&rsquo;s REST API directly from the language you prefer. A library gets you started faster; your own calls give you full control over every TM1 quirk. Both work.</p>
+  <p>The descriptions you write for each tool matter more than you&rsquo;d expect: the AI chooses which tool to use by reading them, so &ldquo;read cells&rdquo; and &ldquo;read cells from the approved forecast version only&rdquo; lead to very different behaviour.</p>
+  <details class="eg">
+    <summary><b>For the curious: what the MCP part looks like</b></summary>
+    <p>One way to do it: a minimal read-only TM1 MCP server in Python, using version 2 of the official MCP toolkit and, for brevity, the TM1py library. The TM1 password comes from an environment variable, never from the code:</p>
+<pre class="ascii">from os import environ
+from mcp.server import MCPServer
+from TM1py import TM1Service
+
+mcp = MCPServer("tm1")
+
+def tm1():
+    return TM1Service(address=environ["TM1_HOST"], port=int(environ["TM1_PORT"]), ssl=True,
+                      user=environ["TM1_USER"], password=environ["TM1_PASSWORD"])
+
+@mcp.tool()
+def list_cubes() -> list[str]:
+    """List the cubes in the TM1 model."""
+    with tm1() as t:
+        return t.cubes.get_all_names(skip_control_cubes=True)
+
+@mcp.tool()
+def read_cells(mdx: str) -> list:
+    """Read cell values with an MDX query. Read-only."""
+    with tm1() as t:
+        return t.cells.execute_mdx_values(mdx)
+
+# Try it in the toolkit's test window:  uv run mcp dev server.py</pre>
+    <p>That&rsquo;s the easy part. Everything in the &ldquo;what to think about&rdquo; section below is the rest.</p>
+  </details>
+  <h3>How does it reach TM1?</h3>
+  <p>TM1 has a built-in door for software, called the <b>REST API</b>. It&rsquo;s how PAW, the Excel add-in, scripts and other tools talk to TM1, and it&rsquo;s the door an MCP server uses too. Which way in depends on your setup:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Your setup</th><th>How the MCP server gets in</th><th>What IT needs to sort out</th></tr></thead>
+    <tbody>
+      <tr><td>TM1 v11 on your own servers</td><td>Straight to the TM1 server&rsquo;s REST API</td><td>The REST port switched on in the server&rsquo;s settings, a network route from wherever the MCP server runs, and an encrypted (HTTPS) connection</td></tr>
+      <tr><td>TM1 behind Planning Analytics Workspace</td><td>Through PAW, which passes requests on to TM1</td><td>Sign-in through PAW&rsquo;s own login; not every MCP server supports this route</td></tr>
+      <tr><td>Planning Analytics in IBM&rsquo;s cloud (v12)</td><td>Over the internet to IBM&rsquo;s web address for your service</td><td>An API key for the login it uses — and that key carries exactly its owner&rsquo;s access</td></tr>
+      <tr><td>IBM&rsquo;s own MCP tools</td><td>Built into Planning Analytics — nothing extra to install</td><td>Switching the feature on and setting up its agent key</td></tr>
+    </tbody>
+  </table></div>
+  <p>Each sign-in method — native, LDAP, CAM, Windows, cloud keys, PAW — is explained step by step in <a href="../authentication-guide/">How signing in to TM1 works</a>.</p>
+  <p>Where it runs and how it gets in are exactly what IT and security will ask about — so ask them early.</p>
+</section>
+
+<section id="working">
+  <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">What it&rsquo;s like to work with one</h2></div>
+  <h3>You talk to it</h3>
+  <p>Working with an MCP server is a conversation in your AI app, in plain language. Ask a question and you see each step as it happens: <i>&ldquo;I&rsquo;ll list the cubes&hellip; now I&rsquo;ll read the Opex rules&hellip;&rdquo;</i> Most AI apps ask your permission before each tool is used, or let you allow the harmless ones and keep approving the rest.</p>
+  <p>Building works the same way. You describe what you need — a cube, a rule, an allocation — the AI proposes a plan, you agree or correct it, and it builds piece by piece while you watch.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 170" role="img" aria-label="The working loop: describe what you need, the AI proposes a plan, it builds tool by tool while you watch, stored expected results are checked, and a person reviews and approves. If something is wrong, go back round the loop and turn the lesson into a check.">
+      <defs><marker id="ar-w" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <rect x="10" y="40" width="124" height="70" rx="8" class="node-plain"/><text x="72" y="66" text-anchor="middle" class="svg-label">Describe</text><text x="72" y="88" text-anchor="middle" class="svg-sub">what you</text><text x="72" y="101" text-anchor="middle" class="svg-sub">need</text><path d="M134 75 L151 75" class="edge" marker-end="url(#ar-w)"/><rect x="155" y="40" width="124" height="70" rx="8" class="node-indigo"/><text x="217" y="66" text-anchor="middle" class="svg-label">Plan</text><text x="217" y="88" text-anchor="middle" class="svg-sub">it proposes,</text><text x="217" y="101" text-anchor="middle" class="svg-sub">you agree</text><path d="M279 75 L296 75" class="edge" marker-end="url(#ar-w)"/><rect x="300" y="40" width="124" height="70" rx="8" class="node-amber"/><text x="362" y="66" text-anchor="middle" class="svg-label">Build</text><text x="362" y="88" text-anchor="middle" class="svg-sub">tool by tool,</text><text x="362" y="101" text-anchor="middle" class="svg-sub">you watch</text><path d="M424 75 L441 75" class="edge" marker-end="url(#ar-w)"/><rect x="445" y="40" width="124" height="70" rx="8" class="node-green"/><text x="507" y="66" text-anchor="middle" class="svg-label">Check</text><text x="507" y="88" text-anchor="middle" class="svg-sub">expected</text><text x="507" y="101" text-anchor="middle" class="svg-sub">results run</text><path d="M569 75 L586 75" class="edge" marker-end="url(#ar-w)"/><rect x="590" y="40" width="124" height="70" rx="8" class="node-steel"/><text x="652" y="66" text-anchor="middle" class="svg-label">Review</text><text x="652" y="88" text-anchor="middle" class="svg-sub">a person</text><text x="652" y="101" text-anchor="middle" class="svg-sub">approves</text><path d="M638 110 L638 140 L72 140 L72 116" class="edge-dash" marker-end="url(#ar-w)"/><text x="355" y="158" text-anchor="middle" class="svg-sub">something wrong? back round the loop — and turn the lesson into a check</text>
+    </svg>
+    <figcaption>The loop that works: the AI builds, <b>checks it can&rsquo;t argue with</b> decide whether it&rsquo;s right, and a person approves.</figcaption>
+  </figure>
+  <h3>How you check its progress</h3>
+  <ul>
+    <li><b>Watch the steps.</b> Every tool it uses is shown as it happens — which cube it read, which rule it changed.</li>
+    <li><b>Ask it what it did.</b> &ldquo;List everything you changed&rdquo; is a perfectly good question, and a good habit at the end of each session.</li>
+    <li><b>Look for yourself.</b> Open the view in PAW and read the numbers. Never take the AI&rsquo;s word that a number is right.</li>
+    <li><b>Write the expected answers down first.</b> The single most useful habit: store known results (&ldquo;total Opex for March should be 1,234,500&rdquo;) and run them after every change. The AI stops being trusted and starts being checked.</li>
+    <li><b>Keep one list of every change.</b> Everything the AI does is recorded in one place, reviewed by a person before it goes anywhere near production.</li>
+  </ul>
+  <h3>What it has to learn</h3>
+  <p>An AI knows TM1 in general — rules, feeders, TurboIntegrator — but nothing about <i>your</i> house: your naming conventions, that every cube gets a default view, how you handle versions, the quirks of your TM1 version. And it <b>forgets between conversations</b>. Tomorrow&rsquo;s session starts from scratch.</p>
+  <p>Two things fix that. Write your conventions down in a short guide the AI reads at the start of every session. And when you find yourself correcting the same mistake twice, turn it into an <b>automatic check</b> that refuses the change — so the mistake can&rsquo;t happen a third time, whoever makes it.</p>
+  <h3>The journey</h3>
+  <p>Three full models have been built this way, one after the other, and they show how the approach matures:</p>
+  <ol>
+    <li><b>An allocations model.</b> It worked in the end, after beginner mistakes: structure baked into names instead of dimensions, rules that compiled but computed the wrong thing. Everything was checked by hand.</li>
+    <li><b>A workforce planning model.</b> By now the conventions were written down and checked automatically. It was deployed from development to production, and the figures matched to the cent.</li>
+    <li><b>A statutory consolidation.</b> Built test-first: the expected answers from 26 published worked examples were stored before the build, and the AI built until every one matched.</li>
+  </ol>
+  <p class="pull">The AI didn&rsquo;t get smarter between the first model and the third. The system around it did.</p>
+  <p>The full story, mistakes included, is in <a href="../three-models-ai-guardrails/">Three Models, One Lesson</a>. A few practical lessons from it:</p>
+  <ul>
+    <li><b>Let it explain before it builds.</b> A wrong plan is cheap to fix; a wrong model isn&rsquo;t.</li>
+    <li><b>Keep sessions focused.</b> One piece of work at a time, with a clear finish.</li>
+    <li><b>When it starts guessing, stop it.</b> An AI that can&rsquo;t solve something tends to try variations. Step in, find the real cause, then carry on.</li>
+    <li><b>Keep the builder and the reviewer apart.</b> The AI builds; a person approves.</li>
+  </ul>
+</section>
+
+<section id="consider" class="consider">
+  <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">What to think about before you switch it on</h2></div>
+  <p>A useful way to think about it: you&rsquo;re giving system access to a <b>new colleague</b>. A very fast one, who never gets tired, but who is new. Finance already knows how to do that well — and most of what to consider follows from it.</p>
+
+  <h3><span class="n">1</span>Start with a question you want answered</h3>
+  <p>&ldquo;Let&rsquo;s connect AI to TM1&rdquo; isn&rsquo;t a goal. &ldquo;Let analysts ask why a number moved without waiting for us&rdquo; is. A clear use case tells you what the AI needs to reach — and, just as usefully, what it doesn&rsquo;t.</p>
+
+  <h3><span class="n">2</span>Accuracy: right number, right version</h3>
+  <p>For FP&amp;A this may be the biggest risk — bigger than a leak. An AI sounds just as sure when it&rsquo;s wrong, and a confident wrong number in a board pack does real damage. Planning models make it easy: did it read the <b>approved forecast</b>, or someone&rsquo;s working draft? Did it read the number, or work it out? Check its answers like any new colleague&rsquo;s, especially at first. The upside: reading the real model, it&rsquo;s far less likely to invent a figure than when it works from a pasted extract.</p>
+
+  <h3><span class="n">3</span>Whose access does it use?</h3>
+  <p>An MCP server signs in to TM1 like any user. The quick way to set one up is with an administrator&rsquo;s login — and then everyone who asks the AI anything borrows that access. In practice there are three set-ups:</p>
+  <ul>
+    <li><b>One shared account.</b> Every request runs with that account&rsquo;s access, whoever is asking. Simple, and the riskiest if the account is powerful.</li>
+    <li><b>A sign-in per person.</b> Each request runs as the person asking, so TM1&rsquo;s security decides what each one sees, exactly as it does today. Only possible where the server and your TM1 set-up support it.</li>
+    <li><b>Extra limits in the server.</b> The server itself refuses certain cubes or actions. Useful on top of either of the above — but those limits are only as good as their testing, and TM1&rsquo;s own security remains the real control.</li>
+  </ul>
+  <p>(For how sign-in and TM1 security fit together, see <a href="../authentication-guide/#programs">How signing in to TM1 works</a>.)</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 250" role="img" aria-label="With an admin's access, every door opens for anyone who asks the AI, including payroll and the board pack. With the person's own access, only the doors that person may open.">
+      <text x="40" y="34" class="svg-label" style="font-weight:600">With an admin&#8217;s access</text>
+      <text x="40" y="50" class="svg-sub">every door opens, for anyone who asks</text>
+      <rect x="40" y="60" width="150" height="34" rx="6" class="node-green"/><text x="52" y="82" class="svg-label">Sales</text><text x="178" y="82" text-anchor="end" class="svg-sub">open</text><rect x="40" y="104" width="150" height="34" rx="6" class="node-green"/><text x="52" y="126" class="svg-label">Opex</text><text x="178" y="126" text-anchor="end" class="svg-sub">open</text><rect x="40" y="148" width="150" height="34" rx="6" class="node-red"/><text x="52" y="170" class="svg-label">Payroll</text><text x="178" y="170" text-anchor="end" class="svg-sub">open!</text><rect x="40" y="192" width="150" height="34" rx="6" class="node-red"/><text x="52" y="214" class="svg-label">Board pack</text><text x="178" y="214" text-anchor="end" class="svg-sub">open!</text>
+      <text x="420" y="34" class="svg-label" style="font-weight:600">With the person&#8217;s own access</text>
+      <text x="420" y="50" class="svg-sub">only the doors TM1 lets them open</text>
+      <rect x="420" y="60" width="150" height="34" rx="6" class="node-green"/><text x="432" y="82" class="svg-label">Sales</text><text x="558" y="82" text-anchor="end" class="svg-sub">open</text><rect x="420" y="104" width="150" height="34" rx="6" class="node-green"/><text x="432" y="126" class="svg-label">Opex</text><text x="558" y="126" text-anchor="end" class="svg-sub">open</text><rect x="420" y="148" width="150" height="34" rx="6" class="node-plain"/><text x="432" y="170" class="svg-label">Payroll</text><text x="558" y="170" text-anchor="end" class="svg-sub">locked</text><rect x="420" y="192" width="150" height="34" rx="6" class="node-plain"/><text x="432" y="214" class="svg-label">Board pack</text><text x="558" y="214" text-anchor="end" class="svg-sub">locked</text>
+      <line x1="320" y1="26" x2="320" y2="232" class="edge-dash"/>
+    </svg>
+    <figcaption>Same AI, same question from a junior analyst. The only difference is <b>whose access</b> the MCP server uses.</figcaption>
+  </figure>
+  <p>The rules you already use for people carry straight over: <b>least access</b>, <b>read before write</b> (start read-only, and never let it change production), <b>maker and checker</b> (a person reviews its changes), and an <b>audit trail</b> that records what it looked at as well as what it changed.</p>
+  <p class="eg">Two planning-model traps we found by testing on TM1 v11.8. Hiding one figure from the AI didn&rsquo;t protect it — it could be worked out from the total minus the other lines. And a process run by a user who couldn&rsquo;t see a cube still read and changed that cube: the process ignored that user&rsquo;s cube and cell security. So permission to run a process can reach well beyond what the person could touch directly — an AI allowed to run processes needs that limit chosen with care. TM1&rsquo;s own security, on the right login, is the real control.</p>
+
+  <h3><span class="n">4</span>What leaves the building</h3>
+  <p>Everything the AI reads goes into the conversation — and so to the AI provider. A business account with the right terms (no training on your data, sensible retention, the right region) covers most of that. But it&rsquo;s still worth asking what the AI <i>needs</i> to see. Building or checking a model mostly needs the structure, not the figures, so a development copy with test data is often the right place to start. And some numbers are sensitive because of timing: actuals before results are announced, a forecast during a deal.</p>
+
+  <h3><span class="n">5</span>It can&rsquo;t always tell information from instructions</h3>
+  <p>A person reading a note that says &ldquo;send the salary file to this address&rdquo; knows something&rsquo;s wrong. An AI may just do it. Anything the AI reads — a comment in a process, a text cell, a document — could try to steer it. This is one more reason to keep it read-only unless you&rsquo;re deliberately building, and to keep its reach narrow.</p>
+  <p class="eg">It has happened: in 2025 researchers showed a single crafted email could get Microsoft 365 Copilot to collect internal information and send it out. Microsoft fixed it before any known real-world attack. Not an MCP flaw — but exactly the kind of risk any AI with access to data carries.</p>
+
+  <h3><span class="n">6</span>Someone has to own it</h3>
+  <p>A person has a manager. An MCP server is often set up by one enthusiast, then forgotten: no named owner, not in the quarterly access review, still running after the pilot ended. Give it an owner, put it in the access review, and give pilots an end date. Its passwords and keys need looking after too — attackers once stole the keys of a single AI chat tool and used them to reach more than 700 companies&rsquo; customer data.</p>
+</section>
+
+<section id="start">
+  <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">A sensible first step</h2></div>
+  <p>A pilot plan that removes most of the risk:</p>
+  <ul class="check">
+    <li>A <b>development copy</b>, a <b>read-only</b> server and a <b>named, limited login</b> — never admin.</li>
+    <li><b>One use case</b>, a small group of people, an <b>owner</b> and an <b>end date</b>.</li>
+    <li>Its answers checked against numbers you already know.</li>
+  </ul>
+  <p>Widen it a step at a time as it earns trust.</p>
+</section>
+
+<section id="questions">
+  <div class="sec-head"><span class="sec-num">08</span><h2 class="sec-title">Six questions to ask of any MCP server</h2></div>
+  <p>Whether it&rsquo;s IBM&rsquo;s, an open-source one or built in-house. You don&rsquo;t need to be technical to ask them; whoever looks after TM1 should be able to answer.</p>
+  <ol class="qgrid">
+    <li><span class="lab">Access</span><b>Whose access does it use — the person asking, or an admin?</b><span class="why">With an admin&rsquo;s, everyone who asks the AI gets the admin&rsquo;s view.</span></li>
+    <li><span class="lab">Change</span><b>Can it only read, or can it change things?</b><span class="why">Start read-only. Changes only where models are built — never on production.</span></li>
+    <li><span class="lab">Reach</span><b>What can it reach, and what&rsquo;s kept out?</b><span class="why">Payroll, security and anything price-sensitive shouldn&rsquo;t be reachable at all.</span></li>
+    <li><span class="lab">Checking</span><b>Who checks its work?</b><span class="why">Its changes are reviewed, and its numbers checked before they go anywhere important.</span></li>
+    <li><span class="lab">Record</span><b>Is there a record of what it looked at and changed?</b><span class="why">&ldquo;Who looked at the salary cube last quarter?&rdquo; should have an answer — AI included.</span></li>
+    <li><span class="lab">Owner</span><b>Who owns it?</b><span class="why">A named person, in the access review, with an end date for pilots — and known answers to who built it and where its passwords live.</span></li>
+  </ol>
+</section>
+
+<section id="short">
+  <div class="sec-head"><span class="sec-num">09</span><h2 class="sec-title">The short version</h2></div>
+  <p>MCP lets AI work directly with your planning model. It&rsquo;s worth exploring, and more doable than it sounds — as long as it&rsquo;s set up on purpose.</p>
+  <p class="pull">Treat every MCP server like a new starter: limited access, someone checking its work, and nothing it does unrecorded.</p>
+</section>
+
+<section id="sources">
+  <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">Sources</h2></div>
+  <ul>
+    <li><b>MCP itself</b> — <a href="https://modelcontextprotocol.io">the Model Context Protocol specification and documentation</a></li>
+    <li><b>IBM&rsquo;s MCP tools</b> — <a href="https://www.ibm.com/docs/en/planning-analytics/3.1.0?topic=assistant-mcp-tools">IBM Planning Analytics documentation: MCP tools (3.1.7 onwards)</a> · <a href="https://community.ibm.com/community/user/blogs/sami-el-cheikh1/2026/04/26/introducing-ibm-planning-analytics-assistant-mcp-s">IBM Community: introducing the Planning Analytics Assistant MCP server</a></li>
+    <li><b>The fake MCP server</b> — <a href="https://postmarkapp.com/blog/information-regarding-malicious-postmark-mcp-package">Postmark&rsquo;s own notice about the malicious &ldquo;postmark-mcp&rdquo; package</a>. Shows: a third-party MCP server can be malicious. It was impersonation, not a flaw in MCP.</li>
+    <li><b>The stolen keys</b> — <a href="https://cloud.google.com/blog/topics/threat-intelligence/data-theft-salesforce-instances-via-salesloft-drift">Google Threat Intelligence on the Salesloft Drift token theft</a>. Shows: an integration&rsquo;s access keys are as valuable as what they open. It involved an AI chat tool&rsquo;s connection, not MCP.</li>
+    <li><b>The crafted email</b> — <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-32711">Microsoft&rsquo;s advisory for &ldquo;EchoLeak&rdquo; (CVE-2025-32711)</a> · <a href="https://arxiv.org/html/2509.10540v1">the researchers&rsquo; paper</a>. Shows: an AI can be steered by what it reads. A Copilot flaw, fixed, not MCP.</li>
+  </ul>
+  <p><b>Over to you.</b> If you&rsquo;ve tried an MCP server with TM1 — IBM&rsquo;s, an open-source one or your own — what worked, what surprised you, and which guardrails turned out to matter? Lessons from real experiments are worth more than any guide, and corrections are always welcome.</p>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>MCP for FP&amp;A: what it is, and what to think about first</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      AI · MCP · Security · IBM Planning Analytics<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
