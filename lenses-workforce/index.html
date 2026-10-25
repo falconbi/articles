@@ -152,6 +152,12 @@
     padding:14px 18px;margin:20px 0;color:var(--ink-soft);
     font-size:15px;
   }
+  #appendix .table-wrap table{min-width:0}
+  #appendix th,#appendix td{padding:9px 10px;font-size:14px}
+  #appendix th{white-space:normal}
+  @media (max-width:620px){
+    #appendix th,#appendix td{font-size:12px;padding:7px 6px}
+  }
   .callout p{margin:0}
   .callout b{color:var(--ink)}
 
@@ -235,7 +241,7 @@
     <figcaption>The home page: the work waiting for approval, the year-end position against budget, and the pages for this user.</figcaption>
   </figure>
 
-  <h3>People</h3>
+  <h3 id="people">People</h3>
   <p>The People page lists everyone holding a Position, with their cost centre, FTE and pay. The cards across the top count the groups, and clicking one shows just that group.</p>
   <p>Every change to a person starts from their row: hire, pay or FTE change from a month, leaver (with an optional backfill), transfer, time away, cover. When you hire someone who already holds a Position, the page asks whether it is a transfer or a move to another company, so the same person is not counted twice.</p>
   <figure class="fig shot">
@@ -245,7 +251,7 @@
     <figcaption>The People page. The cards count the groups; the actions above the grid start from the selected person.</figcaption>
   </figure>
 
-  <h3>Positions</h3>
+  <h3 id="positions">Positions</h3>
   <p>The Positions page lists every Position — filled, vacant, planned hire, closed, or created by planning. Click a card to see only those.</p>
   <p>You set a hire month directly in the table on an empty Position. TM1 checks it and refuses, with the reason, if someone is already in the Position that month or the Position is closed. Each row shows its approval status — waiting for Finance, or approved. From the same row you change grade, FTE, location or salary from a month, move the Position to another cost centre or company, close or reopen it, or request a new Position. Every change is in History, refusals included.</p>
   <figure class="fig shot">
@@ -255,14 +261,14 @@
     <figcaption>Positions, filtered to planned hires. The hire month and approval are part of the row; History shows the refusals.</figcaption>
   </figure>
 
-  <h3>Assignments, handover and transfers</h3>
+  <h3 id="assignments">Assignments, handover and transfers</h3>
   <p>A Position and the person in it are separate. The Position is the job — cost centre, grade, FTE, location. The person is linked to it by an <b>assignment</b>: start month, end month, FTE share, and that person&rsquo;s salary. So two people can share a Position, or overlap during a handover; someone can cover while the holder is away; a transfer ends one assignment and starts another, and the history stays. Cost is calculated per assignment, so the right salary lands in the right months.</p>
   <p>On the People page every change is a change to an assignment; on the Positions page you see who holds each Position in a month.</p>
   <p>When someone is leaving, their replacement can start before they go. Hire the replacement into the same Position, choose <b>handover</b>, and set the months they overlap. For those months the Position shows <b>In handover</b> rather than over-filled, both people are counted and both are costed, so the cost of the overlap is in the plan. When the leaver&rsquo;s assignment ends, the Position is back to one person. Without the handover mark, two people in a one-FTE Position would show on Needs attention as over-filled.</p>
   <p>From a person&rsquo;s row, choose <b>Transfer</b>, pick the new Position and the month it starts. TM1 ends the current assignment the month before and starts the new one — the same person, counted once, with their history kept. If the new Position is in a different company, it is a company move: pay and tax follow the new company&rsquo;s rules from that month.</p>
   <p>Set someone&rsquo;s leaving month and, in the same step, optionally plan the replacement. Someone on leave stays counted; cover can be added for those months.</p>
 
-  <h3>Approvals and matching</h3>
+  <h3 id="approvals">Approvals and matching</h3>
   <p>Hire approvals is Finance&rsquo;s list of every planned hire, across all cost centres, still waiting — each with what it will cost a year and this year. Tick the ones to approve and click <b>Approve</b>. TM1 checks the person is in Finance. Until a hire is approved it is not in headcount or cost; if someone later changes its hire month, the approval is cleared so Finance sees it again.</p>
   <figure class="fig shot">
     <a href="images/lenses-hire-approval.png" target="_blank" rel="noopener" title="Open the full-size Hire approvals screenshot">
@@ -272,7 +278,7 @@
   </figure>
   <p>When HR creates a new Position, it is linked to the planned hire it fulfils, so the hire counts once. The page suggests matches, marked strong or possible; a person confirms each one. A match can be undone, and the planned hire goes back to how it was.</p>
 
-  <h3>Needs attention and assumptions</h3>
+  <h3 id="attention">Needs attention and assumptions</h3>
   <p>The control checks, each with its rows: Positions holding more FTE than they have, people over 1.0 FTE across Positions, and anyone in a Position that is closed that month. Click a card to see only that check.</p>
   <p>Assumptions: merit, promotion and bonus pool by month, applying from a chosen month on.</p>
 
@@ -348,6 +354,60 @@
   <ul>
     <li><b>Warnings.</b> The change can go ahead, but the page flags it first, with <i>Go ahead</i> or <i>Cancel</i>: a hire that takes a cost centre over budget; a salary above its pay band; a leaver with no backfill; an HR start date months after the planned hire month; a gap between a leaver and the replacement.</li>
     <li><b>Card drill.</b> A card filters the table on its page; a small arrow on the card opens the page with the full detail, already filtered.</li>
+  </ul>
+</section>
+
+<section id="appendix">
+  <div class="sec-head"><span class="sec-num">A</span><h2 class="sec-title">Appendix: the workforce model</h2></div>
+  <p>For TM1 readers: the parts of the model behind the screens.</p>
+
+  <h3>FX</h3>
+  <p>Each company plans in its own currency: UK Ltd in GBP, US Inc in USD, NZ Ltd in NZD. Cost is held in local and reporting currency. Reports are in pounds, converted at the forecast rate.</p>
+
+  <h3>Moves</h3>
+  <p>A cost-centre move is dated: the Position sits under the new cost centre from that month, and the earlier months stay under the old one. A company move is not a transfer of the Position. It is a leaver from the old company and a hire into a new Position in the new company, which brings its own tax rules; the old Position closes.</p>
+
+  <h3>Tax on the person</h3>
+  <p>Payroll tax is held per person in <code>WFP Person Tax</code>, not on the Position. A transfer within the same company carries the person&rsquo;s year-to-date earnings to the new Position. A company move does not: the person leaves the old company and is hired into the new one, so the payroll year restarts.</p>
+
+  <h3>Tax year and employer tax</h3>
+  <p>Earnings are taxed by tax year, not by calendar year. UK and NZ start in April; US-NY in January. Thresholds and caps apply to earnings within that tax year. <code>Obl 2026</code> is the opening balance period: it holds each person&rsquo;s earnings and tax so far at the start, and is never costed.</p>
+  <p>This matters because employer tax is calculated on year-to-date earnings. A month&rsquo;s employer tax depends on the months before it, not just that month&rsquo;s salary. The UK employer NI and the US Social Security wage cap are examples. A mid-year transfer carries the history that decides the rate; a company move starts it again.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Jurisdiction</th><th>Tax year starts</th><th>Employer payroll tax in the model</th></tr></thead>
+      <tbody>
+        <tr><td>UK</td><td>April (6 April &ndash; 5 April)</td><td>13.8% above &pound;9,100</td></tr>
+        <tr><td>US-NY</td><td>January</td><td>9.0% up to $168,600; 1.45% above</td></tr>
+        <tr><td>NZ</td><td>April</td><td>1.6% up to NZ$142,283; nothing above</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>In a monthly model April is tax month 1, as payroll counts it. The bands are data in <code>WFP Tax Bands</code>, by jurisdiction.</p>
+
+  <h3>Employee tax and net pay</h3>
+  <p>Employee income tax and net pay are not a company cost. They are in the model for payroll cash forecasting; Employer Payroll Tax is the employer cost.</p>
+
+  <h3>Costing in TI</h3>
+  <p>The monthly cost is calculated in TI, not in rules. It runs across every assignment and every month, so it is too heavy to recalculate in a rule; rules are kept for the on-costs planners need to see change live. Base cost is built per assignment, month by month, and payroll tax is run per person. On-costs (pension, bonus, benefits) are rules on Base. Each action calls <code>WFP Request Recalculation</code>; the <code>WFP Recalculate Cost</code> chore runs <code>WFP Recalculate If Needed</code> every five minutes and updates cost when something is marked. On the full model, Base + tax + post takes about 90 seconds. The pages show <i>Cost up to date</i> or <i>Cost updating&hellip;</i> while it runs.</p>
+
+  <h3>People mechanics</h3>
+  <ul>
+    <li><b>Assignment.</b> A person holds a Position from a start month to an end month, at an FTE and salary; pay and tenure live on the assignment, not the Position. <a href="#assignments">Main section</a>.</li>
+    <li><b>Handover.</b> A replacement starts before the leaver goes; both count and are paid during the marked overlap. <a href="#assignments">Main section</a>.</li>
+    <li><b>Cover.</b> A second person covers while the holder is away; cover is flagged and only allowed while someone is away. <a href="#assignments">Main section</a>.</li>
+    <li><b>Time away.</b> The person stays in headcount and is paid the absence pay %; cover can be added for those months. <a href="#assignments">Main section</a>.</li>
+  </ul>
+
+  <h3>Control checks</h3>
+  <p>These run as assertions and on the <a href="#attention">Needs attention</a> page:</p>
+  <ul>
+    <li>Nobody over 1.0 FTE across Positions (<i>Over-booked</i>).</li>
+    <li>No Position holding more people than its FTE (<i>Over-filled</i>), except a marked handover or cover while someone is away.</li>
+    <li>Nobody assigned to a Position in a month it does not exist (<i>Person In Closed Position</i>).</li>
+    <li>No assignment record that ends before it starts (<i>Bad Span</i>).</li>
+    <li>No HRIS Position linked to more than one TBH; no matched TBH counting in an open month.</li>
+    <li>Every new HR Position in an open month is matched or flagged <i>Unplanned</i>; every approved TBH past its hire month is matched or flagged <i>Late hire</i>.</li>
   </ul>
 </section>
 
