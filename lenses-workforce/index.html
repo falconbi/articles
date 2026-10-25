@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A new UI for planning — Workforce Planning on TM1</title>
+<meta name="description" content="A Workforce Planning application built on TM1, shown screen by screen: positions, people, approvals, matching, budget and headcount. How the pages are built and what changes when the screen is part of the model.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --maxw:860px;
+  }
+
+  *{box-sizing:border-box}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* Masthead */
+  .masthead{
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,var(--ground) 0%,var(--surface) 100%);
+  }
+  .masthead .wrap{padding-top:74px;padding-bottom:50px}
+  .masthead .eyebrow{color:var(--teal);margin:0 0 20px}
+  .masthead .eyebrow span::after{color:var(--border-s)}
+  h1.title{
+    font-family:var(--sans);font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.25rem);
+    line-height:1.08;letter-spacing:-.012em;
+    margin:0 0 20px;color:var(--ink);max-width:22ch;
+  }
+  h1.title .accent{color:var(--teal)}
+  .standfirst{
+    font-size:1.16rem;line-height:1.58;color:var(--ink-muted);
+    max-width:64ch;margin:0 0 28px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:8px 24px;
+    font-size:13px;color:var(--ink-faint);
+    font-family:var(--mono);
+    padding-top:8px;border-top:1px solid var(--border);
+  }
+  .meta-row b{color:var(--ink-muted);font-weight:500}
+
+  .prototype{
+    margin:28px 0 30px;background:var(--forest-tint);
+    border:1px solid color-mix(in srgb,var(--forest) 22%,transparent);
+    border-left:4px solid var(--forest);border-radius:6px;
+    padding:16px 20px;font-size:15.5px;color:var(--ink-soft);
+  }
+  .prototype b{color:var(--forest);font-weight:600}
+
+  /* Sections */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:40px 0;border-bottom:1px solid var(--border)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:16px;align-items:baseline;margin:0 0 16px}
+  .sec-num{
+    font-family:var(--mono);font-size:13px;font-weight:600;
+    color:var(--teal);flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:var(--sans);font-weight:600;
+    font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;
+    color:var(--ink);
+  }
+  h3{
+    font-family:var(--sans);font-weight:600;font-size:1.12rem;
+    color:var(--ink);margin:28px 0 8px;letter-spacing:-.005em;
+  }
+  p{margin:0 0 14px}
+  ul,ol{margin:0 0 14px;padding-left:1.25rem}
+  li{margin:5px 0}
+
+  a{color:var(--teal)}
+  code{font-size:.88em}
+
+  /* Figures */
+  figure{margin:22px 0 26px}
+  .shot a{display:block;line-height:0}
+  .shot img{
+    display:block;width:100%;height:auto;
+    border:1px solid var(--border);border-radius:8px;
+    background:var(--surface);
+  }
+  figcaption{
+    font-size:12.5px;color:var(--ink-faint);
+    font-family:var(--mono);line-height:1.55;
+    margin-top:9px;text-align:left;
+  }
+  figcaption b{color:var(--ink-muted);font-weight:600}
+
+  .shots{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:18px 22px;margin:22px 0 0;
+  }
+  .shots figure{margin:0}
+  .shots figcaption{font-size:12px}
+
+  .arch{
+    display:grid;grid-template-columns:1fr 1.05fr 1fr 1.05fr 1fr;
+    align-items:stretch;margin:20px 0 0;
+  }
+  .arch-node{
+    border:1px solid var(--border);border-radius:8px;
+    padding:14px 12px;text-align:center;
+    display:flex;flex-direction:column;justify-content:center;gap:3px;
+  }
+  .arch-node.a{background:var(--teal-tint);border-color:color-mix(in srgb,var(--teal) 28%,var(--border))}
+  .arch-node.b{background:var(--navy-tint);border-color:color-mix(in srgb,var(--navy) 28%,var(--border))}
+  .arch-node.c{background:var(--forest-tint);border-color:color-mix(in srgb,var(--forest) 28%,var(--border))}
+  .arch-node b{font-size:15px;color:var(--ink);line-height:1.2}
+  .arch-node span{font-size:13px;color:var(--ink-soft);line-height:1.35}
+  .arch-node small{font-family:var(--mono);font-size:10px;color:var(--ink-muted);line-height:1.4}
+  .arch-link{
+    display:flex;flex-direction:column;justify-content:center;align-items:center;
+    gap:5px;text-align:center;padding:0 6px;
+  }
+  .arch-arrow{font-size:20px;line-height:1;color:var(--ink-muted)}
+  .arch-link span:last-child{font-family:var(--mono);font-size:9.5px;line-height:1.4;color:var(--ink-faint)}
+  @media (max-width:700px){
+    .arch{grid-template-columns:1fr;gap:0}
+    .arch-link{flex-direction:row;gap:8px;padding:8px 10px}
+    .arch-arrow{transform:rotate(90deg)}
+    .arch-link span:last-child{text-align:left;font-size:10px}
+  }
+
+  /* Rules */
+  .rules{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));
+    gap:12px;margin:20px 0 4px;
+  }
+  .rule{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:8px;padding:14px 16px;
+  }
+  .rule .lab{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--teal);display:block;margin-bottom:5px;
+  }
+  .rule b{display:block;font-size:15px;color:var(--ink);margin-bottom:5px;line-height:1.35}
+  .rule p{font-size:14.5px;line-height:1.55;margin:0;color:var(--ink-muted)}
+
+  .callout{
+    background:var(--surface);border:1px solid var(--border);
+    border-left:3px solid var(--teal);border-radius:0 6px 6px 0;
+    padding:14px 18px;margin:20px 0;color:var(--ink-soft);
+    font-size:15px;
+  }
+  .callout p{margin:0}
+  .callout b{color:var(--ink)}
+
+  .note{
+    color:var(--ink-muted);font-size:14.5px;
+  }
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .wrap{padding:0 18px}
+    .masthead .wrap{padding-top:50px;padding-bottom:38px}
+    .sec-head{gap:10px}
+    .shots{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">Lenses &nbsp;·&nbsp; IBM Planning Analytics</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow"><span>Lenses</span><span>Workforce planning</span><span>TM1</span></p>
+    <h1 class="title">A new UI for planning:<br><span class="accent">Workforce Planning on TM1</span></h1>
+    <p class="standfirst">A Lens is a planning screen built as an HTML page, running on a TM1 model. This article shows what they can do, using a Workforce Planning application built on TM1 v11.</p>
+    <div class="meta-row">
+      <span><b>Status</b> Published October 2026</span>
+      <span><b>Read</b> about 10 minutes</span>
+      <span><b>Application</b> Workforce Planning</span>
+    </div>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+<section id="different">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">A different UI</h2></div>
+  <p>A Lens is a planning screen built as an HTML page, running on a TM1 model. This article shows what they can do, using a Workforce Planning application built on TM1 v11.</p>
+
+  <div class="prototype"><b>Note:</b> this is an advanced workforce model, built to test Lenses on something realistic — Positions, people and assignments, handovers, transfers and company moves, hiring plans matched to HR, approvals, tax years per country, and costing in TI. It is a test bed for the UI, not a packaged product.</div>
+
+  <h3>How it fits together</h3>
+  <figure class="fig">
+    <div class="arch" role="img" aria-label="The browser runs the Lens page. The Lens server checks what the page has declared, signs in as the signed-in user, and calls TM1 through its REST API. TM1 holds the cubes, rules, processes, security and the Lens pages.">
+      <div class="arch-node a"><b>Browser</b><span>Lens page</span><small>HTML + the Lens kit</small></div>
+      <div class="arch-link"><span class="arch-arrow">&harr;</span><span>read · run a process · write a cell</span></div>
+      <div class="arch-node b"><b>Lens server</b><span>checks what the page declared</span><small>signs in as the user · Node</small></div>
+      <div class="arch-link"><span class="arch-arrow">&harr;</span><span>TM1 REST API<br>through PAW</span></div>
+      <div class="arch-node c"><b>TM1 server</b><span>cubes · rules · TI</span><small>security · the Lens pages</small></div>
+    </div>
+    <figcaption>The page runs in the browser. The <b>Lens server</b> passes each request to TM1 as the signed-in person; TM1 decides what it can see and change.</figcaption>
+  </figure>
+
+  <ul>
+    <li><b>The page</b> is a single HTML file. It is stored inside the TM1 model (TM1 Applications), so it lives and travels with the model. The source is also kept in git, so every version can be compared and rolled back.</li>
+    <li><b>The Lens kit</b> is a shared set of components — charts, the grid, the pivot, cards, forms, History, who is on the page. The grid and pivot are the same ones the IDE&rsquo;s View Editor uses. A change to a component reaches every page.</li>
+    <li><b>The Lens server</b> passes each request to TM1 as the signed-in user, so TM1 security decides what they see and change. A page must declare which processes it runs; anything else is refused.</li>
+    <li><b>TM1 holds the logic.</b> Calculations are in rules and TI. Every workflow change — hire, transfer, match, approve, set a hire month — is a TI process that checks it and refuses with a reason, written to a small <i>Lens Messages</i> cube the page reads back. Planning input, like assumptions, is an ordinary cell write under TM1 cell security.</li>
+    <li><b>The pages are built by describing them to an AI</b>, which uses the TM1 MCP server — tools to read the model, build processes, save a Lens — under the same rules.</li>
+  </ul>
+</section>
+
+<section id="see">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">See it: Workforce</h2></div>
+  <p>The application is a set of pages for the workforce plan: the positions, the people in them, approvals, matching, cost and headcount. These are the main screens.</p>
+
+  <h3>Home</h3>
+  <p>The home page shows what needs the person&rsquo;s attention, four headline figures, and the pages they can open. Which pages appear depends on the person&rsquo;s TM1 group: HR, Finance or cost-centre manager.</p>
+  <figure class="fig shot">
+    <a href="images/lenses-home-full.png" target="_blank" rel="noopener" title="Open the full-size home screenshot">
+      <img src="images/lenses-home-full.png" alt="Workforce home page with four headline figures and cards for People, Positions, approvals and budget.">
+    </a>
+    <figcaption>The home page: the work waiting for approval, the year-end position against budget, and the pages for this user.</figcaption>
+  </figure>
+
+  <h3>People</h3>
+  <p>The People page lists everyone holding a Position, with their cost centre, FTE and pay. The cards across the top count the groups, and clicking one shows just that group.</p>
+  <p>Every change to a person starts from their row: hire, pay or FTE change from a month, leaver (with an optional backfill), transfer, time away, cover. When you hire someone who already holds a Position, the page asks whether it is a transfer or a move to another company, so the same person is not counted twice.</p>
+  <figure class="fig shot">
+    <a href="images/lenses-people-cards.png" target="_blank" rel="noopener" title="Open the full-size People screenshot">
+      <img src="images/lenses-people-cards.png" alt="People page: cards for people, FTE, leaving, away, cover and transfers, with a person selected and action buttons above the grid.">
+    </a>
+    <figcaption>The People page. The cards count the groups; the actions above the grid start from the selected person.</figcaption>
+  </figure>
+
+  <h3>Positions</h3>
+  <p>The Positions page lists every Position — filled, vacant, planned hire, closed, or created by planning. Click a card to see only those.</p>
+  <p>You set a hire month directly in the table on an empty Position. TM1 checks it and refuses, with the reason, if someone is already in the Position that month or the Position is closed. Each row shows its approval status — waiting for Finance, or approved. From the same row you change grade, FTE, location or salary from a month, move the Position to another cost centre or company, close or reopen it, or request a new Position. Every change is in History, refusals included.</p>
+  <figure class="fig shot">
+    <a href="images/lenses-positions-card-planned-hires.png" target="_blank" rel="noopener" title="Open the full-size Positions screenshot">
+      <img src="images/lenses-positions-card-planned-hires.png" alt="Positions page filtered to planned hires, showing hire month and approval columns, with the History panel open.">
+    </a>
+    <figcaption>Positions, filtered to planned hires. The hire month and approval are part of the row; History shows the refusals.</figcaption>
+  </figure>
+
+  <h3>Assignments, handover and transfers</h3>
+  <p>A Position and the person in it are separate. The Position is the job — cost centre, grade, FTE, location. The person is linked to it by an <b>assignment</b>: start month, end month, FTE share, and that person&rsquo;s salary. So two people can share a Position, or overlap during a handover; someone can cover while the holder is away; a transfer ends one assignment and starts another, and the history stays. Cost is calculated per assignment, so the right salary lands in the right months.</p>
+  <p>On the People page every change is a change to an assignment; on the Positions page you see who holds each Position in a month.</p>
+  <p>When someone is leaving, their replacement can start before they go. Hire the replacement into the same Position, choose <b>handover</b>, and set the months they overlap. For those months the Position shows <b>In handover</b> rather than over-filled, both people are counted and both are costed, so the cost of the overlap is in the plan. When the leaver&rsquo;s assignment ends, the Position is back to one person. Without the handover mark, two people in a one-FTE Position would show on Needs attention as over-filled.</p>
+  <p>From a person&rsquo;s row, choose <b>Transfer</b>, pick the new Position and the month it starts. TM1 ends the current assignment the month before and starts the new one — the same person, counted once, with their history kept. If the new Position is in a different company, it is a company move: pay and tax follow the new company&rsquo;s rules from that month.</p>
+  <p>Set someone&rsquo;s leaving month and, in the same step, optionally plan the replacement. Someone on leave stays counted; cover can be added for those months.</p>
+
+  <h3>Approvals and matching</h3>
+  <p>Hire approvals is Finance&rsquo;s list of every planned hire, across all cost centres, still waiting — each with what it will cost a year and this year. Tick the ones to approve and click <b>Approve</b>. TM1 checks the person is in Finance. Until a hire is approved it is not in headcount or cost; if someone later changes its hire month, the approval is cleared so Finance sees it again.</p>
+  <figure class="fig shot">
+    <a href="images/lenses-hire-approval.png" target="_blank" rel="noopener" title="Open the full-size Hire approvals screenshot">
+      <img src="images/lenses-hire-approval.png" alt="Hire approvals page with cards for waiting hires, the next three months, annual cost and approved hires, plus a table of roles with cost.">
+    </a>
+    <figcaption>Hire approvals: the cards show the backlog and its annual cost; the rows are ticked before Approve.</figcaption>
+  </figure>
+  <p>When HR creates a new Position, it is linked to the planned hire it fulfils, so the hire counts once. The page suggests matches, marked strong or possible; a person confirms each one. A match can be undone, and the planned hire goes back to how it was.</p>
+
+  <h3>Needs attention and assumptions</h3>
+  <p>The control checks, each with its rows: Positions holding more FTE than they have, people over 1.0 FTE across Positions, and anyone in a Position that is closed that month. Click a card to see only that check.</p>
+  <p>Assumptions: merit, promotion and bonus pool by month, applying from a chosen month on.</p>
+
+  <h3>Budget to forecast</h3>
+  <p>A waterfall from budget to forecast, broken down by FX, people, pay rates, bonus and one-offs, with the function table under it and every cost centre that moved down the right. Click a step and the cost centres re-rank by that driver; click a cost centre to see its own bridge.</p>
+  <figure class="fig shot">
+    <a href="images/lenses-budget-to-forecast.png" target="_blank" rel="noopener" title="Open the full-size Budget to forecast screenshot">
+      <img src="images/lenses-budget-to-forecast.png" alt="Budget to forecast page with a waterfall from budget to forecast, a function table, and a ranked list of cost centres that moved.">
+    </a>
+    <figcaption>Budget to forecast: the waterfall and function table on the left, the cost centres that moved on the right. Clicking a step re-ranks them.</figcaption>
+  </figure>
+
+  <h3>Headcount by location</h3>
+  <p>Positions are owned by cost centres, but people also want them by city, country and region. TM1 can hold a second hierarchy on the same dimension, so the same Positions roll up a different way with no copied data. The By Location hierarchy is built by a TI process from each Position&rsquo;s Location attribute, and runs automatically after every HR load and recalculation — nobody maintains it by hand. Totals by location equal the company totals. On the Headcount page you switch between by cost centre and by location; in the IDE you can create one from any attribute with <b>+ Hierarchy &rarr; From an attribute</b>.</p>
+  <figure class="fig shot">
+    <a href="images/lenses-headcount.png" target="_blank" rel="noopener" title="Open the full-size Headcount screenshot">
+      <img src="images/lenses-headcount.png" alt="Headcount page with five headline figures, a monthly headcount trend, and movement by cost centre.">
+    </a>
+    <figcaption>Headcount: the monthly trend and movement by cost centre. The view can switch to the location hierarchy.</figcaption>
+  </figure>
+
+  <h3>Other screens</h3>
+  <p>The rest of the application uses the same parts: a monthly cost view, the management KPIs, a cost-centre review and the pay and grade mix.</p>
+  <div class="shots">
+    <figure class="fig shot">
+      <a href="images/lenses-workforce-cost.png" target="_blank" rel="noopener" title="Open the full-size Workforce cost screenshot">
+        <img src="images/lenses-workforce-cost.png" alt="Workforce cost page with a monthly stacked bar chart of pay components, a cost-centre list, and the pay-component table.">
+      </a>
+      <figcaption><b>Workforce cost.</b> Monthly pay components stacked, with the comparison line and the cost-centre list.</figcaption>
+    </figure>
+    <figure class="fig shot">
+      <a href="images/lenses-kpi.png" target="_blank" rel="noopener" title="Open the full-size Workforce KPIs screenshot">
+        <img src="images/lenses-kpi.png" alt="Workforce KPIs page with eight headline figures, monthly headcount and cost charts, and cost by function and company.">
+      </a>
+      <figcaption><b>Workforce KPIs.</b> Headcount, FTE, cost, cost per FTE, attrition, joiners, approvals and capex.</figcaption>
+    </figure>
+    <figure class="fig shot">
+      <a href="images/lenses-my-cost-centre.png" target="_blank" rel="noopener" title="Open the full-size cost-centre review screenshot">
+        <img src="images/lenses-my-cost-centre.png" alt="Cost-centre review page with five headline figures, a monthly cost chart, and a person-by-person table.">
+      </a>
+      <figcaption><b>My cost centre.</b> The cost-centre review: the same headcount and cost view, with the people and roles below.</figcaption>
+    </figure>
+    <figure class="fig shot">
+      <a href="images/lenses-pay-grade.png" target="_blank" rel="noopener" title="Open the full-size Pay and grades screenshot">
+        <img src="images/lenses-pay-grade.png" alt="Pay and grades page with headline figures, people by grade, mix by location, hours, contract and grade, and salary against the pay band.">
+      </a>
+      <figcaption><b>Pay &amp; grades.</b> People by grade, salary against the band, and the share of part-time and contractor roles.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="why">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Why it works</h2></div>
+  <p>The screens share a small set of behaviours. They are the reason the application feels like one place to work rather than a set of reports. The layout is placed for the job, and adjusts to the screen down to a phone.</p>
+
+  <div class="rules">
+    <div class="rule"><span class="lab">Charts</span><b>Charts filter the page.</b><p>A cost-centre bar opens that cost centre&rsquo;s bridge. A card filters the table below, and clicking it again clears the filter. On the report pages, a waterfall step re-ranks the cost centres by that driver.</p></div>
+    <div class="rule"><span class="lab">Grid</span><b>The grid carries the detail.</b><p>Status appears as a pill in a cell; approved rows lock; cells you typed but have not saved are highlighted. Right-click a cell for how it is calculated, who changed it, and notes.</p></div>
+    <div class="rule"><span class="lab">Selectors</span><b>Lists come from the model.</b><p>When the page opens, its lists are built from the model: only the months still open, only the cost centres in the user&rsquo;s function.</p></div>
+    <div class="rule"><span class="lab">Numbers</span><b>Formats belong to the column.</b><p>&pound;k, &pound;m, &ldquo;Sep 2026&rdquo;, +/&minus; signs — chosen per column, not typed into the data.</p></div>
+    <div class="rule"><span class="lab">Actions</span><b>The work happens on the screen.</b><p>Each step — hire, match, approve — uses the row already selected. Forms fill the process parameters; if TM1 refuses, the page shows its reason.</p></div>
+    <div class="rule"><span class="lab">Access</span><b>TM1 decides who sees what.</b><p>The home page shows each person the pages for their role. Every read and write runs as the signed-in user under TM1 security.</p></div>
+    <div class="rule"><span class="lab">Record</span><b>Actions are written down.</b><p>History shows every action on the page — who, when, refusals included. The page also shows who else is on it.</p></div>
+    <div class="rule"><span class="lab">Building</span><b>The page is built by description.</b><p>The pages are built by describing them to an AI, which uses the TM1 MCP server to read the model, build processes and save a Lens under the same rules.</p></div>
+  </div>
+
+  <div class="callout"><p><b>Cost status.</b> After a change, the page shows that cost is being recalculated, and updates when it is done.</p></div>
+</section>
+
+<section id="next">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">Next</h2></div>
+  <p>The next pieces are not in the application yet.</p>
+  <ul>
+    <li><b>Warnings.</b> The change can go ahead, but the page flags it first, with <i>Go ahead</i> or <i>Cancel</i>: a hire that takes a cost centre over budget; a salary above its pay band; a leaver with no backfill; an HR start date months after the planned hire month; a gap between a leaver and the replacement.</li>
+    <li><b>Card drill.</b> A card filters the table on its page; a small arrow on the card opens the page with the full detail, already filtered.</li>
+  </ul>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-brand">
+        <img src="favicon.png" alt="FalconBI">
+        <span>falcon<b>bi</b></span>
+      </div>
+      <p>A new UI for planning: Workforce Planning on TM1</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      Lenses · Workforce planning · IBM Planning Analytics<br>
+      &copy; 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
