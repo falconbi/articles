@@ -130,6 +130,19 @@
     .arch-link span:last-child{text-align:left;font-size:10px}
   }
 
+  .arch-map{display:grid;gap:12px;margin:20px 0 0}
+  .arch-band{border:1px solid var(--border);border-radius:9px;padding:10px 12px;background:var(--surface)}
+  .arch-band .arch{margin:6px 0 0}
+  .arch-band-label{
+    font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-faint);
+  }
+  .arch-note{
+    font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);
+    text-align:center;border-top:1px dashed var(--border-s);
+    border-bottom:1px dashed var(--border-s);padding:5px 0;
+  }
+
   /* Rules */
   .rules{
     display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));
@@ -152,11 +165,14 @@
     padding:14px 18px;margin:20px 0;color:var(--ink-soft);
     font-size:15px;
   }
-  #appendix .table-wrap table{min-width:0}
+  h3 .h3sub{font-weight:400;color:var(--ink-faint);font-size:.78em;letter-spacing:0}
+  #appendix .table-wrap table,#security .table-wrap table{min-width:0}
   #appendix th,#appendix td{padding:9px 10px;font-size:14px}
-  #appendix th{white-space:normal}
+  #appendix th,#security th{white-space:normal}
+  #security th,#security td{padding:9px 9px;font-size:13px}
   @media (max-width:620px){
     #appendix th,#appendix td{font-size:12px;padding:7px 6px}
+    #security th,#security td{font-size:11.5px;padding:6px 5px}
   }
   .callout p{margin:0}
   .callout b{color:var(--ink)}
@@ -188,11 +204,11 @@
 <header class="masthead">
   <div class="wrap">
     <p class="eyebrow"><span>Lenses</span><span>Workforce planning</span><span>TM1</span></p>
-    <h1 class="title">A new UI for planning:<br><span class="accent">Workforce Planning on TM1</span></h1>
+    <h1 class="title">A new UI for planning:<br> <span class="accent">Workforce Planning on TM1</span></h1>
     <p class="standfirst">A Lens is a planning screen built as an HTML page, running on a TM1 model. This article shows what they can do, using a Workforce Planning application built on TM1 v11.</p>
     <div class="meta-row">
-      <span><b>Status</b> Published October 2026</span>
-      <span><b>Read</b> about 10 minutes</span>
+      <span><b>Status</b> Draft</span>
+      <span><b>Read</b> about 7 minutes</span>
       <span><b>Application</b> Workforce Planning</span>
     </div>
   </div>
@@ -201,113 +217,141 @@
 <main>
 <div class="wrap">
 
-<section id="different">
-  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">A different UI</h2></div>
+<section id="overview">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">A new UI for planning</h2></div>
   <p>A Lens is a planning screen built as an HTML page, running on a TM1 model. This article shows what they can do, using a Workforce Planning application built on TM1 v11.</p>
 
   <div class="prototype"><b>Note:</b> this is an advanced workforce model, built to test Lenses on something realistic — Positions, people and assignments, handovers, transfers and company moves, hiring plans matched to HR, approvals, tax years per country, and costing in TI. It is a test bed for the UI, not a packaged product.</div>
 
-  <h3>How it fits together</h3>
+  <p>The application has 14 pages, covering people and Positions, hiring and approvals, matching the plan to HR, handovers and transfers, assumptions, cost, headcount and variance.</p>
+</section>
+
+<section id="architecture">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">How it fits together</h2></div>
+  <p>A Lens page is stored inside TM1. The browser runs the page; a small Lens server passes its requests to TM1 as the signed-in person; TM1 holds the data, rules, processes and security.</p>
+
   <figure class="fig">
-    <div class="arch" role="img" aria-label="The browser runs the Lens page. The Lens server checks what the page has declared, signs in as the signed-in user, and calls TM1 through its REST API. TM1 holds the cubes, rules, processes, security and the Lens pages.">
+    <div class="arch" role="img" aria-label="The browser runs a Lens page. The Lens server passes requests to TM1 as the signed-in user. TM1 holds the cubes, rules, processes, security and the Lens pages.">
       <div class="arch-node a"><b>Browser</b><span>Lens page</span><small>HTML + the Lens kit</small></div>
-      <div class="arch-link"><span class="arch-arrow">&harr;</span><span>read · run a process · write a cell</span></div>
-      <div class="arch-node b"><b>Lens server</b><span>checks what the page declared</span><small>signs in as the user · Node</small></div>
-      <div class="arch-link"><span class="arch-arrow">&harr;</span><span>TM1 REST API<br>through PAW</span></div>
+      <div class="arch-link"><span class="arch-arrow">&harr;</span><span>bridge calls</span></div>
+      <div class="arch-node b"><b>Lens server</b><span>session and access</span><small>signs in as the viewer</small></div>
+      <div class="arch-link"><span class="arch-arrow">&harr;</span><span>TM1 REST<br>as the viewer</span></div>
       <div class="arch-node c"><b>TM1 server</b><span>cubes · rules · TI</span><small>security · the Lens pages</small></div>
     </div>
-    <figcaption>The page runs in the browser. The <b>Lens server</b> passes each request to TM1 as the signed-in person; TM1 decides what it can see and change.</figcaption>
+    <figcaption>The page runs in the browser. The <b>Lens server</b> passes every request to TM1 as the signed-in person; TM1 decides what it can see and change.</figcaption>
   </figure>
 
   <ul>
-    <li><b>The page</b> is a single HTML file. It is stored inside the TM1 model (TM1 Applications), so it lives and travels with the model. The source is also kept in git, so every version can be compared and rolled back.</li>
-    <li><b>The Lens kit</b> is a shared set of components — charts, the grid, the pivot, cards, forms, History, who is on the page. The grid and pivot are the same ones the IDE&rsquo;s View Editor uses. A change to a component reaches every page.</li>
-    <li><b>The Lens server</b> passes each request to TM1 as the signed-in user, so TM1 security decides what they see and change. A page must declare which processes it runs; anything else is refused.</li>
+    <li><b>The page</b> is a single HTML file stored inside the TM1 model (TM1 Applications), so it travels with the model. The Workforce page source is also kept in this repository.</li>
+    <li><b>The Lens kit</b> is a shared set of components — charts, the grid, the pivot, cards, forms, History, who is on the page. The grid and pivot are the same ones the IDE&rsquo;s View Editor uses. A component change reaches every page after the kit is rebuilt.</li>
+    <li><b>The Lens server</b> passes each request to TM1 as the signed-in user. A page must declare the processes it runs; anything else is refused.</li>
     <li><b>TM1 holds the logic.</b> Calculations are in rules and TI. Every workflow change — hire, transfer, match, approve, set a hire month — is a TI process that checks it and refuses with a reason, written to a small <i>Lens Messages</i> cube the page reads back. Planning input, like assumptions, is an ordinary cell write under TM1 cell security.</li>
-    <li><b>The pages are built by describing them to an AI</b>, which uses the TM1 MCP server — tools to read the model, build processes, save a Lens — under the same rules.</li>
+  </ul>
+  <p>The pages are built by describing them to an AI, which uses the TM1 MCP server. The MCP is a build tool; it is not used by the running page.</p>
+</section>
+
+<section id="offers">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">What a Lens offers</h2></div>
+  <ul>
+    <li><b>Charts:</b> a waterfall, stacked bars, names above long bars. Click a cost-centre bar and the rest of the page follows.</li>
+    <li><b>Number formats:</b> &pound;k, &pound;m, &ldquo;Sep 2026&rdquo;, +/&minus; signs — chosen per column.</li>
+    <li><b>Grid:</b> status pills; approved rows lock; typed but unsaved cells are highlighted; right-click for how a cell is calculated, who changed it, and notes.</li>
+    <li><b>Selectors:</b> lists built from the model — only open months, only cost centres in your function.</li>
+    <li><b>Cards:</b> filter the table below; click again to clear.</li>
+    <li><b>Reporting is interactive:</b> a card, bar or waterfall step re-filters the page; a new version or comparison redraws it.</li>
+    <li><b>Layout:</b> placed for the job, down to a phone.</li>
+    <li><b>Workflow on the screen:</b> hire, match or approve where you are looking, with your selection already made.</li>
+    <li><b>Actions:</b> forms fill the process parameters; if TM1 refuses, the page shows why.</li>
+    <li><b>Screens by role:</b> Home lists the pages for the viewer&rsquo;s role.</li>
+    <li><b>Security:</b> TM1&rsquo;s own server security; the page sees what TM1 lets that user see, and actions run as the user.</li>
+    <li><b>History:</b> saves and process runs — who, when; refused process runs too.</li>
+    <li><b>Working together:</b> some pages show who else is on the page.</li>
   </ul>
 </section>
 
-<section id="see">
-  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">See it: Workforce</h2></div>
-  <p>The application is a set of pages for the workforce plan: the positions, the people in them, approvals, matching, cost and headcount. These are the main screens.</p>
+<section id="pages">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">The pages</h2></div>
+  <p>The screens are built around the task. A selected person changes the actions; a planned hire shows hire month, cost and approval in one row; a bridge step re-ranks the cost centres.</p>
 
   <h3>Home</h3>
-  <p>The home page shows what needs the person&rsquo;s attention, four headline figures, and the pages they can open. Which pages appear depends on the person&rsquo;s TM1 group: HR, Finance or cost-centre manager.</p>
+  <p>Home lists the pages for the viewer&rsquo;s role. The work waiting for them is at the top, with the headline figures below.</p>
   <figure class="fig shot">
     <a href="images/lenses-home-full.png" target="_blank" rel="noopener" title="Open the full-size home screenshot">
       <img src="images/lenses-home-full.png" alt="Workforce home page with four headline figures and cards for People, Positions, approvals and budget.">
     </a>
-    <figcaption>The home page: the work waiting for approval, the year-end position against budget, and the pages for this user.</figcaption>
+    <figcaption>Home lists the pages for the viewer&rsquo;s role. The approval count links to the queue; the headline figures come from the model.</figcaption>
   </figure>
 
-  <h3 id="people">People</h3>
-  <p>The People page lists everyone holding a Position, with their cost centre, FTE and pay. The cards across the top count the groups, and clicking one shows just that group.</p>
-  <p>Every change to a person starts from their row: hire, pay or FTE change from a month, leaver (with an optional backfill), transfer, time away, cover. When you hire someone who already holds a Position, the page asks whether it is a transfer or a move to another company, so the same person is not counted twice.</p>
+  <h3>People</h3>
+  <p>People lists everyone holding a Position, with cost centre, FTE and pay. The cards count the groups; clicking one filters the grid.</p>
+  <p>Changes start from the row: hire, pay or FTE, leaver and backfill, transfer, time away, cover. If the person already holds a Position, the page asks whether this is a transfer or a company move, so they count once.</p>
   <figure class="fig shot">
     <a href="images/lenses-people-cards.png" target="_blank" rel="noopener" title="Open the full-size People screenshot">
       <img src="images/lenses-people-cards.png" alt="People page: cards for people, FTE, leaving, away, cover and transfers, with a person selected and action buttons above the grid.">
     </a>
-    <figcaption>The People page. The cards count the groups; the actions above the grid start from the selected person.</figcaption>
+    <figcaption>The cards filter the grid; selecting a person exposes the actions for that person.</figcaption>
   </figure>
 
-  <h3 id="positions">Positions</h3>
-  <p>The Positions page lists every Position — filled, vacant, planned hire, closed, or created by planning. Click a card to see only those.</p>
-  <p>You set a hire month directly in the table on an empty Position. TM1 checks it and refuses, with the reason, if someone is already in the Position that month or the Position is closed. Each row shows its approval status — waiting for Finance, or approved. From the same row you change grade, FTE, location or salary from a month, move the Position to another cost centre or company, close or reopen it, or request a new Position. Every change is in History, refusals included.</p>
+  <h3>Positions</h3>
+  <p>Positions lists every Position — filled, vacant, planned hire, closed or created by planning. A card shows only that group.</p>
+  <p>Set a hire month on an empty row; TM1 refuses if someone is there that month or the Position is closed. The row shows approval, and the actions change grade, FTE, location or salary, move, close or reopen, or request a new Position. History records each change.</p>
   <figure class="fig shot">
     <a href="images/lenses-positions-card-planned-hires.png" target="_blank" rel="noopener" title="Open the full-size Positions screenshot">
       <img src="images/lenses-positions-card-planned-hires.png" alt="Positions page filtered to planned hires, showing hire month and approval columns, with the History panel open.">
     </a>
-    <figcaption>Positions, filtered to planned hires. The hire month and approval are part of the row; History shows the refusals.</figcaption>
+    <figcaption>Filtered to planned hires. Hire month, salary and approval are in the row; History shows a refused change.</figcaption>
   </figure>
 
-  <h3 id="assignments">Assignments, handover and transfers</h3>
-  <p>A Position and the person in it are separate. The Position is the job — cost centre, grade, FTE, location. The person is linked to it by an <b>assignment</b>: start month, end month, FTE share, and that person&rsquo;s salary. So two people can share a Position, or overlap during a handover; someone can cover while the holder is away; a transfer ends one assignment and starts another, and the history stays. Cost is calculated per assignment, so the right salary lands in the right months.</p>
-  <p>On the People page every change is a change to an assignment; on the Positions page you see who holds each Position in a month.</p>
-  <p>When someone is leaving, their replacement can start before they go. Hire the replacement into the same Position, choose <b>handover</b>, and set the months they overlap. For those months the Position shows <b>In handover</b> rather than over-filled, both people are counted and both are costed, so the cost of the overlap is in the plan. When the leaver&rsquo;s assignment ends, the Position is back to one person. Without the handover mark, two people in a one-FTE Position would show on Needs attention as over-filled.</p>
-  <p>From a person&rsquo;s row, choose <b>Transfer</b>, pick the new Position and the month it starts. TM1 ends the current assignment the month before and starts the new one — the same person, counted once, with their history kept. If the new Position is in a different company, it is a company move: pay and tax follow the new company&rsquo;s rules from that month.</p>
-  <p>Set someone&rsquo;s leaving month and, in the same step, optionally plan the replacement. Someone on leave stays counted; cover can be added for those months.</p>
+  <h3 id="assignments">Position assignments</h3>
+  <p>A Position and the person in it are separate. The Position is the job; the <b>assignment</b> holds the start and end months, FTE share and salary. Two people can share a Position or overlap in a handover; cover can sit alongside an absence; a transfer ends one assignment and starts another. Cost is calculated per assignment.</p>
 
-  <h3 id="approvals">Approvals and matching</h3>
-  <p>Hire approvals is Finance&rsquo;s list of every planned hire, across all cost centres, still waiting — each with what it will cost a year and this year. Tick the ones to approve and click <b>Approve</b>. TM1 checks the person is in Finance. Until a hire is approved it is not in headcount or cost; if someone later changes its hire month, the approval is cleared so Finance sees it again.</p>
+  <h3>Handover</h3>
+  <p>A replacement can start before the leaver goes. Mark a handover and set the overlap: both people are counted and costed, and the Position shows <b>In handover</b> rather than over-filled. Without the mark, Needs attention shows it as over-filled.</p>
+
+  <h3>Transfers, leavers and cover</h3>
+  <p>A transfer moves the same person to another Position; TM1 ends the old assignment and starts the new one, with the history kept. A company move is a leaver plus a hire into a new Position in the new company, with its tax rules. A leaver can have a planned replacement; leave stays counted, and cover can be added.</p>
+
+  <h3>Approvals</h3>
+  <p>Hire approvals is Finance&rsquo;s queue of planned hires, with what each costs this year and a year. Tick the rows and approve. Until a hire is approved it is not in headcount or cost; a later change to its hire month clears the approval.</p>
   <figure class="fig shot">
     <a href="images/lenses-hire-approval.png" target="_blank" rel="noopener" title="Open the full-size Hire approvals screenshot">
       <img src="images/lenses-hire-approval.png" alt="Hire approvals page with cards for waiting hires, the next three months, annual cost and approved hires, plus a table of roles with cost.">
     </a>
-    <figcaption>Hire approvals: the cards show the backlog and its annual cost; the rows are ticked before Approve.</figcaption>
+    <figcaption>Finance&rsquo;s approval queue. Approval is a TI action; the cards show the backlog and its annual cost.</figcaption>
   </figure>
-  <p>When HR creates a new Position, it is linked to the planned hire it fulfils, so the hire counts once. The page suggests matches, marked strong or possible; a person confirms each one. A match can be undone, and the planned hire goes back to how it was.</p>
 
-  <h3 id="attention">Needs attention and assumptions</h3>
-  <p>The control checks, each with its rows: Positions holding more FTE than they have, people over 1.0 FTE across Positions, and anyone in a Position that is closed that month. Click a card to see only that check.</p>
-  <p>Assumptions: merit, promotion and bonus pool by month, applying from a chosen month on.</p>
+  <h3>Matching new HR Positions</h3>
+  <p>When HR creates a Position, the page suggests the planned hire it might fulfil, using company, cost centre, grade and hire month. A person confirms the match; it can be undone. The hire counts once.</p>
+
+  <h3 id="attention">Needs attention</h3>
+  <p>The control checks show Positions holding more FTE than they have, people over 1.0 FTE across Positions, and anyone in a Position that is closed that month. A card filters to one check. After a change the page shows <i>Cost up to date</i> or <i>Cost updating&hellip;</i>; History records saves and process runs.</p>
 
   <h3>Budget to forecast</h3>
-  <p>A waterfall from budget to forecast, broken down by FX, people, pay rates, bonus and one-offs, with the function table under it and every cost centre that moved down the right. Click a step and the cost centres re-rank by that driver; click a cost centre to see its own bridge.</p>
+  <p>A waterfall from budget to forecast, split into FX, people, pay rates, bonus and one-offs, with the function table and the cost centres that moved. Click a step to re-rank the cost centres; click one to see its bridge.</p>
   <figure class="fig shot">
     <a href="images/lenses-budget-to-forecast.png" target="_blank" rel="noopener" title="Open the full-size Budget to forecast screenshot">
       <img src="images/lenses-budget-to-forecast.png" alt="Budget to forecast page with a waterfall from budget to forecast, a function table, and a ranked list of cost centres that moved.">
     </a>
-    <figcaption>Budget to forecast: the waterfall and function table on the left, the cost centres that moved on the right. Clicking a step re-ranks them.</figcaption>
+    <figcaption>The waterfall is a control for the table and the cost-centre list: a step changes the ranking.</figcaption>
   </figure>
 
-  <h3>Headcount by location</h3>
-  <p>Positions are owned by cost centres, but people also want them by city, country and region. TM1 can hold a second hierarchy on the same dimension, so the same Positions roll up a different way with no copied data. The By Location hierarchy is built by a TI process from each Position&rsquo;s Location attribute, and runs automatically after every HR load and recalculation — nobody maintains it by hand. Totals by location equal the company totals. On the Headcount page you switch between by cost centre and by location; in the IDE you can create one from any attribute with <b>+ Hierarchy &rarr; From an attribute</b>.</p>
+  <h3>By location — an Alternate Hierarchy</h3>
+  <p>Positions are owned by cost centres, but people also want them by city, country and region. TM1 can hold a second hierarchy on the same dimension, so the same Positions roll up a different way with no copied data. The By Location hierarchy is built by TI from each Position&rsquo;s Location and runs after every HR load and recalculation. Totals by location equal the company totals. On Headcount you switch between the two views.</p>
   <figure class="fig shot">
     <a href="images/lenses-headcount.png" target="_blank" rel="noopener" title="Open the full-size Headcount screenshot">
       <img src="images/lenses-headcount.png" alt="Headcount page with five headline figures, a monthly headcount trend, and movement by cost centre.">
     </a>
-    <figcaption>Headcount: the monthly trend and movement by cost centre. The view can switch to the location hierarchy.</figcaption>
+    <figcaption>Headcount: the monthly trend and movement by cost centre. The same Positions can be viewed through the location hierarchy.</figcaption>
   </figure>
 
-  <h3>Other screens</h3>
-  <p>The rest of the application uses the same parts: a monthly cost view, the management KPIs, a cost-centre review and the pay and grade mix.</p>
+  <h3>Other pages</h3>
+  <p>The rest uses the same parts: Workforce cost, Workforce KPIs, My cost centre and Pay &amp; grades. Assumptions is the input page for merit, promotion and bonus pool by month.</p>
   <div class="shots">
     <figure class="fig shot">
       <a href="images/lenses-workforce-cost.png" target="_blank" rel="noopener" title="Open the full-size Workforce cost screenshot">
         <img src="images/lenses-workforce-cost.png" alt="Workforce cost page with a monthly stacked bar chart of pay components, a cost-centre list, and the pay-component table.">
       </a>
-      <figcaption><b>Workforce cost.</b> Monthly pay components stacked, with the comparison line and the cost-centre list.</figcaption>
+      <figcaption><b>Workforce cost.</b> Monthly pay components stacked, with the comparison line and cost-centre list.</figcaption>
     </figure>
     <figure class="fig shot">
       <a href="images/lenses-kpi.png" target="_blank" rel="noopener" title="Open the full-size Workforce KPIs screenshot">
@@ -319,7 +363,7 @@
       <a href="images/lenses-my-cost-centre.png" target="_blank" rel="noopener" title="Open the full-size cost-centre review screenshot">
         <img src="images/lenses-my-cost-centre.png" alt="Cost-centre review page with five headline figures, a monthly cost chart, and a person-by-person table.">
       </a>
-      <figcaption><b>My cost centre.</b> The cost-centre review: the same headcount and cost view, with the people and roles below.</figcaption>
+      <figcaption><b>My cost centre.</b> The same headcount and cost view, scoped by the cost-centre selector.</figcaption>
     </figure>
     <figure class="fig shot">
       <a href="images/lenses-pay-grade.png" target="_blank" rel="noopener" title="Open the full-size Pay and grades screenshot">
@@ -330,49 +374,34 @@
   </div>
 </section>
 
-<section id="why">
-  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Why it works</h2></div>
-  <p>The screens share a small set of behaviours. They are the reason the application feels like one place to work rather than a set of reports. The layout is placed for the job, and adjusts to the screen down to a phone.</p>
-
-  <div class="rules">
-    <div class="rule"><span class="lab">Charts</span><b>Charts filter the page.</b><p>A cost-centre bar opens that cost centre&rsquo;s bridge. A card filters the table below, and clicking it again clears the filter. On the report pages, a waterfall step re-ranks the cost centres by that driver.</p></div>
-    <div class="rule"><span class="lab">Grid</span><b>The grid carries the detail.</b><p>Status appears as a pill in a cell; approved rows lock; cells you typed but have not saved are highlighted. Right-click a cell for how it is calculated, who changed it, and notes.</p></div>
-    <div class="rule"><span class="lab">Selectors</span><b>Lists come from the model.</b><p>When the page opens, its lists are built from the model: only the months still open, only the cost centres in the user&rsquo;s function.</p></div>
-    <div class="rule"><span class="lab">Numbers</span><b>Formats belong to the column.</b><p>&pound;k, &pound;m, &ldquo;Sep 2026&rdquo;, +/&minus; signs — chosen per column, not typed into the data.</p></div>
-    <div class="rule"><span class="lab">Actions</span><b>The work happens on the screen.</b><p>Each step — hire, match, approve — uses the row already selected. Forms fill the process parameters; if TM1 refuses, the page shows its reason.</p></div>
-    <div class="rule"><span class="lab">Access</span><b>TM1 decides who sees what.</b><p>The home page shows each person the pages for their role. Every read and write runs as the signed-in user under TM1 security.</p></div>
-    <div class="rule"><span class="lab">Record</span><b>Actions are written down.</b><p>History shows every action on the page — who, when, refusals included. The page also shows who else is on it.</p></div>
-    <div class="rule"><span class="lab">Building</span><b>The page is built by description.</b><p>The pages are built by describing them to an AI, which uses the TM1 MCP server to read the model, build processes and save a Lens under the same rules.</p></div>
-  </div>
-
-  <div class="callout"><p><b>Cost status.</b> After a change, the page shows that cost is being recalculated, and updates when it is done.</p></div>
-</section>
-
-<section id="next">
-  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">Next</h2></div>
-  <p>The next pieces are not in the application yet.</p>
-  <ul>
-    <li><b>Warnings.</b> The change can go ahead, but the page flags it first, with <i>Go ahead</i> or <i>Cancel</i>: a hire that takes a cost centre over budget; a salary above its pay band; a leaver with no backfill; an HR start date months after the planned hire month; a gap between a leaver and the replacement.</li>
-    <li><b>Card drill.</b> A card filters the table on its page; a small arrow on the card opens the page with the full detail, already filtered.</li>
-  </ul>
-</section>
-
 <section id="appendix">
   <div class="sec-head"><span class="sec-num">A</span><h2 class="sec-title">Appendix: the workforce model</h2></div>
-  <p>For TM1 readers: the parts of the model behind the screens.</p>
+  <p>For TM1 readers: the model mechanics behind the screens.</p>
+
+  <h3>Objects</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Object</th><th>What it is</th></tr></thead>
+      <tbody>
+        <tr><td><b>Position</b></td><td>A budgeted slot: company, cost centre, grade, FTE. It exists whether or not anyone is in it, and never changes company.</td></tr>
+        <tr><td><b>Person</b></td><td>An employee or contractor. Tenure and pay do not live on the Position.</td></tr>
+        <tr><td><b>Assignment</b></td><td>A Person holding a Position from a start to an end month, at an FTE and salary. Pay and tenure live here.</td></tr>
+        <tr><td><b>TBH Position</b></td><td>A Position the plan needs that HR has not created yet, with its own lifecycle and matching.</td></tr>
+      </tbody>
+    </table>
+  </div>
 
   <h3>FX</h3>
-  <p>Each company plans in its own currency: UK Ltd in GBP, US Inc in USD, NZ Ltd in NZD. Cost is held in local and reporting currency. Reports are in pounds, converted at the forecast rate.</p>
+  <p>Each company plans in its own currency (GBP, USD, NZD); cost is held in local and reporting currency. Reports are in pounds at the forecast rate.</p>
 
   <h3>Moves</h3>
-  <p>A cost-centre move is dated: the Position sits under the new cost centre from that month, and the earlier months stay under the old one. A company move is not a transfer of the Position. It is a leaver from the old company and a hire into a new Position in the new company, which brings its own tax rules; the old Position closes.</p>
+  <p>A cost-centre move is dated; earlier months stay under the old cost centre. A company move is a leaver plus a hire into a new Position in the new company, which brings its own tax rules; the old Position closes.</p>
 
   <h3>Tax on the person</h3>
-  <p>Payroll tax is held per person in <code>WFP Person Tax</code>, not on the Position. A transfer within the same company carries the person&rsquo;s year-to-date earnings to the new Position. A company move does not: the person leaves the old company and is hired into the new one, so the payroll year restarts.</p>
+  <p>Payroll tax is held per person in <code>WFP Person Tax</code>. A same-company transfer carries year-to-date earnings; a company move starts a new payroll year.</p>
 
-  <h3>Tax year and employer tax</h3>
-  <p>Earnings are taxed by tax year, not by calendar year. UK and NZ start in April; US-NY in January. Thresholds and caps apply to earnings within that tax year. <code>Obl 2026</code> is the opening balance period: it holds each person&rsquo;s earnings and tax so far at the start, and is never costed.</p>
-  <p>This matters because employer tax is calculated on year-to-date earnings. A month&rsquo;s employer tax depends on the months before it, not just that month&rsquo;s salary. The UK employer NI and the US Social Security wage cap are examples. A mid-year transfer carries the history that decides the rate; a company move starts it again.</p>
+  <h3>Tax year and employer tax <span class="h3sub">illustrative rates in the demo model</span></h3>
+  <p>UK and NZ start in April; US-NY in January. Thresholds and caps apply within the tax year, and <code>Obl 2026</code> holds earnings and tax from before the plan starts. Employer tax is calculated on year-to-date earnings, so a month&rsquo;s cost depends on the months before it.</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Jurisdiction</th><th>Tax year starts</th><th>Employer payroll tax in the model</th></tr></thead>
@@ -383,20 +412,20 @@
       </tbody>
     </table>
   </div>
-  <p>In a monthly model April is tax month 1, as payroll counts it. The bands are data in <code>WFP Tax Bands</code>, by jurisdiction.</p>
+  <p>These are illustrative rates in the demo model, not current law. In a monthly model April is tax month 1, as payroll counts it.</p>
 
   <h3>Employee tax and net pay</h3>
-  <p>Employee income tax and net pay are not a company cost. They are in the model for payroll cash forecasting; Employer Payroll Tax is the employer cost.</p>
+  <p>Employee income tax and net pay are not a company cost; they are in the model for payroll cash forecasting. Employer Payroll Tax is the employer cost.</p>
 
   <h3>Costing in TI</h3>
-  <p>The monthly cost is calculated in TI, not in rules. It runs across every assignment and every month, so it is too heavy to recalculate in a rule; rules are kept for the on-costs planners need to see change live. Base cost is built per assignment, month by month, and payroll tax is run per person. On-costs (pension, bonus, benefits) are rules on Base. Each action calls <code>WFP Request Recalculation</code>; the <code>WFP Recalculate Cost</code> chore runs <code>WFP Recalculate If Needed</code> every five minutes and updates cost when something is marked. On the full model, Base + tax + post takes about 90 seconds. The pages show <i>Cost up to date</i> or <i>Cost updating&hellip;</i> while it runs.</p>
+  <p>Base cost is built per assignment, month by month; payroll tax is run per person; on-costs are rules on Base. It is TI because it runs across every assignment and month, too heavy for a rule. Each action calls <code>WFP Request Recalculation</code>; the <code>WFP Recalculate Cost</code> chore runs every five minutes. The full Base + tax + post takes about 90 seconds, and the pages show <i>Cost up to date</i> or <i>Cost updating&hellip;</i>.</p>
 
   <h3>People mechanics</h3>
   <ul>
-    <li><b>Assignment.</b> A person holds a Position from a start month to an end month, at an FTE and salary; pay and tenure live on the assignment, not the Position. <a href="#assignments">Main section</a>.</li>
+    <li><b>Assignment.</b> The assignment, not the Position, holds tenure and pay. <a href="#assignments">Main section</a>.</li>
     <li><b>Handover.</b> A replacement starts before the leaver goes; both count and are paid during the marked overlap. <a href="#assignments">Main section</a>.</li>
-    <li><b>Cover.</b> A second person covers while the holder is away; cover is flagged and only allowed while someone is away. <a href="#assignments">Main section</a>.</li>
-    <li><b>Time away.</b> The person stays in headcount and is paid the absence pay %; cover can be added for those months. <a href="#assignments">Main section</a>.</li>
+    <li><b>Cover.</b> A second person covers while the holder is away; cover is flagged and only allowed then. <a href="#assignments">Main section</a>.</li>
+    <li><b>Time away.</b> The person stays in headcount and is paid the absence pay %; cover can be added. <a href="#assignments">Main section</a>.</li>
   </ul>
 
   <h3>Control checks</h3>
@@ -404,10 +433,10 @@
   <ul>
     <li>Nobody over 1.0 FTE across Positions (<i>Over-booked</i>).</li>
     <li>No Position holding more people than its FTE (<i>Over-filled</i>), except a marked handover or cover while someone is away.</li>
-    <li>Nobody assigned to a Position in a month it does not exist (<i>Person In Closed Position</i>).</li>
-    <li>No assignment record that ends before it starts (<i>Bad Span</i>).</li>
+    <li>Nobody assigned to a Position in a month it does not exist.</li>
+    <li>No assignment record that ends before it starts.</li>
     <li>No HRIS Position linked to more than one TBH; no matched TBH counting in an open month.</li>
-    <li>Every new HR Position in an open month is matched or flagged <i>Unplanned</i>; every approved TBH past its hire month is matched or flagged <i>Late hire</i>.</li>
+    <li>Every new HR Position is matched or flagged <i>Unplanned</i>; every approved TBH past its hire month is matched or flagged <i>Late hire</i>.</li>
   </ul>
 </section>
 
