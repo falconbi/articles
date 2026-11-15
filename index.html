@@ -12,6 +12,26 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="falconbi.css">
 <style>
+  /* TM1 IDE videos */
+  #videos .area-layout { align-items: start; }
+  .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.25rem; min-width: 0; }
+  .video-card { display: flex; flex-direction: column; text-decoration: none; color: inherit;
+    border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface);
+    transition: border-color .15s, transform .15s; }
+  .video-card:hover { border-color: var(--teal); transform: translateY(-2px); }
+  .video-card:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .video-thumb { position: relative; display: block; aspect-ratio: 16 / 9; background: var(--border); }
+  .video-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .video-play { position: absolute; inset: 0; margin: auto; width: 3rem; height: 3rem; border-radius: 50%;
+    background: rgba(0,0,0,.6); transition: background .15s; }
+  .video-play::after { content: ""; position: absolute; left: 1.15rem; top: .9rem;
+    border-style: solid; border-width: .6rem 0 .6rem 1rem; border-color: transparent transparent transparent #fff; }
+  .video-card:hover .video-play { background: var(--teal); }
+  .video-text { display: flex; flex-direction: column; gap: .3rem; padding: .85rem 1rem 1rem; }
+  .video-num { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; color: var(--teal); }
+  .video-title { font-weight: 600; font-size: 1rem; line-height: 1.3; color: var(--ink); }
+  .video-desc { font-size: .875rem; line-height: 1.45; color: var(--ink-soft); }
+
   /* One-page index: topics in a grid, titles only (description on hover) */
   .hero-hub{padding-top:1.6rem;padding-bottom:1.2rem}
   .hero-hub .eyebrow{margin-bottom:.4rem}
@@ -78,50 +98,36 @@
         <h2 class="area-title">TM1 IDE videos</h2>
         <p class="area-desc">Short walkthroughs of the TM1 IDE, a browser-based IDE for IBM Planning Analytics, a few minutes each. Docs and source: <a href="https://falconbi.github.io/tm1_ide/" target="_blank" rel="noopener">falconbi.github.io/tm1_ide ↗</a></p>
       </div>
-      <ul class="article-list">
-        <li class="article-item">
-          <div class="article-tags"><span class="tag tm1">TM1</span><span class="tag method">Video</span></div>
-          <div class="article-body">
-            <h3><a href="https://www.youtube.com/watch?v=dEsmssko4eY" target="_blank" rel="noopener" title="Set up the IDE and build a small TM1 model from scratch.">Build Your Own TM1: Start Here ↗</a></h3>
-          </div>
-        </li>
-        <li class="article-item">
-          <div class="article-tags"><span class="tag tm1">TM1</span><span class="tag method">Video</span></div>
-          <div class="article-body">
-            <h3><a href="https://www.youtube.com/watch?v=_-BWl_n-aWU" target="_blank" rel="noopener" title="Connecting, the Explorer, tabs and split panes, and the editors at a glance.">IDE Basics ↗</a></h3>
-          </div>
-        </li>
-        <li class="article-item">
-          <div class="article-tags"><span class="tag tm1">TM1</span><span class="tag method">Video</span></div>
-          <div class="article-body">
-            <h3><a href="https://www.youtube.com/watch?v=q-eoEeDHwSA" target="_blank" rel="noopener" title="Writing rules and feeders, checking them, and tracing a calculation.">Rules Editor ↗</a></h3>
-          </div>
-        </li>
-        <li class="article-item">
-          <div class="article-tags"><span class="tag tm1">TM1</span><span class="tag method">Video</span></div>
-          <div class="article-body">
-            <h3><a href="https://www.youtube.com/watch?v=vmZzt2ud_og" target="_blank" rel="noopener" title="Writing, running and debugging TI processes.">TI Editor ↗</a></h3>
-          </div>
-        </li>
-        <li class="article-item">
-          <div class="article-tags"><span class="tag tm1">TM1</span><span class="tag method">Video</span></div>
-          <div class="article-body">
-            <h3><a href="https://www.youtube.com/watch?v=qGAjW8m_vAg" target="_blank" rel="noopener" title="Dimensions, hierarchies, attributes, picklists and subsets.">Dimension Editor ↗</a></h3>
-          </div>
-        </li>
-        <li class="article-item">
-          <div class="article-tags"><span class="tag tm1">TM1</span><span class="tag method">Video</span></div>
-          <div class="article-body">
-            <h3><a href="https://www.youtube.com/watch?v=wD6n-vdmCLI" target="_blank" rel="noopener" title="The grid: native and MDX views, subsets, hierarchies, working the grid and tracing a number.">IDE Views ↗</a></h3>
-          </div>
-        </li>
-        <li class="article-item">
-          <div class="article-tags"><span class="tag tm1">TM1</span><span class="tag method">Video</span></div>
-          <div class="article-body">
-            <h3><a href="https://www.youtube.com/watch?v=MM62ZqC3pjk" target="_blank" rel="noopener" title="Reading a whole model on one page: the map, the Runbook and Play a run.">Cube Map ↗</a></h3>
-          </div>
-        </li>
-      </ul>
+      <div class="video-grid">
+        <a class="video-card" href="https://www.youtube.com/watch?v=dEsmssko4eY" target="_blank" rel="noopener">
+          <span class="video-thumb"><img src="https://i.ytimg.com/vi/dEsmssko4eY/mqdefault.jpg" alt="" loading="lazy" width="320" height="180"><span class="video-play" aria-hidden="true"></span></span>
+          <span class="video-text"><span class="video-num">01</span><span class="video-title">Build Your Own TM1: Start Here</span><span class="video-desc">Set up the IDE and build a small TM1 model from scratch.</span></span>
+        </a>
+        <a class="video-card" href="https://www.youtube.com/watch?v=_-BWl_n-aWU" target="_blank" rel="noopener">
+          <span class="video-thumb"><img src="https://i.ytimg.com/vi/_-BWl_n-aWU/mqdefault.jpg" alt="" loading="lazy" width="320" height="180"><span class="video-play" aria-hidden="true"></span></span>
+          <span class="video-text"><span class="video-num">02</span><span class="video-title">IDE Basics</span><span class="video-desc">Connecting, the Explorer, tabs and split panes, and the editors at a glance.</span></span>
+        </a>
+        <a class="video-card" href="https://www.youtube.com/watch?v=q-eoEeDHwSA" target="_blank" rel="noopener">
+          <span class="video-thumb"><img src="https://i.ytimg.com/vi/q-eoEeDHwSA/mqdefault.jpg" alt="" loading="lazy" width="320" height="180"><span class="video-play" aria-hidden="true"></span></span>
+          <span class="video-text"><span class="video-num">03</span><span class="video-title">Rules Editor</span><span class="video-desc">Writing rules and feeders, checking them, and tracing a calculation.</span></span>
+        </a>
+        <a class="video-card" href="https://www.youtube.com/watch?v=vmZzt2ud_og" target="_blank" rel="noopener">
+          <span class="video-thumb"><img src="https://i.ytimg.com/vi/vmZzt2ud_og/mqdefault.jpg" alt="" loading="lazy" width="320" height="180"><span class="video-play" aria-hidden="true"></span></span>
+          <span class="video-text"><span class="video-num">04</span><span class="video-title">TI Editor</span><span class="video-desc">Writing, running and debugging TI processes.</span></span>
+        </a>
+        <a class="video-card" href="https://www.youtube.com/watch?v=qGAjW8m_vAg" target="_blank" rel="noopener">
+          <span class="video-thumb"><img src="https://i.ytimg.com/vi/qGAjW8m_vAg/mqdefault.jpg" alt="" loading="lazy" width="320" height="180"><span class="video-play" aria-hidden="true"></span></span>
+          <span class="video-text"><span class="video-num">05</span><span class="video-title">Dimension Editor</span><span class="video-desc">Dimensions, hierarchies, attributes, picklists and subsets.</span></span>
+        </a>
+        <a class="video-card" href="https://www.youtube.com/watch?v=wD6n-vdmCLI" target="_blank" rel="noopener">
+          <span class="video-thumb"><img src="https://i.ytimg.com/vi/wD6n-vdmCLI/mqdefault.jpg" alt="" loading="lazy" width="320" height="180"><span class="video-play" aria-hidden="true"></span></span>
+          <span class="video-text"><span class="video-num">06</span><span class="video-title">IDE Views</span><span class="video-desc">Native and MDX views, subsets, hierarchies, working the grid and tracing a number.</span></span>
+        </a>
+        <a class="video-card" href="https://www.youtube.com/watch?v=MM62ZqC3pjk" target="_blank" rel="noopener">
+          <span class="video-thumb"><img src="https://i.ytimg.com/vi/MM62ZqC3pjk/mqdefault.jpg" alt="" loading="lazy" width="320" height="180"><span class="video-play" aria-hidden="true"></span></span>
+          <span class="video-text"><span class="video-num">07</span><span class="video-title">Cube Map</span><span class="video-desc">A whole model on one page: the map, the Runbook and Play a run.</span></span>
+        </a>
+      </div>
     </div>
   </section>
 
