@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shipping a TM1 Change</title>
+<meta name="description" content="How a TM1 change moves from DEV to PROD: personal change sets, one release at a time, the catch-up exception, what goes into a release, the deployment wizard, and drift. With diagrams.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --paper:#fafaf9;
+    --panel:#ffffff;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+
+    --steel:#0f766e;        /* structure, hierarchy, base */
+    --steel-light:#f0fdfa;
+    --green:#166534;        /* valid flow, base data, counted-once */
+    --green-light:#f0fdf4;
+    --amber:#92400e;        /* contra, grouped, reversal */
+    --amber-light:#fef3c7;
+    --red:#991b1b;          /* double-count, warnings */
+    --red-light:#fee2e2;
+    --indigo:#4c1d95;       /* implementation, UI */
+    --indigo-light:#ede9fe;
+
+    --maxw:860px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    background:
+      linear-gradient(180deg,#ffffff 0%, var(--paper) 100%);
+  }
+  .masthead .wrap{padding-top:78px;padding-bottom:52px}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--steel);
+    font-weight:500;
+    margin:0 0 22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1.title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.3rem);
+    line-height:1.08;
+    letter-spacing:-.012em;
+    margin:0 0 22px;
+    color:var(--ink);
+  }
+  h1.title .accent{color:var(--steel)}
+  .standfirst{
+    font-size:1.18rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:64ch;
+    margin:0 0 30px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-size:13.5px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;
+    padding-top:8px;border-top:1px solid var(--rule-soft);
+  }
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  .prototype{
+    margin:34px 0 0;
+    background:var(--green-light);
+    border:1px solid #cfe6d8;
+    border-left:4px solid var(--green);
+    border-radius:6px;
+    padding:16px 20px;
+    font-size:15.5px;
+    color:#21422f;
+  }
+  .prototype b{color:var(--green);font-weight:600}
+
+  /* ---------- TOC ---------- */
+  /* falconbi.css sets .toc{position:sticky} for sidebar use — override for this horizontal bar */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;margin:0 0 18px;
+  }
+  nav.toc ol{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:2px 28px;
+    counter-reset:toc;
+  }
+  nav.toc li{counter-increment:toc}
+  nav.toc a{
+    display:flex;gap:12px;align-items:baseline;
+    text-decoration:none;color:var(--ink-soft);
+    padding:7px 4px;border-radius:4px;
+    border-bottom:1px solid transparent;
+    transition:color .15s,background .15s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--steel);
+    flex:none;width:2ch;
+  }
+  nav.toc a:hover{color:var(--steel);background:var(--steel-light)}
+
+  /* ---------- Sections ---------- */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:44px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin:0 0 18px}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;color:var(--steel);
+    flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-weight:600;font-size:1.16rem;
+    margin:34px 0 12px;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  p{margin:0 0 16px}
+  section > p, section > ul, section > ol, section > .fig, section > .tablewrap,
+  section > pre, section > blockquote, section > .callout{margin-left:0}
+  strong{font-weight:600;color:var(--ink)}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:#f1f0ec;
+    padding:.1em .38em;border-radius:4px;
+    color:#3a4750;
+  }
+  a{color:var(--steel)}
+
+  ul,ol{margin:0 0 16px;padding-left:1.3em}
+  li{margin:6px 0}
+  li::marker{color:var(--steel)}
+
+  blockquote{
+    margin:18px 0;padding:4px 0 4px 22px;
+    border-left:3px solid var(--rule);
+    color:var(--ink-soft);font-style:italic;
+    font-family:'DM Sans',system-ui,sans-serif;font-size:1.08rem;
+  }
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;margin:22px 0}
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink-soft);
+  }
+  tbody tr:hover{background:#f6f7f8}
+  td code{background:#eef0f2}
+  .pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    letter-spacing:.02em;
+  }
+  .pill.sub{background:var(--steel-light);color:var(--steel)}
+  .pill.assoc{background:var(--indigo-light);color:var(--indigo)}
+  .pill.inv{background:#eef1f3;color:var(--ink-soft)}
+  .pill.grp{background:var(--amber-light);color:var(--amber)}
+
+  /* ---------- Code / ASCII ---------- */
+  pre{
+    background:#1c2530;color:#d7e0e8;
+    font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.6;
+    padding:18px 20px;border-radius:8px;overflow-x:auto;margin:20px 0;
+    border:1px solid #283442;
+  }
+  pre .c{color:#7f8fa0}      /* comment / faint */
+  pre .k{color:#7fb3e0}      /* steel key */
+  pre .g{color:#7fd0a0}      /* green */
+  pre .a{color:#e3b766}      /* amber */
+  pre .r{color:#e89b94}      /* red */
+  pre.ascii{font-size:13px;line-height:1.5}
+
+  /* ---------- Figures ---------- */
+  .fig{margin:26px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  figcaption{
+    font-size:13px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+    margin-top:12px;text-align:center;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600}
+
+  /* SVG element styling */
+  .svg-label{font-family:'DM Sans',sans-serif;font-size:14px;fill:var(--ink)}
+  .svg-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-faint)}
+  .svg-edge{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .node-steel{fill:var(--steel-light);stroke:var(--steel);stroke-width:1.5}
+  .node-green{fill:var(--green-light);stroke:var(--green);stroke-width:1.5}
+  .node-amber{fill:var(--amber-light);stroke:var(--amber);stroke-width:1.5}
+  .node-red{fill:var(--red-light);stroke:var(--red);stroke-width:1.5}
+  .node-indigo{fill:var(--indigo-light);stroke:var(--indigo);stroke-width:1.5}
+  .node-plain{fill:#fff;stroke:var(--ink-soft);stroke-width:1.3}
+  .edge{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+  .edge-green{stroke:var(--green);stroke-width:1.8;fill:none}
+  .edge-red{stroke:var(--red);stroke-width:1.8;fill:none}
+  .edge-amber{stroke:var(--amber);stroke-width:1.8;fill:none}
+  .edge-dash{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:6px;padding:16px 20px;margin:22px 0;font-size:15.5px;
+    border:1px solid var(--rule);border-left:4px solid var(--ink-soft);
+    background:var(--panel);
+  }
+  .callout.warn{background:var(--red-light);border-color:#eccac6;border-left-color:var(--red)}
+  .callout.warn b{color:var(--red)}
+  .callout.note{background:var(--steel-light);border-color:#cfe0ee;border-left-color:var(--steel)}
+  .callout.note b{color:var(--steel)}
+  .callout.key{background:var(--amber-light);border-color:#e8d6a8;border-left-color:var(--amber)}
+  .callout.key b{color:var(--amber)}
+  .callout p{margin:0}
+  .callout p + p{margin-top:10px}
+
+  /* ---------- Signature: path encoding ---------- */
+  .signature{
+    margin:30px 0;padding:30px 26px;border-radius:10px;
+    background:linear-gradient(160deg,#1c2530 0%,#243140 100%);
+    border:1px solid #2b3a4a;color:#dbe4ec;
+  }
+  .signature .sig-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#8aa0b4;margin:0 0 18px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{background:#1c2530;color:#aebccb;border-top:3px solid var(--steel)}
+  footer .wrap{padding-top:48px;padding-bottom:54px}
+  footer h2{
+    font-family:'DM Sans',system-ui,sans-serif;color:#f0f4f8;font-weight:600;
+    font-size:1.3rem;margin:0 0 14px;
+  }
+  footer p{color:#aebccb;font-size:15px;max-width:62ch}
+  footer a{color:#9ec3e6}
+  .lic{
+    margin-top:22px;padding-top:20px;border-top:1px solid #2c3a48;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8294a4;
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+  }
+  .refs{font-size:15px;color:#c4d0db}
+  .refs cite{font-style:italic;color:#e6edf3}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .sec-head{gap:12px}
+    nav.toc ol{grid-template-columns:1fr}
+    .masthead .wrap{padding-top:54px;padding-bottom:40px}
+  }
+</style>
+<style>
+  /* gates diagram + small extras */
+  .svg-small{font-family:'DM Sans',sans-serif;font-size:12px;fill:var(--ink)}
+  .svg-tiny{font-family:'IBM Plex Mono',monospace;font-size:10px;fill:var(--ink-faint)}
+  .svg-red{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--red)}
+  .svg-green{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--green)}
+  ol.lessons{padding-left:1.2em}
+  ol.lessons li{margin:0 0 10px}
+</style>
+</head>
+
+<body>
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">Deployment &nbsp;·&nbsp; IBM Planning Analytics</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Deployment &nbsp;·&nbsp; Change sets &amp; releases</p>
+    <h1 class="title">Shipping a TM1 change:<br><span class="accent">change sets, releases and drift</span></h1>
+    <p class="standfirst">Every change should reach production with its own record, tests and approval, without carrying anyone else’s unfinished work. This is how that works, including what happens when someone edits PROD by hand.</p>
+    <div class="meta-row">
+      <span><b>Tested on</b> TM1 v11 · DEV + PROD pair</span>
+      <span><b>Related</b> <a href="../governed-tm1-deploys/">Governed TM1 deploys</a></span>
+      <span><b>Status</b> Published November 2026</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#a1">One change, one record, one release</a></li>
+      <li><a href="#a2">Any two servers, one history</a></li>
+      <li><a href="#a3">The change set is personal</a></li>
+      <li><a href="#a4">One release at a time — except catch-up</a></li>
+      <li><a href="#a5">What goes into a release</a></li>
+      <li><a href="#a6">The wizard: before, steps 1–8, after</a></li>
+      <li><a href="#a7">Drift</a></li>
+      <li><a href="#a8">History and audit</a></li>
+      <li><a href="#a9">The short version</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<div class="callout note"><p><b>Reading note.</b> The article section numbers (01–09) are just reading order. They are not wizard steps. The wizard steps are numbered 1–8 in the table in section 06.</p></div>
+
+<section id="a1">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">One change, one record, one release</h2></div>
+  <p>A deploy has to answer four questions before anyone can trust it:</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 150" role="img" aria-label="Four questions a deploy must answer: scope, approval, drift and audit.">
+      <rect x="10" y="20" width="160" height="110" rx="8" class="node-steel"/>
+      <text x="90" y="55" text-anchor="middle" class="svg-label">Scope</text>
+      <text x="90" y="80" text-anchor="middle" class="svg-sub">what exactly changes —</text>
+      <text x="90" y="96" text-anchor="middle" class="svg-sub">and nothing else?</text>
+      <rect x="190" y="20" width="160" height="110" rx="8" class="node-green"/>
+      <text x="270" y="55" text-anchor="middle" class="svg-label">Approval</text>
+      <text x="270" y="80" text-anchor="middle" class="svg-sub">who approved it — and</text>
+      <text x="270" y="96" text-anchor="middle" class="svg-sub">exactly what shipped?</text>
+      <rect x="370" y="20" width="160" height="110" rx="8" class="node-amber"/>
+      <text x="450" y="55" text-anchor="middle" class="svg-label">Drift</text>
+      <text x="450" y="80" text-anchor="middle" class="svg-sub">has anyone changed</text>
+      <text x="450" y="96" text-anchor="middle" class="svg-sub">PROD by hand?</text>
+      <rect x="550" y="20" width="160" height="110" rx="8" class="node-indigo"/>
+      <text x="630" y="55" text-anchor="middle" class="svg-label">Audit</text>
+      <text x="630" y="80" text-anchor="middle" class="svg-sub">who did what,</text>
+      <text x="630" y="96" text-anchor="middle" class="svg-sub">when, and why?</text>
+    </svg>
+    <figcaption>Every governance claim rests on the <b>change set</b> being exactly what ships.</figcaption>
+  </figure>
+  <p>A <b>change set</b> records the changes one person made on one server. For each save, it stores the object, what changed, the before and after, and who made the change. It is not a copy of the model, and it is not a Git branch.</p>
+  <p>A <b>release</b> is the set of model files built for one target server. It starts from what that target last received and adds only the changes in one closed change set. It is the thing you approve, and the thing the target receives.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Word</th><th>What it means here</th></tr></thead>
+    <tbody>
+      <tr><td><b>Change set</b></td><td>The list of saves one person made on one server.</td></tr>
+      <tr><td><b>Release</b></td><td>The files built from one closed change set for one target.</td></tr>
+      <tr><td><b>Commit</b></td><td>A saved state of DEV in Git history.</td></tr>
+      <tr><td><b>Deploy</b></td><td>Applying a release to its target server.</td></tr>
+      <tr><td><b>Target</b></td><td>The server receiving the release, such as PROD.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout key"><p><b>The rule.</b> A release contains only the changes in its change set. Nothing else goes with it.</p></div>
+</section>
+
+<section id="a2">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Any two servers, one history</h2></div>
+  <p>A deploy has a <b>source</b> server and a <b>target</b> server. Most teams call the source DEV and the target PROD, but the pattern works with any two servers. Some teams add a TEST or QA server in between.</p>
+  <ul>
+    <li><b>DEV</b> — where the model is built and changed.</li>
+    <li><b>TEST / QA</b> <i>(optional)</i> — a copy of PROD used to try the release on realistic data before it reaches users.</li>
+    <li><b>PROD</b> — the live model people use.</li>
+  </ul>
+  <p>A common path is DEV → TEST → PROD. You can also deploy straight from DEV to PROD. The same rules apply either way.</p>
+  <p>A Git repository sits between them. It holds the model’s history and gives each target an exact release to receive.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 235" role="img" aria-label="DEV saves the model to a Git repository. A release can go to an optional TEST server, then PROD. Each target receives its own release.">
+      <defs><marker id="ar1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <rect x="15" y="78" width="150" height="80" rx="10" class="node-steel"/>
+      <text x="90" y="108" text-anchor="middle" class="svg-label">DEV</text>
+      <text x="90" y="132" text-anchor="middle" class="svg-sub">source</text>
+      <rect x="210" y="78" width="160" height="80" rx="10" class="node-plain"/>
+      <text x="290" y="108" text-anchor="middle" class="svg-label">Git repository</text>
+      <text x="290" y="132" text-anchor="middle" class="svg-sub">model history</text>
+      <rect x="425" y="20" width="265" height="75" rx="10" class="node-amber"/>
+      <text x="557" y="48" text-anchor="middle" class="svg-label">TEST / QA <tspan class="svg-tiny">(optional)</tspan></text>
+      <text x="557" y="74" text-anchor="middle" class="svg-sub">try the release on a PROD copy</text>
+      <rect x="425" y="140" width="265" height="75" rx="10" class="node-green"/>
+      <text x="557" y="168" text-anchor="middle" class="svg-label">PROD</text>
+      <text x="557" y="194" text-anchor="middle" class="svg-sub">live model</text>
+      <path d="M165 118 L208 118" class="edge" marker-end="url(#ar1)"/>
+      <path d="M370 108 C395 95 405 70 423 58" class="edge-dash" marker-end="url(#ar1)"/>
+      <path d="M370 128 C395 145 405 170 423 178" class="edge-green" marker-end="url(#ar1)"/>
+      <text x="400" y="88" text-anchor="middle" class="svg-tiny">release for TEST</text>
+      <text x="398" y="162" text-anchor="middle" class="svg-tiny">release for PROD</text>
+    </svg>
+    <figcaption>Each target receives its own release, built from the version that target last received.</figcaption>
+  </figure>
+  <p>A target does not receive “whatever is on DEV today”. It receives a set of files built for it, containing only the objects in the change set plus anything a dependency genuinely requires.</p>
+
+  <h3>Deploying to TEST, then PROD</h3>
+  <p>TEST and PROD are separate targets. A pass on TEST does not move anything to PROD by itself. The same change set is the source for both, but each target gets its own release and its own approval.</p>
+  <ol>
+    <li><b>Ship to TEST.</b> Choose TEST as the target, build the release, review, approve, deploy and verify.</li>
+    <li><b>Run the checks on TEST.</b> Confirm the model and the numbers behave on realistic data.</li>
+    <li><b>Ship to PROD.</b> Open the same change set, choose PROD, build a <i>new</i> release, review, approve, deploy and verify.</li>
+    <li><b>Approve again for PROD.</b> The TEST approval does not cover the PROD release.</li>
+  </ol>
+  <p>If you tested several change sets, ship them to PROD in the same order, one at a time.</p>
+  <div class="callout warn"><p><b>Do not use catch-up as the promotion step.</b> A catch-up ships everything that differs between DEV and the target — not just what passed on TEST. It is admin-only and can carry work that was never tested.</p></div>
+  <p>TEST and PROD give the same release only if they start from the same state. If TEST is not aligned with PROD, or has extra changes, the PROD build can add different files. Review the PROD build again; do not assume it matches TEST.</p>
+  <p>One current limitation: a change set shows only the last server it was shipped to. After TEST it may look finished. Use <b>Show deployed</b>, open the set, then choose PROD and build a new release. The tool allows this, but the screen does not make it obvious yet.</p>
+</section>
+
+<section id="a3">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">The change set is personal</h2></div>
+  <p>Each person has at most one open change set per server. Your saves go into yours. A colleague’s saves go into theirs. The list is shared, so everyone can see who owns what — but the records are separate.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 190" role="img" aria-label="Two developers each have a personal open change set; both appear in the shared change set list.">
+      <rect x="20" y="20" width="300" height="120" rx="10" class="node-steel"/>
+      <text x="170" y="48" text-anchor="middle" class="svg-label">Developer A</text>
+      <rect x="45" y="68" width="250" height="46" rx="6" class="node-green"/>
+      <text x="170" y="96" text-anchor="middle" class="svg-small">open: “position recalc”</text>
+      <rect x="400" y="20" width="300" height="120" rx="10" class="node-indigo"/>
+      <text x="550" y="48" text-anchor="middle" class="svg-label">Developer B</text>
+      <rect x="425" y="68" width="250" height="46" rx="6" class="node-plain"/>
+      <text x="550" y="96" text-anchor="middle" class="svg-small">open: “view tidy-up”</text>
+      <text x="360" y="170" text-anchor="middle" class="svg-sub">Shared list: both visible, both owned, neither ships silently with the other.</text>
+    </svg>
+    <figcaption>One open set per person, per server. Ownership is visible before release.</figcaption>
+  </figure>
+  <p>A release includes only the objects in your change set. Other changes stay on DEV and are listed under <b>Left on DEV</b>. If you try to add an object owned by another change set, or a dependency needs one, the release stops and names that set. It will not pull in their unfinished work. It works at object level, not line level: if two people edit the same rule or process, coordinate before releasing. Every save must belong to an open change set. If none is open, the IDE asks you to name one.</p>
+
+  <h3>If two people edit the same TI process</h3>
+  <p>There is no automatic merge inside one object. DEV holds the last saved text of the process, not two versions side by side. If both people save, the later save replaces the earlier one, and a release would ship whatever is in DEV at that moment.</p>
+  <p>You cannot remove one object from a change set. The entries are a record of what happened. So the choice is which set ships the agreed process — or whether to make a fresh set for it.</p>
+  <ol>
+    <li><b>Stop before building or deploying anything.</b> Agree who owns the process for this change.</li>
+    <li><b>Compare both intentions.</b> Open the change report and the process history. Git keeps both saves even though DEV only shows the last one.</li>
+    <li><b>Write one agreed version.</b> One person saves the combined, final process on DEV.</li>
+    <li><b>Ship one set.</b> Only one set should carry the process to PROD, after the final text is agreed.</li>
+    <li><b>Then ship the other set’s other work.</b> Leave the process out of it. In the Build panel, the process should now show no file change against the new target state. If it still shows as changing, stop and reconcile again.</li>
+    <li><b>If ownership must be clean,</b> make a new change set containing just the agreed process and ship that first. Then the older sets no longer carry a process change.</li>
+    <li><b>Check the target.</b> After deploy, confirm the process on PROD matches the agreed version.</li>
+  </ol>
+  <div class="tablewrap"><table>
+    <thead><tr><th>If the second set…</th><th>Do this</th></tr></thead>
+    <tbody>
+      <tr><td>contains only the process</td><td>Leave it closed and undeployed. Do not ship it.</td></tr>
+      <tr><td>contains other work too</td><td>Ship the agreed process first. Then ship the other work; the process should no longer show as changing in Build.</td></tr>
+      <tr><td>must have clean ownership</td><td>Make a new set containing just the agreed process and ship that first. The older sets then ship only their other work.</td></tr>
+    </tbody>
+  </table></div>
+  <p>The safer habit is simpler: one person owns a process at a time. Use the change-set note to say who owns it and what it is for.</p>
+  <p>Before you start the deploy, open the change report. This is the first check. It groups entries by cube, dimension and process and lets you open a before/after diff for each object. Use the note field to say what the work is and why it exists. Both are useful when someone reviews the release a week later.</p>
+</section>
+
+<section id="a4">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">One release at a time — except catch-up</h2></div>
+  <p>The normal rule is one closed change set per release, in order. That keeps the release small enough to review and attribute.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 210" role="img" aria-label="Normal releases ship one change set each; a catch-up can ship several at once as a deliberate exception.">
+      <defs><marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <rect x="15" y="25" width="120" height="42" rx="6" class="node-green"/><text x="75" y="51" text-anchor="middle" class="svg-small">Set A</text>
+      <rect x="15" y="80" width="120" height="42" rx="6" class="node-green"/><text x="75" y="106" text-anchor="middle" class="svg-small">Set B</text>
+      <rect x="15" y="135" width="120" height="42" rx="6" class="node-steel"/><text x="75" y="161" text-anchor="middle" class="svg-small">Set C</text>
+      <text x="75" y="200" text-anchor="middle" class="svg-tiny">closed change sets</text>
+      <rect x="330" y="70" width="155" height="70" rx="10" class="node-green"/>
+      <text x="407" y="100" text-anchor="middle" class="svg-label">Normal</text>
+      <text x="407" y="122" text-anchor="middle" class="svg-sub">one set per release</text>
+      <rect x="545" y="70" width="155" height="70" rx="10" class="node-amber"/>
+      <text x="622" y="100" text-anchor="middle" class="svg-label">Catch-up</text>
+      <text x="622" y="122" text-anchor="middle" class="svg-sub">all differing files</text>
+      <path d="M135 46 C210 46 240 90 328 98" class="edge-green" marker-end="url(#ar2)"/>
+      <path d="M135 101 L328 101" class="edge-green" marker-end="url(#ar2)"/>
+      <path d="M135 156 C210 156 240 120 328 110" class="edge-dash" marker-end="url(#ar2)"/>
+      <path d="M135 156 C390 245 530 200 620 142" class="edge-dash" marker-end="url(#ar2)"/>
+      <text x="622" y="56" text-anchor="middle" class="svg-red">admin-only exception</text>
+    </svg>
+    <figcaption>Catch-up is the one deliberate exception: it brings a target level with DEV in a single release.</figcaption>
+  </figure>
+  <p>A <b>catch-up</b> takes everything that differs between the version the target last received and DEV’s current saved version — across multiple change sets — and builds one release. It is for abnormal cases: a target far behind, a model that reached PROD before change-set releases existed, or a long gap.</p>
+  <p>It is not the everyday path. It is admin-only, it does not let you select individual sets, it does not cover open sets, and it can leave drift behind. Treat it as a deliberate repair, not a faster deploy.</p>
+</section>
+
+<section id="a5">
+  <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">What goes into a release</h2></div>
+  <p>A release is a saved set of model files. The IDE starts with the version the target already has, then adds only the files changed by your change set. Everything else on DEV stays out.</p>
+  <div class="callout key"><p><b>What the target already has + your change set = the release.</b> Nothing else from DEV is included.</p></div>
+  <figure class="fig">
+    <svg viewBox="0 0 720 190" role="img" aria-label="A release starts with the files the target already has and adds only the files changed by the change set.">
+      <defs><marker id="ar3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <rect x="15" y="55" width="190" height="80" rx="10" class="node-green"/>
+      <text x="110" y="86" text-anchor="middle" class="svg-label">Target already has</text>
+      <text x="110" y="110" text-anchor="middle" class="svg-sub">the last version sent</text>
+      <rect x="265" y="55" width="190" height="80" rx="10" class="node-steel"/>
+      <text x="360" y="86" text-anchor="middle" class="svg-label">Your change set</text>
+      <text x="360" y="110" text-anchor="middle" class="svg-sub">only the files you changed</text>
+      <rect x="515" y="55" width="190" height="80" rx="10" class="node-indigo"/>
+      <text x="610" y="86" text-anchor="middle" class="svg-label">Release</text>
+      <text x="610" y="110" text-anchor="middle" class="svg-sub">what the target receives</text>
+      <path d="M205 95 L263 95" class="edge" marker-end="url(#ar3)"/>
+      <path d="M455 95 L513 95" class="edge-green" marker-end="url(#ar3)"/>
+      <text x="360" y="165" text-anchor="middle" class="svg-sub">Everything else on DEV stays where it is.</text>
+    </svg>
+    <figcaption>The release is a small set of files built for one target — not a copy of DEV.</figcaption>
+  </figure>
+  <p>The release panel shows two lists. <b>Included</b> means it will ship. <b>Left on DEV</b> means it will not.</p>
+  <p>To add something from <b>Left on DEV</b>, look for a tick box next to it. Tick it, then click <b>Build release</b> again. Only items with a tick box can be added. If a row names another change set, you cannot add it — ship that set first.</p>
+  <p>If an included object needs another file, the IDE adds it automatically and lists it under <b>Added because something in the release needs it</b>. If that file belongs to another change set, the build stops and names the set.</p>
+  <p>What this means:</p>
+  <ul>
+    <li>A release may include a few files you did not edit. This happens when one object needs another.</li>
+    <li>The panel lists them before approval, so the approver sees them too.</li>
+    <li>If an extra file belongs to someone else’s change set, you cannot add it. Their set must go to the target first. Then build your release again. If their set is not ready, your release has to wait.</li>
+    <li>If you did not expect the dependency, stop and check why your object needs that file.</li>
+  </ul>
+</section>
+
+<section id="a6">
+  <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">The wizard: before, steps 1–8, after</h2></div>
+  <p>The table below is the order. The top row is before the wizard, the middle eight are the wizard steps, and the bottom row is after it.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Where</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td><b>Before the wizard</b></td><td>Review the change report and write the note. This is the first check.</td></tr>
+      <tr><td><b>Step 1 — Test</b></td><td>Run the model’s stored tests. A blocking failure stops you here.</td></tr>
+      <tr><td><b>Step 2 — Close</b></td><td>Close the change set. It records the tests and the exact entries.</td></tr>
+      <tr><td><b>Step 3 — Commit</b></td><td>Save DEV to Git. This is history, not the release.</td></tr>
+      <tr><td><b>Step 4 — Build release</b></td><td>Build the files for the target. Check the three lists below.</td></tr>
+      <tr><td><b>Step 5 — Review</b></td><td>Check the list of changes the target will receive. Drift check — see section 07.</td></tr>
+      <tr><td><b>Step 6 — Approve</b></td><td>Approve this exact build, with a note.</td></tr>
+      <tr><td><b>Step 7 — Deploy</b></td><td>Apply the build to the target.</td></tr>
+      <tr><td><b>Step 8 — Verify</b></td><td>Check the target again. Drift check — see section 07.</td></tr>
+      <tr><td><b>After the wizard</b></td><td>Handle any drift (section 07); check Deploy History.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>At step 4, check these three lists</h3>
+  <ul>
+    <li><b>Included</b> — will ship.</li>
+    <li><b>Added as dependency</b> — also ships, because an included object needs it.</li>
+    <li><b>Left on DEV</b> — will not ship. This is other work or work outside your set.</li>
+  </ul>
+  <p>If something is in the wrong list, stop. Fix the change set or rebuild before you approve. Approval is for this exact build. If you rebuild, approve again.</p>
+</section>
+
+<section id="a7">
+  <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">Drift</h2></div>
+  <p>This is the one place in this article that explains drift. The wizard only checks it at Review and Verify.</p>
+  <p>Does the target still match the version it was last given? If someone edited PROD directly, it does not, and the deploy pauses.</p>
+  <p>The wizard checks twice on purpose:</p>
+  <ul>
+    <li><b>At Review, before deploy:</b> “Is it safe to apply?” If the target changed, stop.</li>
+    <li><b>At Verify, after deploy:</b> “Did it land exactly?” Compare the target with the new build.</li>
+  </ul>
+  <p>The tool also checks once more at the moment it applies, because the target could change between Review and Deploy. The first check protects the target; the last check proves the deploy landed.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 170" role="img" aria-label="Drift: the target's current state differs from the version it was last given.">
+      <rect x="25" y="40" width="270" height="80" rx="10" class="node-green"/>
+      <text x="160" y="72" text-anchor="middle" class="svg-label">Last received version</text>
+      <text x="160" y="96" text-anchor="middle" class="svg-sub">what PROD was last given</text>
+      <rect x="425" y="40" width="270" height="80" rx="10" class="node-amber"/>
+      <text x="560" y="72" text-anchor="middle" class="svg-label">PROD live state</text>
+      <text x="560" y="96" text-anchor="middle" class="svg-sub">what PROD has now</text>
+      <text x="360" y="85" text-anchor="middle" class="svg-red">diff</text>
+      <path d="M295 80 L423 80" class="edge-red" stroke-dasharray="5 4"/>
+    </svg>
+    <figcaption>Drift is a difference between two states, not a failed deploy.</figcaption>
+  </figure>
+  <p>This should be rare. A read-only PROD posture blocks normal IDE writes, but it is not a TM1 lock: an admin can still edit in Architect or PAW. When drift happens, it has to be handled deliberately.</p>
+  <p>If the edit was a mistake, restore the target to the version it was last given. If the edit was intended, make the same change on DEV and release it. But restore the target first, or Review will still stop.</p>
+  <div class="callout warn"><p><b>Reseed is not a drift fix.</b> Reseed replaces a local comparison copy. It does not change the model and does not clear drift. The full recovery guide is <a href="../deploy-drift-recovery/">When PROD drifts</a>.</p></div>
+</section>
+
+<section id="a8">
+  <div class="sec-head"><span class="sec-num">08</span><h2 class="sec-title">History and audit</h2></div>
+  <p>Every successful release leaves a record: who shipped what, when, to which target, the approved build, and the result. Deploy History also keeps copies of the target before and after. The approval is tied to the exact build, so rebuilding it means approving again.</p>
+  <p>This is the point of the whole structure. Not that the deploy is clever, but that after it happens someone can reconstruct exactly what changed, who approved it, and whether the target received it.</p>
+</section>
+
+<section id="a9">
+  <div class="sec-head"><span class="sec-num">09</span><h2 class="sec-title">The short version</h2></div>
+  <ol class="lessons">
+    <li><b>Work in a change set.</b> One open set per person, per server.</li>
+    <li><b>Review the report and write the note.</b> It is the release’s explanation.</li>
+    <li><b>Close only when the tests are green.</b> Block failures stop the journey.</li>
+    <li><b>Build on what PROD last received.</b> The release carries one set, not DEV.</li>
+    <li><b>Check drift before approval.</b> A direct edit pauses everything.</li>
+    <li><b>Approve the exact build.</b> A rebuild needs a new approval.</li>
+    <li><b>Verify after deploy.</b> History is the audit trail, not a memory aid.</li>
+  </ol>
+  <div class="callout note"><p><b>Next:</b> <a href="../deploy-drift-recovery/">When PROD drifts — baselines, reseed and recovery</a> · <a href="../deploying-lenses/">Deploying Lenses</a></p></div>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Shipping a TM1 change: change sets, releases and drift.</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      Deployment · Change sets · IBM Planning Analytics<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deploying Lenses</title>
+<meta name="description" content="Lenses are planning screens stored in the TM1 model, so they use their own deploy flow: compare by content fingerprint, check blockers, approve exact content, deploy, check and record.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --paper:#fafaf9;
+    --panel:#ffffff;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+
+    --steel:#0f766e;        /* structure, hierarchy, base */
+    --steel-light:#f0fdfa;
+    --green:#166534;        /* valid flow, base data, counted-once */
+    --green-light:#f0fdf4;
+    --amber:#92400e;        /* contra, grouped, reversal */
+    --amber-light:#fef3c7;
+    --red:#991b1b;          /* double-count, warnings */
+    --red-light:#fee2e2;
+    --indigo:#4c1d95;       /* implementation, UI */
+    --indigo-light:#ede9fe;
+
+    --maxw:860px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    background:
+      linear-gradient(180deg,#ffffff 0%, var(--paper) 100%);
+  }
+  .masthead .wrap{padding-top:78px;padding-bottom:52px}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--steel);
+    font-weight:500;
+    margin:0 0 22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1.title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.3rem);
+    line-height:1.08;
+    letter-spacing:-.012em;
+    margin:0 0 22px;
+    color:var(--ink);
+  }
+  h1.title .accent{color:var(--steel)}
+  .standfirst{
+    font-size:1.18rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:64ch;
+    margin:0 0 30px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-size:13.5px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;
+    padding-top:8px;border-top:1px solid var(--rule-soft);
+  }
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  .prototype{
+    margin:34px 0 0;
+    background:var(--green-light);
+    border:1px solid #cfe6d8;
+    border-left:4px solid var(--green);
+    border-radius:6px;
+    padding:16px 20px;
+    font-size:15.5px;
+    color:#21422f;
+  }
+  .prototype b{color:var(--green);font-weight:600}
+
+  /* ---------- TOC ---------- */
+  /* falconbi.css sets .toc{position:sticky} for sidebar use — override for this horizontal bar */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;margin:0 0 18px;
+  }
+  nav.toc ol{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:2px 28px;
+    counter-reset:toc;
+  }
+  nav.toc li{counter-increment:toc}
+  nav.toc a{
+    display:flex;gap:12px;align-items:baseline;
+    text-decoration:none;color:var(--ink-soft);
+    padding:7px 4px;border-radius:4px;
+    border-bottom:1px solid transparent;
+    transition:color .15s,background .15s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--steel);
+    flex:none;width:2ch;
+  }
+  nav.toc a:hover{color:var(--steel);background:var(--steel-light)}
+
+  /* ---------- Sections ---------- */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:44px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin:0 0 18px}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;color:var(--steel);
+    flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-weight:600;font-size:1.16rem;
+    margin:34px 0 12px;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  p{margin:0 0 16px}
+  section > p, section > ul, section > ol, section > .fig, section > .tablewrap,
+  section > pre, section > blockquote, section > .callout{margin-left:0}
+  strong{font-weight:600;color:var(--ink)}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:#f1f0ec;
+    padding:.1em .38em;border-radius:4px;
+    color:#3a4750;
+  }
+  a{color:var(--steel)}
+
+  ul,ol{margin:0 0 16px;padding-left:1.3em}
+  li{margin:6px 0}
+  li::marker{color:var(--steel)}
+
+  blockquote{
+    margin:18px 0;padding:4px 0 4px 22px;
+    border-left:3px solid var(--rule);
+    color:var(--ink-soft);font-style:italic;
+    font-family:'DM Sans',system-ui,sans-serif;font-size:1.08rem;
+  }
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;margin:22px 0}
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink-soft);
+  }
+  tbody tr:hover{background:#f6f7f8}
+  td code{background:#eef0f2}
+  .pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    letter-spacing:.02em;
+  }
+  .pill.sub{background:var(--steel-light);color:var(--steel)}
+  .pill.assoc{background:var(--indigo-light);color:var(--indigo)}
+  .pill.inv{background:#eef1f3;color:var(--ink-soft)}
+  .pill.grp{background:var(--amber-light);color:var(--amber)}
+
+  /* ---------- Code / ASCII ---------- */
+  pre{
+    background:#1c2530;color:#d7e0e8;
+    font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.6;
+    padding:18px 20px;border-radius:8px;overflow-x:auto;margin:20px 0;
+    border:1px solid #283442;
+  }
+  pre .c{color:#7f8fa0}      /* comment / faint */
+  pre .k{color:#7fb3e0}      /* steel key */
+  pre .g{color:#7fd0a0}      /* green */
+  pre .a{color:#e3b766}      /* amber */
+  pre .r{color:#e89b94}      /* red */
+  pre.ascii{font-size:13px;line-height:1.5}
+
+  /* ---------- Figures ---------- */
+  .fig{margin:26px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  figcaption{
+    font-size:13px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+    margin-top:12px;text-align:center;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600}
+
+  /* SVG element styling */
+  .svg-label{font-family:'DM Sans',sans-serif;font-size:14px;fill:var(--ink)}
+  .svg-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-faint)}
+  .svg-edge{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .node-steel{fill:var(--steel-light);stroke:var(--steel);stroke-width:1.5}
+  .node-green{fill:var(--green-light);stroke:var(--green);stroke-width:1.5}
+  .node-amber{fill:var(--amber-light);stroke:var(--amber);stroke-width:1.5}
+  .node-red{fill:var(--red-light);stroke:var(--red);stroke-width:1.5}
+  .node-indigo{fill:var(--indigo-light);stroke:var(--indigo);stroke-width:1.5}
+  .node-plain{fill:#fff;stroke:var(--ink-soft);stroke-width:1.3}
+  .edge{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+  .edge-green{stroke:var(--green);stroke-width:1.8;fill:none}
+  .edge-red{stroke:var(--red);stroke-width:1.8;fill:none}
+  .edge-amber{stroke:var(--amber);stroke-width:1.8;fill:none}
+  .edge-dash{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:6px;padding:16px 20px;margin:22px 0;font-size:15.5px;
+    border:1px solid var(--rule);border-left:4px solid var(--ink-soft);
+    background:var(--panel);
+  }
+  .callout.warn{background:var(--red-light);border-color:#eccac6;border-left-color:var(--red)}
+  .callout.warn b{color:var(--red)}
+  .callout.note{background:var(--steel-light);border-color:#cfe0ee;border-left-color:var(--steel)}
+  .callout.note b{color:var(--steel)}
+  .callout.key{background:var(--amber-light);border-color:#e8d6a8;border-left-color:var(--amber)}
+  .callout.key b{color:var(--amber)}
+  .callout p{margin:0}
+  .callout p + p{margin-top:10px}
+
+  /* ---------- Signature: path encoding ---------- */
+  .signature{
+    margin:30px 0;padding:30px 26px;border-radius:10px;
+    background:linear-gradient(160deg,#1c2530 0%,#243140 100%);
+    border:1px solid #2b3a4a;color:#dbe4ec;
+  }
+  .signature .sig-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#8aa0b4;margin:0 0 18px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{background:#1c2530;color:#aebccb;border-top:3px solid var(--steel)}
+  footer .wrap{padding-top:48px;padding-bottom:54px}
+  footer h2{
+    font-family:'DM Sans',system-ui,sans-serif;color:#f0f4f8;font-weight:600;
+    font-size:1.3rem;margin:0 0 14px;
+  }
+  footer p{color:#aebccb;font-size:15px;max-width:62ch}
+  footer a{color:#9ec3e6}
+  .lic{
+    margin-top:22px;padding-top:20px;border-top:1px solid #2c3a48;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8294a4;
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+  }
+  .refs{font-size:15px;color:#c4d0db}
+  .refs cite{font-style:italic;color:#e6edf3}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .sec-head{gap:12px}
+    nav.toc ol{grid-template-columns:1fr}
+    .masthead .wrap{padding-top:54px;padding-bottom:40px}
+  }
+</style>
+<style>
+  /* gates diagram + small extras */
+  .svg-small{font-family:'DM Sans',sans-serif;font-size:12px;fill:var(--ink)}
+  .svg-tiny{font-family:'IBM Plex Mono',monospace;font-size:10px;fill:var(--ink-faint)}
+  .svg-red{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--red)}
+  .svg-green{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--green)}
+  ol.lessons{padding-left:1.2em}
+  ol.lessons li{margin:0 0 10px}
+</style>
+</head>
+
+<body>
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">Deployment &nbsp;·&nbsp; Lenses</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Deployment &nbsp;·&nbsp; Model-owned apps</p>
+    <h1 class="title">Deploying Lenses:<br><span class="accent">a separate path from Git</span></h1>
+    <p class="standfirst">A Lens is a planning screen saved inside the TM1 model. It is not a cube, rule or process, so it does not travel with a normal model release. It has its own compare, approve and deploy flow.</p>
+    <div class="meta-row">
+      <span><b>Tested on</b> TM1 v11 · DEV + PROD pair</span>
+      <span><b>Related</b> <a href="../shipping-tm1-changes/">Shipping a TM1 change</a></span>
+      <span><b>Status</b> Published November 2026</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#a1">What a Lens is</a></li>
+      <li><a href="#a2">Why Lenses use a separate path</a></li>
+      <li><a href="#a3">Compare source and target</a></li>
+      <li><a href="#a4">Blockers</a></li>
+      <li><a href="#a5">Approve the exact content</a></li>
+      <li><a href="#a6">Deploy, check and record</a></li>
+      <li><a href="#a7">The Lens deploy checklist</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<section id="a1">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">What a Lens is</h2></div>
+  <p>A Lens is a planning screen stored inside the TM1 model. It has HTML, settings, access rules, a title and a folder. People open it from the Lens app.</p>
+  <p>The Lens lives in the model under <code>Applications/Governance/Lenses</code>, next to the cubes and processes it uses.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Word</th><th>What it means here</th></tr></thead>
+    <tbody>
+      <tr><td><b>Change set</b></td><td>The record of saves one person made on one server.</td></tr>
+      <tr><td><b>Model release</b></td><td>The files built from one change set for one target.</td></tr>
+      <tr><td><b>Source</b></td><td>The server you are copying Lenses from, usually DEV.</td></tr>
+      <tr><td><b>Target</b></td><td>The server receiving Lenses, usually PROD.</td></tr>
+      <tr><td><b>Published / draft</b></td><td>Only published Lenses can ship. Drafts are listed but cannot be selected.</td></tr>
+      <tr><td><b>Fingerprint</b></td><td>A short code calculated from a Lens’s content. Same content gives the same code.</td></tr>
+      <tr><td><b>Blocker</b></td><td>Something missing on the target that stops the deploy.</td></tr>
+      <tr><td><b>Plan</b></td><td>The list of Lenses to add, change or delete.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="a2">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Why Lenses use a separate path</h2></div>
+  <p>A normal model release moves cubes, dimensions, rules, processes, chores, views and subsets. TM1 Git knows how to save and restore those objects. Lenses are different: they are application documents stored in the model.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 190" role="img" aria-label="The model release carries model objects. The Lens deploy carries model-owned application documents.">
+      <rect x="20" y="20" width="320" height="135" rx="10" class="node-steel"/>
+      <text x="180" y="52" text-anchor="middle" class="svg-label">Model release</text>
+      <text x="180" y="80" text-anchor="middle" class="svg-sub">cubes · dimensions · rules</text>
+      <text x="180" y="100" text-anchor="middle" class="svg-sub">processes · chores · views · subsets</text>
+      <text x="180" y="132" text-anchor="middle" class="svg-tiny">one change set</text>
+      <rect x="380" y="20" width="320" height="135" rx="10" class="node-indigo"/>
+      <text x="540" y="52" text-anchor="middle" class="svg-label">Lens deploy</text>
+      <text x="540" y="80" text-anchor="middle" class="svg-sub">HTML · settings · access</text>
+      <text x="540" y="100" text-anchor="middle" class="svg-sub">title · folder · image</text>
+      <text x="540" y="132" text-anchor="middle" class="svg-tiny">exact content fingerprint</text>
+    </svg>
+    <figcaption>Same target, different kind of object, different deploy path.</figcaption>
+  </figure>
+  <p>Keeping them separate is deliberate. A model release should not fail because a screen changed. A Lens deploy should not ship a cube change. Both use the same target lock.</p>
+</section>
+
+<section id="a3">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Compare source and target</h2></div>
+  <p>Lens deploy starts with <b>Compare</b>. The IDE reads every Lens on the source, calculates a fingerprint for it, and compares that with the target.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 150" role="img" aria-label="Compare gives four results: new, changed, same and draft.">
+      <rect x="20" y="25" width="155" height="95" rx="8" class="node-green"/>
+      <text x="97" y="58" text-anchor="middle" class="svg-label">New</text>
+      <text x="97" y="82" text-anchor="middle" class="svg-sub">not on the target</text>
+      <text x="97" y="102" text-anchor="middle" class="svg-tiny">published only</text>
+      <rect x="195" y="25" width="155" height="95" rx="8" class="node-amber"/>
+      <text x="272" y="58" text-anchor="middle" class="svg-label">Changed</text>
+      <text x="272" y="82" text-anchor="middle" class="svg-sub">different fingerprint</text>
+      <text x="272" y="102" text-anchor="middle" class="svg-tiny">published only</text>
+      <rect x="370" y="25" width="155" height="95" rx="8" class="node-plain"/>
+      <text x="447" y="58" text-anchor="middle" class="svg-label">Same</text>
+      <text x="447" y="82" text-anchor="middle" class="svg-sub">nothing to ship</text>
+      <text x="447" y="102" text-anchor="middle" class="svg-tiny">fingerprint matches</text>
+      <rect x="545" y="25" width="155" height="95" rx="8" class="node-red"/>
+      <text x="622" y="58" text-anchor="middle" class="svg-label">Draft</text>
+      <text x="622" y="82" text-anchor="middle" class="svg-sub">listed, not selectable</text>
+      <text x="622" y="102" text-anchor="middle" class="svg-tiny">never shipped</text>
+    </svg>
+    <figcaption>Only published Lenses can ship. Drafts are shown so they are not forgotten.</figcaption>
+  </figure>
+  <p>The fingerprint covers the Lens content: name, status, description, folder, title, icon, colour, image, settings and HTML. It ignores version, timestamps, owner and creation details. Saving the same content twice still matches.</p>
+  <p>Lenses that exist only on the target are listed separately. They are not deleted automatically. You choose whether to delete one.</p>
+</section>
+
+<section id="a4">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">Blockers</h2></div>
+  <p>A screen only works if the target model can run it. For every new or changed Lens, the IDE checks the cubes it writes and the processes it runs.</p>
+  <p>If a cube or process is missing on the target, that Lens is a <b>blocker</b>. The plan cannot be approved or deployed until the target has it. Ship the model objects first, then the screen that uses them.</p>
+</section>
+
+<section id="a5">
+  <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Approve the exact content</h2></div>
+  <p>Review shows the counts: new, changed, same and draft. It also shows blockers and target-only Lenses. New and changed published Lenses are selected by default. Deletions are off by default and must be ticked.</p>
+  <p>Approval records the approver, the note, the source and target, the fingerprint of each Lens, the plan fingerprint and the approved delete list.</p>
+  <div class="callout key"><p><b>Approval is for those exact Lenses.</b> If any approved Lens changes after approval, or the plan changes, the deploy refuses. Run Compare again and approve again.</p></div>
+</section>
+
+<section id="a6">
+  <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">Deploy, check and record</h2></div>
+  <p>Deploy takes the same target lock as a model deploy. It then follows a fixed order:</p>
+  <ol class="lessons">
+    <li><b>Lock</b> the target.</li>
+    <li><b>Read the source again.</b> Check every fingerprint against the approved one.</li>
+    <li><b>Save</b> each approved Lens with its settings, title, folder, icon, colour, image and HTML.</li>
+    <li><b>Read each Lens back.</b> Check the fingerprint again. A mismatch fails that Lens.</li>
+    <li><b>Delete</b> only the target-only Lenses you approved.</li>
+    <li><b>Record</b> each Lens result and delete in the target’s Lens deploy history.</li>
+  </ol>
+  <p>There is no hidden rollback. If a deploy is wrong, fix the Lens on the source, compare again, approve the new content and deploy again. The history shows what actually landed.</p>
+</section>
+
+<section id="a7">
+  <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">The Lens deploy checklist</h2></div>
+  <ol class="lessons">
+    <li><b>Publish first.</b> Drafts are never shipped.</li>
+    <li><b>Ship the model objects first.</b> A Lens that needs a missing cube or process is a blocker.</li>
+    <li><b>Read the plan.</b> New, changed, same, draft, blockers, target-only deletes.</li>
+    <li><b>Approve the exact content.</b> Approval is for those fingerprints, not “the latest”.</li>
+    <li><b>Do not change anything after approval.</b> If something changes, compare and approve again.</li>
+    <li><b>Check the history.</b> Confirm each Lens shipped and any approved deletes happened.</li>
+  </ol>
+  <div class="callout note"><p><b>Next:</b> <a href="../shipping-tm1-changes/">Shipping a TM1 change</a> · <a href="../deploy-drift-recovery/">When PROD drifts</a></p></div>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>Deploying Lenses: a separate path from Git.</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      Deployment · Lenses · IBM Planning Analytics<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -12,6 +12,11 @@ Published via GitHub Pages: **https://falconbi.github.io/articles/**
 - **[Cost Apportionment in Pigment — a five-stage engine](https://falconbi.github.io/articles/cost-apportionment.html)** — full technical reference: dimension model, transaction lists, five-stage chain (including reciprocal settlements), control layer, boards, and data flow in Pigment.
 - **[Activity Based Cost Apportionment in TM1](https://falconbi.github.io/tm1_apportionment/)** — full TM1 implementation: 10-cube data model, five-stage chain (TM1 rules + Python reciprocal iteration), VAL validation gate, and RC reconciliation checks.
 
+### Deployment
+- **[Shipping a TM1 change: change sets, releases and drift](https://falconbi.github.io/articles/shipping-tm1-changes/)** — the operating model: personal change sets, one release at a time, the catch-up exception, what goes into a release, the deployment wizard, and drift. With diagrams.
+- **[When PROD drifts: baselines, reseed and recovery](https://falconbi.github.io/articles/deploy-drift-recovery/)** — what drift means, why reseed does not clear it, how baselines differ from the last received version, and the two ways to recover.
+- **[Deploying Lenses: a separate path from Git](https://falconbi.github.io/articles/deploying-lenses/)** — why Lenses are a separate deploy path, how compare uses content fingerprints, what blocks a deploy, and how approval, checking and history work.
+
 ### Financial Consolidation
 - **[Financial Consolidation Hierarchy Design in TM1](https://falconbi.github.io/tm1_consolidation_design/)** — design notes covering consolidation dimension structure, ownership hierarchies, minority interest, intercompany eliminations, and the translation stage in Planning Analytics.
 

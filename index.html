@@ -67,6 +67,7 @@
   <nav class="topbar-links" aria-label="Site sections">
     <a href="#aimcp">AI &amp; MCP</a>
     <a href="#security">Security</a>
+    <a href="#deploy">Deploy</a>
     <a href="#apportionment">Apportionment</a>
     <a href="#consolidation">Consolidation</a>
     <a href="#cashflow">Cash Flow</a>
@@ -157,6 +158,36 @@
           <div class="article-tags"><span class="tag tm1">TM1</span><span class="tag method">Governance</span></div>
           <div class="article-body">
             <h3><a href="governed-tm1-deploys/" title="How TM1 deploys were made to ship exactly one change set: a home-built REST pipeline, TM1's built-in Git, the whole-branch problem, and the release-commit fix. With diagrams.">Governed TM1 deploys: from change sets to TM1 Git</a></h3>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="topic-area" id="deploy" style="--area-color:var(--teal)">
+    <div class="area-layout">
+      <div class="area-meta">
+        <div class="area-label">Practice</div>
+        <h2 class="area-title">Deployment</h2>
+        <p class="area-desc">How a change travels from DEV to PROD: change sets, releases, drift, recovery and model-owned Lenses.</p>
+      </div>
+      <ul class="article-list">
+        <li class="article-item">
+          <div class="article-tags"><span class="tag tm1">TM1</span><span class="tag method">Deploy</span></div>
+          <div class="article-body">
+            <h3><a href="shipping-tm1-changes/" title="The operating model: personal change sets, one release at a time, the catch-up exception, what goes into a release, the deployment wizard, and drift. With diagrams.">Shipping a TM1 change: change sets, releases and drift</a></h3>
+          </div>
+        </li>
+        <li class="article-item">
+          <div class="article-tags"><span class="tag tm1">TM1</span><span class="tag method">Recovery</span></div>
+          <div class="article-body">
+            <h3><a href="deploy-drift-recovery/" title="What drift means, why reseed does not clear it, how baselines differ from the last received version, and the two ways to recover.">When PROD drifts: baselines, reseed and recovery</a></h3>
+          </div>
+        </li>
+        <li class="article-item">
+          <div class="article-tags"><span class="tag tm1">TM1</span><span class="tag method">Lenses</span></div>
+          <div class="article-body">
+            <h3><a href="deploying-lenses/" title="Why Lenses are a separate deploy path, how compare uses content fingerprints, what blocks a deploy, and how approval, checking and history work.">Deploying Lenses: a separate path from Git</a></h3>
           </div>
         </li>
       </ul>

@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>When PROD Drifts</title>
+<meta name="description" content="What drift means on a TM1 deploy, why reseed does not clear it, how baselines differ from the last received version, and the two ways to recover.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --paper:#fafaf9;
+    --panel:#ffffff;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+
+    --steel:#0f766e;        /* structure, hierarchy, base */
+    --steel-light:#f0fdfa;
+    --green:#166534;        /* valid flow, base data, counted-once */
+    --green-light:#f0fdf4;
+    --amber:#92400e;        /* contra, grouped, reversal */
+    --amber-light:#fef3c7;
+    --red:#991b1b;          /* double-count, warnings */
+    --red-light:#fee2e2;
+    --indigo:#4c1d95;       /* implementation, UI */
+    --indigo-light:#ede9fe;
+
+    --maxw:860px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    background:
+      linear-gradient(180deg,#ffffff 0%, var(--paper) 100%);
+  }
+  .masthead .wrap{padding-top:78px;padding-bottom:52px}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--steel);
+    font-weight:500;
+    margin:0 0 22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1.title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.3rem);
+    line-height:1.08;
+    letter-spacing:-.012em;
+    margin:0 0 22px;
+    color:var(--ink);
+  }
+  h1.title .accent{color:var(--steel)}
+  .standfirst{
+    font-size:1.18rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:64ch;
+    margin:0 0 30px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-size:13.5px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;
+    padding-top:8px;border-top:1px solid var(--rule-soft);
+  }
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  .prototype{
+    margin:34px 0 0;
+    background:var(--green-light);
+    border:1px solid #cfe6d8;
+    border-left:4px solid var(--green);
+    border-radius:6px;
+    padding:16px 20px;
+    font-size:15.5px;
+    color:#21422f;
+  }
+  .prototype b{color:var(--green);font-weight:600}
+
+  /* ---------- TOC ---------- */
+  /* falconbi.css sets .toc{position:sticky} for sidebar use — override for this horizontal bar */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;margin:0 0 18px;
+  }
+  nav.toc ol{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:2px 28px;
+    counter-reset:toc;
+  }
+  nav.toc li{counter-increment:toc}
+  nav.toc a{
+    display:flex;gap:12px;align-items:baseline;
+    text-decoration:none;color:var(--ink-soft);
+    padding:7px 4px;border-radius:4px;
+    border-bottom:1px solid transparent;
+    transition:color .15s,background .15s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--steel);
+    flex:none;width:2ch;
+  }
+  nav.toc a:hover{color:var(--steel);background:var(--steel-light)}
+
+  /* ---------- Sections ---------- */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:44px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin:0 0 18px}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;color:var(--steel);
+    flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-weight:600;font-size:1.16rem;
+    margin:34px 0 12px;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  p{margin:0 0 16px}
+  section > p, section > ul, section > ol, section > .fig, section > .tablewrap,
+  section > pre, section > blockquote, section > .callout{margin-left:0}
+  strong{font-weight:600;color:var(--ink)}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:#f1f0ec;
+    padding:.1em .38em;border-radius:4px;
+    color:#3a4750;
+  }
+  a{color:var(--steel)}
+
+  ul,ol{margin:0 0 16px;padding-left:1.3em}
+  li{margin:6px 0}
+  li::marker{color:var(--steel)}
+
+  blockquote{
+    margin:18px 0;padding:4px 0 4px 22px;
+    border-left:3px solid var(--rule);
+    color:var(--ink-soft);font-style:italic;
+    font-family:'DM Sans',system-ui,sans-serif;font-size:1.08rem;
+  }
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;margin:22px 0}
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink-soft);
+  }
+  tbody tr:hover{background:#f6f7f8}
+  td code{background:#eef0f2}
+  .pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    letter-spacing:.02em;
+  }
+  .pill.sub{background:var(--steel-light);color:var(--steel)}
+  .pill.assoc{background:var(--indigo-light);color:var(--indigo)}
+  .pill.inv{background:#eef1f3;color:var(--ink-soft)}
+  .pill.grp{background:var(--amber-light);color:var(--amber)}
+
+  /* ---------- Code / ASCII ---------- */
+  pre{
+    background:#1c2530;color:#d7e0e8;
+    font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.6;
+    padding:18px 20px;border-radius:8px;overflow-x:auto;margin:20px 0;
+    border:1px solid #283442;
+  }
+  pre .c{color:#7f8fa0}      /* comment / faint */
+  pre .k{color:#7fb3e0}      /* steel key */
+  pre .g{color:#7fd0a0}      /* green */
+  pre .a{color:#e3b766}      /* amber */
+  pre .r{color:#e89b94}      /* red */
+  pre.ascii{font-size:13px;line-height:1.5}
+
+  /* ---------- Figures ---------- */
+  .fig{margin:26px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  figcaption{
+    font-size:13px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+    margin-top:12px;text-align:center;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600}
+
+  /* SVG element styling */
+  .svg-label{font-family:'DM Sans',sans-serif;font-size:14px;fill:var(--ink)}
+  .svg-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-faint)}
+  .svg-edge{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .node-steel{fill:var(--steel-light);stroke:var(--steel);stroke-width:1.5}
+  .node-green{fill:var(--green-light);stroke:var(--green);stroke-width:1.5}
+  .node-amber{fill:var(--amber-light);stroke:var(--amber);stroke-width:1.5}
+  .node-red{fill:var(--red-light);stroke:var(--red);stroke-width:1.5}
+  .node-indigo{fill:var(--indigo-light);stroke:var(--indigo);stroke-width:1.5}
+  .node-plain{fill:#fff;stroke:var(--ink-soft);stroke-width:1.3}
+  .edge{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+  .edge-green{stroke:var(--green);stroke-width:1.8;fill:none}
+  .edge-red{stroke:var(--red);stroke-width:1.8;fill:none}
+  .edge-amber{stroke:var(--amber);stroke-width:1.8;fill:none}
+  .edge-dash{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:6px;padding:16px 20px;margin:22px 0;font-size:15.5px;
+    border:1px solid var(--rule);border-left:4px solid var(--ink-soft);
+    background:var(--panel);
+  }
+  .callout.warn{background:var(--red-light);border-color:#eccac6;border-left-color:var(--red)}
+  .callout.warn b{color:var(--red)}
+  .callout.note{background:var(--steel-light);border-color:#cfe0ee;border-left-color:var(--steel)}
+  .callout.note b{color:var(--steel)}
+  .callout.key{background:var(--amber-light);border-color:#e8d6a8;border-left-color:var(--amber)}
+  .callout.key b{color:var(--amber)}
+  .callout p{margin:0}
+  .callout p + p{margin-top:10px}
+
+  /* ---------- Signature: path encoding ---------- */
+  .signature{
+    margin:30px 0;padding:30px 26px;border-radius:10px;
+    background:linear-gradient(160deg,#1c2530 0%,#243140 100%);
+    border:1px solid #2b3a4a;color:#dbe4ec;
+  }
+  .signature .sig-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#8aa0b4;margin:0 0 18px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{background:#1c2530;color:#aebccb;border-top:3px solid var(--steel)}
+  footer .wrap{padding-top:48px;padding-bottom:54px}
+  footer h2{
+    font-family:'DM Sans',system-ui,sans-serif;color:#f0f4f8;font-weight:600;
+    font-size:1.3rem;margin:0 0 14px;
+  }
+  footer p{color:#aebccb;font-size:15px;max-width:62ch}
+  footer a{color:#9ec3e6}
+  .lic{
+    margin-top:22px;padding-top:20px;border-top:1px solid #2c3a48;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8294a4;
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+  }
+  .refs{font-size:15px;color:#c4d0db}
+  .refs cite{font-style:italic;color:#e6edf3}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .sec-head{gap:12px}
+    nav.toc ol{grid-template-columns:1fr}
+    .masthead .wrap{padding-top:54px;padding-bottom:40px}
+  }
+</style>
+<style>
+  /* gates diagram + small extras */
+  .svg-small{font-family:'DM Sans',sans-serif;font-size:12px;fill:var(--ink)}
+  .svg-tiny{font-family:'IBM Plex Mono',monospace;font-size:10px;fill:var(--ink-faint)}
+  .svg-red{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--red)}
+  .svg-green{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--green)}
+  ol.lessons{padding-left:1.2em}
+  ol.lessons li{margin:0 0 10px}
+</style>
+</head>
+
+<body>
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">Deployment &nbsp;·&nbsp; Recovery</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Deployment &nbsp;·&nbsp; Drift &amp; baselines</p>
+    <h1 class="title">When PROD drifts:<br><span class="accent">baselines, reseed and recovery</span></h1>
+    <p class="standfirst">Drift means the target server no longer matches the version it was last given. This article explains what that means, what reseed does and does not do, and the two ways to fix it.</p>
+    <div class="meta-row">
+      <span><b>Tested on</b> TM1 v11 · DEV + PROD pair</span>
+      <span><b>Related</b> <a href="../shipping-tm1-changes/">Shipping a TM1 change</a></span>
+      <span><b>Status</b> Published November 2026</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#a1">What drift means</a></li>
+      <li><a href="#a2">Why it happens</a></li>
+      <li><a href="#a3">Two different references</a></li>
+      <li><a href="#a4">What reseed does</a></li>
+      <li><a href="#a5">Two ways to fix drift</a></li>
+      <li><a href="#a6">Catch-up can leave drift</a></li>
+      <li><a href="#a7">The recovery checklist</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<section id="a1">
+  <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">What drift means</h2></div>
+  <p>A deploy puts a version of the model on the target server. That version is the <b>last received version</b>. Drift means the target no longer matches it.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Word</th><th>What it means here</th></tr></thead>
+    <tbody>
+      <tr><td><b>Target</b></td><td>The server receiving changes, usually PROD.</td></tr>
+      <tr><td><b>Last received version</b></td><td>What the last deploy put on the target.</td></tr>
+      <tr><td><b>Drift</b></td><td>The target no longer matches that version.</td></tr>
+      <tr><td><b>Baseline</b></td><td>A local snapshot used for comparisons.</td></tr>
+      <tr><td><b>Reseed</b></td><td>Replace that local snapshot with the target’s current state.</td></tr>
+      <tr><td><b>Release</b></td><td>The files built from one closed change set for one target.</td></tr>
+      <tr><td><b>Catch-up</b></td><td>An admin-only release that ships every difference between DEV and the target.</td></tr>
+    </tbody>
+  </table></div>
+  <figure class="fig">
+    <svg viewBox="0 0 720 170" role="img" aria-label="Drift is the difference between the version the target was given and the target's current state.">
+      <rect x="25" y="40" width="270" height="80" rx="10" class="node-green"/>
+      <text x="160" y="72" text-anchor="middle" class="svg-label">Last received version</text>
+      <text x="160" y="96" text-anchor="middle" class="svg-sub">what the deploy put there</text>
+      <rect x="425" y="40" width="270" height="80" rx="10" class="node-amber"/>
+      <text x="560" y="72" text-anchor="middle" class="svg-label">Target now</text>
+      <text x="560" y="96" text-anchor="middle" class="svg-sub">what is there now</text>
+      <path d="M295 80 L423 80" class="edge-red" stroke-dasharray="5 4"/>
+      <text x="360" y="70" text-anchor="middle" class="svg-red">diff</text>
+      <text x="360" y="145" text-anchor="middle" class="svg-sub">The difference is the drift report.</text>
+    </svg>
+    <figcaption>Drift compares the target with the version it was given, not with DEV.</figcaption>
+  </figure>
+  <p>Work in progress on DEV is normal. Drift is specifically the target disagreeing with what it was last given.</p>
+</section>
+
+<section id="a2">
+  <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Why it happens</h2></div>
+  <p>The usual cause is a direct edit on the target: someone changes a view, rule or cell in Architect or PAW, outside the deploy path.</p>
+  <p>A read-only target blocks normal writes from the IDE. It is a useful guard, but it is not a TM1 lock. A TM1 admin can still edit through other tools. So drift is possible, just rare.</p>
+  <div class="callout key"><p><b>A direct edit is not always a mistake.</b> Sometimes it is a real fix made in a hurry. The question is not who broke it. The question is whether the change should be kept.</p></div>
+</section>
+
+<section id="a3">
+  <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Two different references</h2></div>
+  <p>The tooling has two reference points, and they are easy to confuse.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 210" role="img" aria-label="A local baseline snapshot and the last received version are different references. Reseed only replaces the snapshot.">
+      <rect x="20" y="25" width="310" height="145" rx="10" class="node-indigo"/>
+      <text x="175" y="55" text-anchor="middle" class="svg-label">Local baseline</text>
+      <text x="175" y="82" text-anchor="middle" class="svg-sub">a snapshot of objects</text>
+      <text x="175" y="102" text-anchor="middle" class="svg-sub">used for comparisons</text>
+      <text x="175" y="142" text-anchor="middle" class="svg-tiny">reseed replaces this</text>
+      <rect x="390" y="25" width="310" height="145" rx="10" class="node-green"/>
+      <text x="545" y="55" text-anchor="middle" class="svg-label">Last received version</text>
+      <text x="545" y="82" text-anchor="middle" class="svg-sub">what the target</text>
+      <text x="545" y="102" text-anchor="middle" class="svg-sub">was last given</text>
+      <text x="545" y="142" text-anchor="middle" class="svg-tiny">drift is measured against this</text>
+      <path d="M330 120 L390 120" class="edge-dash" stroke-dasharray="5 4"/>
+      <text x="360" y="110" text-anchor="middle" class="svg-red">no effect</text>
+    </svg>
+    <figcaption>Reseed moves the local snapshot. It does not move the last received version.</figcaption>
+  </figure>
+  <p>The baseline is a local snapshot used for comparison and recovery. The last received version is the state the last deploy created. They can match, but changing one does not change the other.</p>
+</section>
+
+<section id="a4">
+  <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">What reseed does</h2></div>
+  <p><b>Reseed</b> writes a new local baseline from the target as it is now. It does not change the target. It does not change the last received version. It does not clear drift.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Action</th><th>Changes the target?</th><th>Changes the last received version?</th><th>Clears drift?</th></tr></thead>
+    <tbody>
+      <tr><td><b>Reseed</b></td><td>No</td><td>No</td><td><b>No</b></td></tr>
+      <tr><td><b>Restore the target</b></td><td>Yes</td><td>No</td><td>Yes</td></tr>
+      <tr><td><b>Port the change to DEV and release it</b></td><td>DEV, then the target</td><td>Yes, after deploy</td><td>Only after the target is restored</td></tr>
+    </tbody>
+  </table></div>
+  <p>Reseed is for a server with no baseline, or one you deliberately want as a new starting point. It is not a deploy, and it is not a drift fix.</p>
+  <div class="callout warn"><p><b>Do not trust the reseed message on its own.</b> A baseline can be reseeded while the target still differs from what it was given. Check the drift report again.</p></div>
+</section>
+
+<section id="a5">
+  <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Two ways to fix drift</h2></div>
+  <p>Once the drift report shows what changed, decide whether to keep the direct edit.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 255" role="img" aria-label="Decision: if the direct edit was not wanted, restore the target. If it was wanted, port it to DEV and release it after restoring the target.">
+      <defs><marker id="ar5" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <rect x="255" y="15" width="210" height="55" rx="8" class="node-amber"/>
+      <text x="360" y="38" text-anchor="middle" class="svg-label">Direct edit found</text>
+      <text x="360" y="57" text-anchor="middle" class="svg-sub">should it stay?</text>
+      <rect x="35" y="120" width="270" height="100" rx="10" class="node-green"/>
+      <text x="170" y="148" text-anchor="middle" class="svg-label">No — remove it</text>
+      <text x="170" y="172" text-anchor="middle" class="svg-sub">restore the target to the</text>
+      <text x="170" y="190" text-anchor="middle" class="svg-sub">version it was last given</text>
+      <text x="170" y="210" text-anchor="middle" class="svg-tiny">check drift again → clean</text>
+      <rect x="415" y="120" width="270" height="100" rx="10" class="node-indigo"/>
+      <text x="550" y="148" text-anchor="middle" class="svg-label">Yes — keep it</text>
+      <text x="550" y="172" text-anchor="middle" class="svg-sub">make the same change on DEV</text>
+      <text x="550" y="190" text-anchor="middle" class="svg-sub">and release it</text>
+      <text x="550" y="210" text-anchor="middle" class="svg-tiny">restore the target first</text>
+      <path d="M300 70 C235 90 190 110 170 118" class="edge-green" marker-end="url(#ar5)"/>
+      <path d="M420 70 C485 90 530 110 550 118" class="edge-amber" marker-end="url(#ar5)"/>
+    </svg>
+    <figcaption>Keeping the change still requires the target to be restored before the new release can pass Review.</figcaption>
+  </figure>
+  <p><b>Remove it:</b> restore the target to its last received version. Check drift again. It should be empty.</p>
+  <p><b>Keep it:</b> make the same change on DEV in a change set, then release it. But restore the target first, or Review will still stop. The release then applies the change with review and approval.</p>
+  <p>There is no automatic revert or promote. Both were tried and removed because they created new ways to lose work.</p>
+</section>
+
+<section id="a6">
+  <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">Catch-up can leave drift</h2></div>
+  <p>A catch-up ships every difference between DEV and the target. It is an exception, not a normal deploy. After it runs, some drift can remain:</p>
+  <ul>
+    <li>target-only objects you did not tick for deletion;</li>
+    <li>view or hierarchy changes written back by TM1;</li>
+    <li>subsets applied over REST that do not exactly match the release.</li>
+  </ul>
+  <p>The same rule applies afterwards: the target must match what it last received before the next normal deploy.</p>
+</section>
+
+<section id="a7">
+  <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">The recovery checklist</h2></div>
+  <ol class="lessons">
+    <li><b>Read the drift report.</b> Name every changed, new or deleted object.</li>
+    <li><b>Decide: keep or remove.</b> Do not reseed first.</li>
+    <li><b>If removing, restore the target.</b> Put it back to the last received version.</li>
+    <li><b>If keeping, make the change on DEV.</b> Put it in a change set and release it.</li>
+    <li><b>Restore before Review.</b> The release cannot pass while the target still differs.</li>
+    <li><b>Check drift again.</b> The drift report is the proof, not the reseed message.</li>
+    <li><b>Record the outcome.</b> The release and approval appear in Deploy History.</li>
+  </ol>
+  <div class="callout note"><p><b>Next:</b> <a href="../shipping-tm1-changes/">Shipping a TM1 change</a> · <a href="../deploying-lenses/">Deploying Lenses</a></p></div>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>When PROD drifts: baselines, reseed and recovery.</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      Deployment · Drift · IBM Planning Analytics<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
