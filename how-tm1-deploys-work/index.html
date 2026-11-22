@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How a TM1 Deploy Works</title>
+<meta name="description" content="A governed TM1 deploy as one numbered process: change sets, Git and TM1 Git, refreshing DEV from PROD with a three-way compare, review stops, the deploy itself, recovery, and what testing on live servers found.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="falconbi.css">
+<style>
+  :root{
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --paper:#fafaf9;
+    --panel:#ffffff;
+    --rule:#e7e5e4;
+    --rule-soft:#f5f5f4;
+
+    --steel:#0f766e;        /* structure, hierarchy, base */
+    --steel-light:#f0fdfa;
+    --green:#166534;        /* valid flow, base data, counted-once */
+    --green-light:#f0fdf4;
+    --amber:#92400e;        /* contra, grouped, reversal */
+    --amber-light:#fef3c7;
+    --red:#991b1b;          /* double-count, warnings */
+    --red-light:#fee2e2;
+    --indigo:#4c1d95;       /* implementation, UI */
+    --indigo-light:#ede9fe;
+
+    --maxw:860px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    background:
+      linear-gradient(180deg,#ffffff 0%, var(--paper) 100%);
+  }
+  .masthead .wrap{padding-top:78px;padding-bottom:52px}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--steel);
+    font-weight:500;
+    margin:0 0 22px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+  h1.title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;
+    font-size:clamp(2.1rem,5.4vw,3.3rem);
+    line-height:1.08;
+    letter-spacing:-.012em;
+    margin:0 0 22px;
+    color:var(--ink);
+  }
+  h1.title .accent{color:var(--steel)}
+  .standfirst{
+    font-size:1.18rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:64ch;
+    margin:0 0 30px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-size:13.5px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;
+    padding-top:8px;border-top:1px solid var(--rule-soft);
+  }
+  .meta-row b{color:var(--ink-soft);font-weight:500}
+
+  .prototype{
+    margin:34px 0 0;
+    background:var(--green-light);
+    border:1px solid #cfe6d8;
+    border-left:4px solid var(--green);
+    border-radius:6px;
+    padding:16px 20px;
+    font-size:15.5px;
+    color:#21422f;
+  }
+  .prototype b{color:var(--green);font-weight:600}
+
+  /* ---------- TOC ---------- */
+  /* falconbi.css sets .toc{position:sticky} for sidebar use — override for this horizontal bar */
+  nav.toc{border-bottom:1px solid var(--rule);background:var(--panel);position:static;top:auto}
+  nav.toc .wrap{padding-top:34px;padding-bottom:34px}
+  nav.toc h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:500;margin:0 0 18px;
+  }
+  nav.toc ol{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:2px 28px;
+    counter-reset:toc;
+  }
+  nav.toc li{counter-increment:toc}
+  nav.toc a{
+    display:flex;gap:12px;align-items:baseline;
+    text-decoration:none;color:var(--ink-soft);
+    padding:7px 4px;border-radius:4px;
+    border-bottom:1px solid transparent;
+    transition:color .15s,background .15s;
+  }
+  nav.toc a::before{
+    content:counter(toc,decimal-leading-zero);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--steel);
+    flex:none;width:2ch;
+  }
+  nav.toc a:hover{color:var(--steel);background:var(--steel-light)}
+
+  /* ---------- Sections ---------- */
+  main .wrap{padding-top:8px;padding-bottom:8px}
+  section{padding:44px 0;border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:none}
+  .sec-head{display:flex;gap:18px;align-items:baseline;margin:0 0 18px}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:600;color:var(--steel);
+    flex:none;padding-top:5px;
+  }
+  h2.sec-title{
+    font-family:'DM Sans',system-ui,sans-serif;
+    font-weight:600;font-size:clamp(1.5rem,3.4vw,2rem);
+    line-height:1.15;letter-spacing:-.01em;margin:0;color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-weight:600;font-size:1.16rem;
+    margin:34px 0 12px;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  p{margin:0 0 16px}
+  section > p, section > ul, section > ol, section > .fig, section > .tablewrap,
+  section > pre, section > blockquote, section > .callout{margin-left:0}
+  strong{font-weight:600;color:var(--ink)}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:#f1f0ec;
+    padding:.1em .38em;border-radius:4px;
+    color:#3a4750;
+  }
+  a{color:var(--steel)}
+
+  ul,ol{margin:0 0 16px;padding-left:1.3em}
+  li{margin:6px 0}
+  li::marker{color:var(--steel)}
+
+  blockquote{
+    margin:18px 0;padding:4px 0 4px 22px;
+    border-left:3px solid var(--rule);
+    color:var(--ink-soft);font-style:italic;
+    font-family:'DM Sans',system-ui,sans-serif;font-size:1.08rem;
+  }
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;margin:22px 0}
+  table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;
+    border-bottom:1.5px solid var(--ink-soft);
+  }
+  tbody tr:hover{background:#f6f7f8}
+  td code{background:#eef0f2}
+  .pill{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;
+    letter-spacing:.02em;
+  }
+  .pill.sub{background:var(--steel-light);color:var(--steel)}
+  .pill.assoc{background:var(--indigo-light);color:var(--indigo)}
+  .pill.inv{background:#eef1f3;color:var(--ink-soft)}
+  .pill.grp{background:var(--amber-light);color:var(--amber)}
+
+  /* ---------- Code / ASCII ---------- */
+  pre{
+    background:#1c2530;color:#d7e0e8;
+    font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.6;
+    padding:18px 20px;border-radius:8px;overflow-x:auto;margin:20px 0;
+    border:1px solid #283442;
+  }
+  pre .c{color:#7f8fa0}      /* comment / faint */
+  pre .k{color:#7fb3e0}      /* steel key */
+  pre .g{color:#7fd0a0}      /* green */
+  pre .a{color:#e3b766}      /* amber */
+  pre .r{color:#e89b94}      /* red */
+  pre.ascii{font-size:13px;line-height:1.5}
+
+  /* ---------- Figures ---------- */
+  .fig{margin:26px 0;text-align:center}
+  .fig svg{max-width:100%;height:auto}
+  figcaption{
+    font-size:13px;color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;
+    margin-top:12px;text-align:center;
+  }
+  figcaption b{color:var(--ink-soft);font-weight:600}
+
+  /* SVG element styling */
+  .svg-label{font-family:'DM Sans',sans-serif;font-size:14px;fill:var(--ink)}
+  .svg-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-faint)}
+  .svg-edge{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+  .node-steel{fill:var(--steel-light);stroke:var(--steel);stroke-width:1.5}
+  .node-green{fill:var(--green-light);stroke:var(--green);stroke-width:1.5}
+  .node-amber{fill:var(--amber-light);stroke:var(--amber);stroke-width:1.5}
+  .node-red{fill:var(--red-light);stroke:var(--red);stroke-width:1.5}
+  .node-indigo{fill:var(--indigo-light);stroke:var(--indigo);stroke-width:1.5}
+  .node-plain{fill:#fff;stroke:var(--ink-soft);stroke-width:1.3}
+  .edge{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+  .edge-green{stroke:var(--green);stroke-width:1.8;fill:none}
+  .edge-red{stroke:var(--red);stroke-width:1.8;fill:none}
+  .edge-amber{stroke:var(--amber);stroke-width:1.8;fill:none}
+  .edge-dash{stroke:var(--ink-faint);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:6px;padding:16px 20px;margin:22px 0;font-size:15.5px;
+    border:1px solid var(--rule);border-left:4px solid var(--ink-soft);
+    background:var(--panel);
+  }
+  .callout.warn{background:var(--red-light);border-color:#eccac6;border-left-color:var(--red)}
+  .callout.warn b{color:var(--red)}
+  .callout.note{background:var(--steel-light);border-color:#cfe0ee;border-left-color:var(--steel)}
+  .callout.note b{color:var(--steel)}
+  .callout.key{background:var(--amber-light);border-color:#e8d6a8;border-left-color:var(--amber)}
+  .callout.key b{color:var(--amber)}
+  .callout p{margin:0}
+  .callout p + p{margin-top:10px}
+
+  /* ---------- Signature: path encoding ---------- */
+  .signature{
+    margin:30px 0;padding:30px 26px;border-radius:10px;
+    background:linear-gradient(160deg,#1c2530 0%,#243140 100%);
+    border:1px solid #2b3a4a;color:#dbe4ec;
+  }
+  .signature .sig-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#8aa0b4;margin:0 0 18px;
+  }
+
+  /* ---------- Footer ---------- */
+  footer{background:#1c2530;color:#aebccb;border-top:3px solid var(--steel)}
+  footer .wrap{padding-top:48px;padding-bottom:54px}
+  footer h2{
+    font-family:'DM Sans',system-ui,sans-serif;color:#f0f4f8;font-weight:600;
+    font-size:1.3rem;margin:0 0 14px;
+  }
+  footer p{color:#aebccb;font-size:15px;max-width:62ch}
+  footer a{color:#9ec3e6}
+  .lic{
+    margin-top:22px;padding-top:20px;border-top:1px solid #2c3a48;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8294a4;
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+  }
+  .refs{font-size:15px;color:#c4d0db}
+  .refs cite{font-style:italic;color:#e6edf3}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .sec-head{gap:12px}
+    nav.toc ol{grid-template-columns:1fr}
+    .masthead .wrap{padding-top:54px;padding-bottom:40px}
+  }
+</style>
+<style>
+  .svg-small{font-family:'DM Sans',sans-serif;font-size:12px;fill:var(--ink)}
+  .svg-tiny{font-family:'IBM Plex Mono',monospace;font-size:10px;fill:var(--ink-faint)}
+  .svg-red{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--red)}
+  .svg-green{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--green)}
+  .svg-num{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;fill:#fff}
+  .svg-head{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;fill:var(--ink-soft)}
+  .num-dot{fill:var(--steel)}
+  .panel{fill:#fff;stroke:var(--rule);stroke-width:1.5}
+  .shot{margin:26px 0;text-align:center}
+  .shot img{max-width:100%;height:auto;border:1px solid var(--rule);border-radius:8px;box-shadow:0 2px 10px rgba(28,25,23,.06)}
+  .steps{counter-reset:st;list-style:none;padding-left:0}
+  .steps > li{counter-increment:st;position:relative;padding-left:2.4em;margin:10px 0}
+  .steps > li::before{content:counter(st);position:absolute;left:0;top:.1em;width:1.6em;height:1.6em;border-radius:50%;background:var(--steel);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:12px;display:flex;align-items:center;justify-content:center}
+  ol.lessons{padding-left:1.2em}
+  ol.lessons li{margin:0 0 10px}
+</style>
+
+<style>
+  nav.toc ol{counter-reset:none}
+  nav.toc a::before{content:attr(data-n);width:2.6ch}
+  nav.toc li.toc-gap{margin-top:10px}
+  .pbar{margin:0 0 26px;padding:12px 14px;border:1px solid var(--rule);border-radius:10px;background:var(--panel)}
+  .pbar-row{display:flex;flex-wrap:wrap;gap:8px 16px}
+  .pg{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+  .pg-l{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-right:3px}
+  .ps{display:inline-flex;align-items:center;justify-content:center;min-width:27px;height:27px;padding:0 5px;border-radius:6px;border:1px solid var(--rule);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);text-decoration:none;background:var(--paper)}
+  .ps:hover{border-color:var(--ink-soft);text-decoration:none}
+  .ps.on{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:600}
+  .pbar-here{margin:10px 0 0;font-size:14.5px;color:var(--ink-soft)}
+  .pbar-here b{color:var(--ink)}
+  .sec-num.step{font-size:12px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+  .pill-on{fill:var(--ink)}
+  .pill-off{fill:var(--ink-faint);opacity:.45}
+  .lo{opacity:.16}
+  .hi{stroke-width:2.8}
+  .glance{display:grid;grid-template-columns:max-content 1fr;gap:8px 18px;margin:0 0 22px;padding:14px 16px;border-left:3px solid var(--steel);background:var(--steel-light);border-radius:0 8px 8px 0}
+  .glance dt{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--steel);padding-top:3px}
+  .glance dd{margin:0;min-width:0}
+  @media (max-width:560px){.glance{grid-template-columns:1fr}.glance dt{padding-top:6px}}
+  .ex{border:1px dashed var(--ink-faint);border-radius:8px;padding:12px 16px;margin:0 0 20px;background:var(--panel)}
+  .ex::before{content:'Running example';display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px}
+  .ex p:last-child{margin-bottom:0}
+  .draft{border:2px solid var(--red);background:var(--red-light);border-radius:8px;padding:12px 16px;margin:0 0 20px}
+  .draft::before{content:'Draft · to be confirmed before publishing';display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:4px}
+  .draft p:last-child{margin-bottom:0}
+  .find{margin:0 0 22px;padding:0 0 18px;border-bottom:1px solid var(--rule-soft)}
+  .find h3{margin-top:22px}
+  .find dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0}
+  .find dt{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);padding-top:4px}
+  .find dd{margin:0;min-width:0}
+  @media (max-width:560px){.find dl{grid-template-columns:1fr}}
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <a href="https://falconbi.github.io/articles/" class="brand">
+    <img src="favicon.png" class="brand-eagle" alt="FalconBI">
+    <span class="brand-word">falcon<b>bi</b></span>
+  </a>
+  <div class="topbar-right"><span class="kicker">AI &amp; MCP &nbsp;·&nbsp; IBM Planning Analytics</span>
+    <a href="https://falconbi.github.io/articles/">&larr; articles</a></div>
+</header>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Deployment &nbsp;·&nbsp; Operating guide</p>
+    <h1 class="title">How a TM1 deploy works:<br><span class="accent">refresh first</span>, then ship</h1>
+    <p class="standfirst">PROD is never static. Nightly loads add GL codes and employees, users save views, operators switch chores off. A deploy must carry that work, not wipe it. This guide walks through the whole process as thirteen numbered steps, from setting up DEV to putting things right: what moves where, why each step is needed, and where the deploy stops to ask before anything is lost. With what we found along the way.</p>
+    <div class="meta-row">
+      <span><b>Tested on</b> TM1 v11 · DEV + PROD lab pair</span>
+      <span><b>Related</b> <a href="../governed-tm1-deploys/">Governed TM1 deploys</a></span>
+      <span><b>Status</b> November 2026</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#bg-a" data-n="A">The deploy in one picture</a></li>
+      <li><a href="#bg-b" data-n="B">Change sets</a></li>
+      <li><a href="#bg-c" data-n="C">Git in five minutes</a></li>
+      <li><a href="#bg-d" data-n="D">Why TM1 Git</a></li>
+      <li><a href="#bg-e" data-n="E">The hard part: both sides change</a></li>
+      <li class="toc-gap"><a href="#step-0" data-n="0">Set up DEV and Git (once)</a></li>
+      <li><a href="#step-1" data-n="1">Work in a change set</a></li>
+      <li><a href="#step-2" data-n="2">Check PROD is idle</a></li>
+      <li><a href="#step-3" data-n="3">Refresh DEV from PROD</a></li>
+      <li><a href="#step-4" data-n="4">Tests and close</a></li>
+      <li><a href="#step-5" data-n="5">Build the release</a></li>
+      <li><a href="#step-6" data-n="6">Review</a></li>
+      <li><a href="#step-7" data-n="7">Approve</a></li>
+      <li><a href="#step-8" data-n="8">Idle check again</a></li>
+      <li><a href="#step-9" data-n="9">Save Data and backup</a></li>
+      <li><a href="#step-10" data-n="10">Send</a></li>
+      <li><a href="#step-11" data-n="11">Verify and record</a></li>
+      <li><a href="#step-12" data-n="12">If it goes wrong</a></li>
+      <li class="toc-gap"><a href="#findings" data-n="F">What we found</a></li>
+      <li><a href="#limits" data-n="G">Limits</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<!-- ======================================================== A -->
+<section id="bg-a">
+  <div class="sec-head"><span class="sec-num">A</span><h2 class="sec-title">The deploy in one picture</h2></div>
+
+  <p>A deploy here is <b>one process with thirteen numbered steps, 0 to 12</b>. Step 0 happens once, when you set things up. Steps 1 to 11 happen every time a piece of work goes to PROD. Step 12 is there for when something goes wrong.</p>
+  <p>Every step in this guide starts with the same bar, so you always know where you are:</p>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div></nav>
+  <p>Click any number to jump to that step. <b>Letters (A to E) are background; numbers are steps.</b> When the text says “step 3”, it always means the same thing.</p>
+  <div class="tablewrap"><table>
+<thead><tr><th>Step</th><th>Phase</th><th>What happens</th><th>Changes</th></tr></thead><tbody>
+<tr><td><a href="#step-0">0</a></td><td>Set up</td><td>Link DEV and PROD to one Git repository and start them from the same commit</td><td>both, once</td></tr>
+<tr><td><a href="#step-1">1</a></td><td>Develop</td><td>Build on DEV. Every save is recorded in your change set</td><td>DEV</td></tr>
+<tr><td><a href="#step-2">2</a></td><td>Pre-deploy</td><td>Is PROD quiet? Has anyone changed it outside a deploy?</td><td>nothing</td></tr>
+<tr><td><a href="#step-3">3</a></td><td>Pre-deploy</td><td>Bring what PROD changed by itself into DEV</td><td>DEV</td></tr>
+<tr><td><a href="#step-4">4</a></td><td>Pre-deploy</td><td>Run the tests, close the change set, commit DEV to Git</td><td>Git</td></tr>
+<tr><td><a href="#step-5">5</a></td><td>Pre-deploy</td><td>Build the release: PROD’s last release plus only this change set</td><td>Git</td></tr>
+<tr><td><a href="#step-6">6</a></td><td>Pre-deploy</td><td>Say in words what will happen on PROD; stop before anything is lost</td><td>nothing</td></tr>
+<tr><td><a href="#step-7">7</a></td><td>Deploy</td><td>Approve this exact release; state the backup</td><td>record</td></tr>
+<tr><td><a href="#step-8">8</a></td><td>Deploy</td><td>Check PROD is still quiet</td><td>nothing</td></tr>
+<tr><td><a href="#step-9">9</a></td><td>Deploy</td><td>Save PROD’s data to disk; run or record the backup</td><td>PROD files</td></tr>
+<tr><td><a href="#step-10">10</a></td><td>Deploy</td><td>TM1 Git pulls the release; the IDE applies what Git can’t</td><td>PROD</td></tr>
+<tr><td><a href="#step-11">11</a></td><td>Deploy</td><td>Check it landed; record who, what and when in PROD’s model</td><td>record</td></tr>
+<tr><td><a href="#step-12">12</a></td><td>After</td><td>Put the design back, or the data, or DEV</td><td>as needed</td></tr>
+</tbody></table></div>
+  <p>Three places hold the model: the <b>DEV server</b>, the <b>Git repository</b> and the <b>PROD server</b>. The IDE sits underneath and does the work. This map is the same at every step; each step lights up only its own moves, with the step number on each arrow.</p>
+  <figure class="fig"><svg viewBox="0 0 720 420" role="img" aria-label="The DEV, Git and PROD map with every move labelled by step number."><defs><marker id="miall" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker><marker id="mgall" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker><marker id="maall" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--amber)"/></marker></defs><rect x="10" y="20" width="190" height="300" rx="10" class="panel"/><text x="105" y="44" text-anchor="middle" class="svg-head">DEV SERVER</text><rect x="265" y="20" width="190" height="300" rx="10" class="panel"/><text x="360" y="44" text-anchor="middle" class="svg-head">GIT REPOSITORY</text><rect x="520" y="20" width="190" height="300" rx="10" class="panel"/><text x="615" y="44" text-anchor="middle" class="svg-head">PROD SERVER</text><rect x="30" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="105.0" y="82.0" text-anchor="middle" class="svg-small">DEV model</text><text x="105.0" y="98.0" text-anchor="middle" class="svg-tiny">rules, TI, dims, cubes</text><rect x="30" y="150" width="150" height="50" rx="7" class="node-amber"/><text x="105.0" y="172.0" text-anchor="middle" class="svg-small">Change set</text><text x="105.0" y="188.0" text-anchor="middle" class="svg-tiny">every save recorded</text><rect x="30" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="105.0" y="262.0" text-anchor="middle" class="svg-small">Tests</text><text x="105.0" y="278.0" text-anchor="middle" class="svg-tiny">kept in the model</text><rect x="285" y="60" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="82.0" text-anchor="middle" class="svg-small">dev</text><text x="360.0" y="98.0" text-anchor="middle" class="svg-tiny">DEV at each close</text><rect x="285" y="150" width="150" height="50" rx="7" class="node-indigo"/><text x="360.0" y="172.0" text-anchor="middle" class="svg-small">release-PROD</text><text x="360.0" y="188.0" text-anchor="middle" class="svg-tiny">last release + this set</text><rect x="285" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="262.0" text-anchor="middle" class="svg-small">prod-live</text><text x="360.0" y="278.0" text-anchor="middle" class="svg-tiny">PROD as it is now</text><rect x="540" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="615.0" y="82.0" text-anchor="middle" class="svg-small">PROD model</text><text x="615.0" y="98.0" text-anchor="middle" class="svg-tiny">+ cube data</text><rect x="540" y="240" width="150" height="50" rx="7" class="node-green"/><text x="615.0" y="262.0" text-anchor="middle" class="svg-small">Governance</text><text x="615.0" y="278.0" text-anchor="middle" class="svg-tiny">approvals · records</text><rect x="10" y="350" width="700" height="50" rx="7" class="node-indigo"/><text x="360.0" y="372.0" text-anchor="middle" class="svg-small">The IDE</text><text x="360.0" y="388.0" text-anchor="middle" class="svg-tiny">records · refreshes · builds · applies what Git can’t · verifies</text><path d="M105 110 L105 148" class="edge" fill="none" marker-end="url(#miall)"/><path d="M180 85 L283 85" class="edge" fill="none" marker-end="url(#miall)"/><path d="M360 110 L360 148" class="edge" fill="none" marker-end="url(#miall)"/><path d="M180 175 L283 175" class="edge-dash" fill="none"/><path d="M435 168 C 485 168 500 100 538 96" class="edge-green" fill="none" marker-end="url(#mgall)"/><path d="M560 110 L560 215 L470 215 L470 258 L437 258" class="edge" fill="none" marker-end="url(#miall)"/><path d="M330 200 L330 238" class="edge-dash" fill="none"/><path d="M600 110 L600 226 L500 226 L500 346" class="edge-amber" fill="none" marker-end="url(#maall)"/><path d="M285 190 L274 190 L274 346" class="edge-amber" fill="none" marker-end="url(#maall)"/><path d="M20 350 L20 85 L28 85" class="edge-amber" fill="none" marker-end="url(#maall)"/><path d="M702 350 L702 85 L692 85" class="edge-green" fill="none" marker-end="url(#mgall)"/><path d="M615 350 L615 292" class="edge" fill="none" marker-end="url(#miall)"/><rect x="95.4" y="120" width="19.2" height="18" rx="9" class="pill-on"/><text x="105" y="133" text-anchor="middle" class="svg-num">1</text><rect x="221.4" y="76" width="19.2" height="18" rx="9" class="pill-on"/><text x="231" y="89" text-anchor="middle" class="svg-num">4</text><rect x="350.4" y="120" width="19.2" height="18" rx="9" class="pill-on"/><text x="360" y="133" text-anchor="middle" class="svg-num">5</text><rect x="221.4" y="166" width="19.2" height="18" rx="9" class="pill-on"/><text x="231" y="179" text-anchor="middle" class="svg-num">5</text><rect x="477.8" y="125" width="26.4" height="18" rx="9" class="pill-on"/><text x="491" y="138" text-anchor="middle" class="svg-num">10</text><rect x="473.0" y="206" width="84.0" height="18" rx="9" class="pill-on"/><text x="515" y="219" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="288.0" y="210" width="84.0" height="18" rx="9" class="pill-on"/><text x="330" y="223" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="490.4" y="291" width="19.2" height="18" rx="9" class="pill-on"/><text x="500" y="304" text-anchor="middle" class="svg-num">3</text><rect x="264.4" y="311" width="19.2" height="18" rx="9" class="pill-on"/><text x="274" y="324" text-anchor="middle" class="svg-num">3</text><rect x="10.4" y="291" width="19.2" height="18" rx="9" class="pill-on"/><text x="20" y="304" text-anchor="middle" class="svg-num">3</text><rect x="688.8" y="291" width="26.4" height="18" rx="9" class="pill-on"/><text x="702" y="304" text-anchor="middle" class="svg-num">10</text><rect x="587.4" y="312" width="55.2" height="18" rx="9" class="pill-on"/><text x="615" y="325" text-anchor="middle" class="svg-num">7 · 11</text><rect x="170.4" y="231" width="19.2" height="18" rx="9" class="pill-on"/><text x="180" y="244" text-anchor="middle" class="svg-num">4</text><rect x="601.6" y="51" width="76.8" height="18" rx="9" class="pill-on"/><text x="640" y="64" text-anchor="middle" class="svg-num">2 · 8 · 9</text><rect x="425.4" y="141" width="19.2" height="18" rx="9" class="pill-on"/><text x="435" y="154" text-anchor="middle" class="svg-num">6</text></svg><figcaption>The whole cycle. Each label is the <b>step</b> that makes that move.</figcaption></figure>
+  <div class="callout key"><p><b>Two rules under everything.</b> A release carries exactly one change set and nothing else from DEV. And nothing is removed or cleared on PROD without an explicit yes.</p></div>
+  <div class="ex"><p>To keep it concrete, one example runs through every step. <b>The work:</b> a developer adds a variance rule to a Finance cube (<code>Variance = Actual − Budget</code>), and gives some accounts a new <code>Account Group</code> attribute value. <b>Meanwhile on PROD:</b> an hourly <i>Load Actuals</i> chore adds new GL accounts as they appear in the ledger, with their numbers. This week it added <b>GL 4105 Software subscriptions</b> and loaded 3,200 against it.</p><p>A good deploy ships the rule and the attribute values, and keeps 4105 and its 3,200 on PROD.</p></div>
+
+</section>
+
+<!-- ======================================================== B -->
+<section id="bg-b">
+  <div class="sec-head"><span class="sec-num">B</span><h2 class="sec-title">Change sets: one person’s piece of work</h2></div>
+
+  <p>A <b>change set</b> is the unit everything else hangs on. Think of it as a named basket. You open one before you start, and from then on every object you save on DEV is recorded in it: which object, what changed, who, when.</p>
+  <h3>Why work this way</h3>
+  <ul>
+    <li><b>It is individual.</b> A change set belongs to one person on one server: the TM1 user signed in to DEV. An AI agent working through the MCP server gets its own name too, never quietly someone else’s basket. Two developers on the same DEV have two change sets.</li>
+    <li><b>It is governed.</b> Tests run against it before it can close. A closed change set becomes a permanent record in the model itself, not on someone’s laptop. Approval is given to it, and the deploy record says which change set reached PROD.</li>
+    <li><b>It is built for deploying.</b> A release is made from exactly one change set. That is what lets an approver say “I approved this, and only this, reached PROD”.</li>
+  </ul>
+  <h3>How it works</h3>
+  <ol>
+    <li>Open a change set on DEV, with a name and a reason.</li>
+    <li>Work normally: rules, processes, dimensions, views. The IDE records each save.</li>
+    <li>When it’s ready, the deploy starts from it (step 2 onwards).</li>
+    <li>Closing it (step 4) runs the tests and commits DEV to Git.</li>
+    <li>One release, one approval and one deploy record follow, all naming the same change set.</li>
+  </ol>
+  <h3>What a change set includes, object by object</h3>
+  <p>The change set records the object you saved, but TM1 Git moves whole objects, so the release carries the whole thing. This matters more than it sounds:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>You saved…</th><th>The release carries…</th></tr></thead>
+    <tbody>
+      <tr><td>a rule</td><td>the cube’s rule file</td></tr>
+      <tr><td>a TI process</td><td>the whole process</td></tr>
+      <tr><td>one element, or <b>one attribute value</b></td><td>the <b>whole dimension</b></td></tr>
+      <tr><td>a subset</td><td>the subset, plus its dimension’s hierarchy file it can’t work without</td></tr>
+      <tr><td>a view</td><td>the view, plus its cube’s file</td></tr>
+    </tbody>
+  </table></div>
+  <div class="ex"><p>Giving accounts a new <code>Account Group</code> value puts the <b>Account dimension</b> in the change set. So this release will replace PROD’s Account dimension, the one that holds GL 4105. Keep that in mind; it is why step 3 exists.</p></div>
+
+</section>
+
+<!-- ======================================================== C -->
+<section id="bg-c">
+  <div class="sec-head"><span class="sec-num">C</span><h2 class="sec-title">Git in five minutes, and how TM1 uses it</h2></div>
+
+  <p>If you already know Git, skip to “The circle” below.</p>
+  <h3>The few words you need</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Word</th><th>Plain meaning</th></tr></thead>
+    <tbody>
+      <tr><td><b>Repository</b> (repo)</td><td>A folder of files with a full history of every version. Ours lives on GitHub, private.</td></tr>
+      <tr><td><b>Commit</b></td><td>A saved snapshot of all the files at one moment, with who made it and why. It has an ID like <code>cccb21d8</code>, and it never changes.</td></tr>
+      <tr><td><b>Branch</b></td><td>A named pointer to a commit, moving forward as new commits are added. Like a bookmark called “latest DEV”.</td></tr>
+      <tr><td><b>Push</b></td><td>Send a snapshot up to the repository as a new commit.</td></tr>
+      <tr><td><b>Pull</b></td><td>Make a copy match a commit from the repository.</td></tr>
+      <tr><td><b>Diff</b></td><td>The difference between two commits, file by file, line by line.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>What TM1 Git does</h3>
+  <p>TM1 has Git built in. A <b>push</b> writes the server’s model out as files: one file per dimension hierarchy, cube, view, subset, chore and process, with rules and TI as plain text. A <b>pull</b> has TM1 rebuild its model from a commit. Cube data never goes into Git, and neither do attribute values.</p>
+  <p>Each server is linked to the repository once, with a <b>tag</b> that says what it is: <code>DEV</code>, <code>TEST</code> or <code>PROD</code>. The servers can be called anything; the tag is what says which role each plays. In this guide DEV is always the source and PROD always the target.</p>
+  <h3>The circle</h3>
+  <p>Three branches in one repository, each with one job:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Branch</th><th>Who writes it</th><th>When</th><th>What it’s for</th></tr></thead>
+    <tbody>
+      <tr><td><code>dev</code></td><td>DEV pushes its whole model</td><td>every change set close (step 4)</td><td>where the release builder takes DEV’s files from</td></tr>
+      <tr><td><code>release-PROD</code></td><td>the IDE builds a commit by hand</td><td>every release (step 5)</td><td>exactly what PROD is sent. After the deploy it is “what PROD last received”</td></tr>
+      <tr><td><code>prod-live</code></td><td>PROD pushes its whole model</td><td>every drift check (steps 2, 6, 11)</td><td>PROD as it really is, to compare with what it last received</td></tr>
+    </tbody>
+  </table></div>
+  <p>So DEV goes into Git at close; a release is made from DEV’s files on top of PROD’s last release; PROD pulls it; PROD then pushes a snapshot of itself so the next deploy can check nothing changed in between. Round and round, one change set at a time.</p>
+  <p>Two things this circle can’t do by itself, which the rest of this guide is about: notice when PROD has changed on its own, and keep those changes when a release replaces the object.</p>
+
+</section>
+
+<!-- ======================================================== D -->
+<section id="bg-d">
+  <div class="sec-head"><span class="sec-num">D</span><h2 class="sec-title">Why TM1 Git, and what it doesn’t do</h2></div>
+
+  
+  <p>Everything in this guide sits on TM1’s built-in Git integration. It is worth saying why, because its gaps are where most of the work went, and a fair reader will ask whether it was the right choice.</p>
+  <h3>What we had before: our own deploy over the REST API</h3>
+  <p>The first pipeline did everything itself. It read each object in the change set from DEV over the TM1 REST API, wrote it out as JSON, and rebuilt it on PROD with its own code. The scope was right: only the change set’s objects shipped. The trouble was <b>fidelity</b>. We were maintaining our own copy of IBM’s object format, and every object type was a new place to be wrong.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>What went wrong</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>Attribute values lost</td><td>Replayed when the deploy created a dimension, but not on a redeploy of it.</td></tr>
+      <tr><td>Subsets collapsed</td><td>Two subsets called <i>Default</i> on different dimensions were treated as one.</td></tr>
+      <tr><td>Views changed on the way</td><td>An axis using a named subset came back as “all members”, so a change nobody made appeared in the package.</td></tr>
+      <tr><td>Clean-up by hand</td><td>The model grew three processes whose only job was to rebuild what the deploy had failed to carry.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Each bug was fixable, and we fixed them. But the list was never going to end: every new object type, and every new TM1 version, would bring more.</p>
+  <h3>What TM1 Git gives us</h3>
+  <ul>
+    <li><b>IBM’s own format, applied by TM1 itself.</b> A push writes cubes, dimensions, processes, rules, views and subsets as files; a pull has TM1 rebuild them. The view and subset bugs above disappear by construction, because our code no longer rebuilds anything.</li>
+    <li><b>All or nothing.</b> If a pull fails partway, TM1 rolls the whole pull back. On the worked example’s first attempt (step 12), a subset referred to an element that wasn’t there; the pull failed with <i>“Previous operations are rollbacked”</i>, and PROD was untouched. Code that rebuilds objects one by one over REST can’t promise that.</li>
+    <li><b>History for free.</b> Every release is a Git commit. That is what makes <i>Return to last release</i> and the two-copies drift check (step 2) simple: both are just “compare with, or go back to, a commit”.</li>
+    <li><b>Readable changes.</b> Rules and TI are stored as plain text, so a change is a normal Git diff, and any Git client, TM1py or PAW can read the repository.</li>
+  </ul>
+  <h3>What it doesn’t do, and who does it instead</h3>
+  <p>We tested TM1 Git on a lab pair of servers before building on it. These are the gaps that testing, and later real deploys, found:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>TM1 Git doesn’t…</th><th>So…</th></tr></thead>
+    <tbody>
+      <tr><td>carry attribute values</td><td>The deploy writes them itself, and only for attributes an admin has confirmed should travel.</td></tr>
+      <tr><td>delete anything</td><td>The deploy runs the change set’s deletes itself, in dependency order, after the pull.</td></tr>
+      <tr><td>notice when PROD has been changed by hand</td><td>The deploy keeps a second copy of PROD in Git and compares the two (drift, step 2).</td></tr>
+      <tr><td>ship one change set: a pull takes the whole branch</td><td>Each release is built on its own branch from the last release plus exactly one change set.</td></tr>
+      <tr><td>leave alone an object the release doesn’t mention</td><td>A pull makes every object match the release, so DEV is brought level with PROD first (Refresh, step 3).</td></tr>
+    </tbody>
+  </table></div>
+  <h3>The honest cost</h3>
+  <p>The last row is the expensive one. With our own REST code we could have added PROD’s new elements one at a time, so a dimension that PROD loads into every night would have been easy. TM1 Git replaces the dimension whole, so DEV has to hold PROD’s work before the release is built. That is the whole reason for Refresh (step 3), and Refresh is where most of the difficulty in this design lives.</p>
+  <p>There is also a dependency to state plainly: the deploy relies on how IBM’s Git integration behaves. If a TM1 update changes that behaviour, the deploy changes with it. The permanent tests behind every rule in this guide are what would catch it.</p>
+  <div class="callout key"><p><b>Was it the right choice? We still think so.</b> The gaps are a short, fixed list, each filled once. The REST approach was a list that grew with every object type and every TM1 version. We would rather write one careful Refresh than maintain our own copy of IBM’s object format forever.</p></div>
+  <div class="callout note"><p>The full story of the move, including the discovery that a pull ships the whole branch, is in <a href="../governed-tm1-deploys/">Governed TM1 deploys</a>.</p></div>
+
+</section>
+
+<!-- ======================================================== E -->
+<section id="bg-e">
+  <div class="sec-head"><span class="sec-num">E</span><h2 class="sec-title">The hard part: both sides change</h2></div>
+
+  <p>This section is the core of the design. Everything that took time was here.</p>
+  <h3>PROD is never static</h3>
+  <p>Real models change on PROD every day, and none of it is wrong:</p>
+  <ul>
+    <li>a load process adds new GL accounts, employees or products, with their data and attribute values;</li>
+    <li>users save public views and subsets;</li>
+    <li>an operator switches a chore off for month-end.</li>
+  </ul>
+  <h3>But some things must only change on DEV</h3>
+  <p><b>Rules, TI processes, cube structure and chore steps</b> are code. They go through DEV, a change set, tests and approval, every time. Three reasons:</p>
+  <ul>
+    <li><b>They can’t be merged.</b> TM1 Git replaces a rule file or a process whole. If the same rule was edited on PROD and on DEV, one edit simply wins.</li>
+    <li><b>They need testing.</b> A rule typed into PROD has had no tests, no review, no approval, and leaves no change-set record.</li>
+    <li><b>PROD edits block deploys.</b> A rule or process changed on PROD is drift (step 2), and the next deploy stops until it’s resolved. The fix is always to make the same change on DEV and deploy it.</li>
+  </ul>
+  <h3>The collision</h3>
+  <p>TM1 Git makes the target match the release, object by object. When PROD takes a release, every dimension in it is made identical to the release’s copy. So:</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 230" role="img" aria-label="Without a refresh, a GL code loaded on PROD overnight is removed by the next deploy along with its data. With a refresh, the code is brought into DEV first, so the deploy carries it and it stays on PROD.">
+      <defs><marker id="g1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <text x="10" y="20" class="svg-head">WITHOUT A REFRESH</text>
+      <rect x="10"  y="30" width="200" height="70" rx="8" class="node-plain"/><text x="110" y="58" text-anchor="middle" class="svg-small">Nightly load adds</text><text x="110" y="76" text-anchor="middle" class="svg-small">GL code 4105 on PROD</text>
+      <rect x="260" y="30" width="200" height="70" rx="8" class="node-plain"/><text x="360" y="58" text-anchor="middle" class="svg-small">Deploy sends DEV’s Account</text><text x="360" y="76" text-anchor="middle" class="svg-small">dimension: no 4105</text>
+      <rect x="510" y="30" width="200" height="70" rx="8" class="node-red"/><text x="610" y="58" text-anchor="middle" class="svg-red">4105 removed from PROD,</text><text x="610" y="76" text-anchor="middle" class="svg-red">with its data in every cube</text>
+      <path d="M210 65 L258 65" class="edge" marker-end="url(#g1)"/><path d="M460 65 L508 65" class="edge" marker-end="url(#g1)"/>
+      <text x="10" y="135" class="svg-head">WITH A REFRESH</text>
+      <rect x="10"  y="145" width="160" height="70" rx="8" class="node-plain"/><text x="90" y="173" text-anchor="middle" class="svg-small">Nightly load adds</text><text x="90" y="191" text-anchor="middle" class="svg-small">4105 on PROD</text>
+      <rect x="195" y="145" width="160" height="70" rx="8" class="node-amber"/><text x="275" y="173" text-anchor="middle" class="svg-small">Refresh lists 4105:</text><text x="275" y="191" text-anchor="middle" class="svg-small">bring it into DEV</text>
+      <rect x="380" y="145" width="160" height="70" rx="8" class="node-plain"/><text x="460" y="173" text-anchor="middle" class="svg-small">Deploy sends DEV’s</text><text x="460" y="191" text-anchor="middle" class="svg-small">Account, with 4105</text>
+      <rect x="565" y="145" width="145" height="70" rx="8" class="node-green"/><text x="637" y="173" text-anchor="middle" class="svg-green">4105 and its data</text><text x="637" y="191" text-anchor="middle" class="svg-green">stay on PROD</text>
+      <path d="M170 180 L193 180" class="edge" marker-end="url(#g1)"/><path d="M355 180 L378 180" class="edge" marker-end="url(#g1)"/><path d="M540 180 L563 180" class="edge" marker-end="url(#g1)"/>
+    </svg>
+    <figcaption>The release still replaces PROD’s dimension, but <b>with a copy that already holds PROD’s work</b>.</figcaption>
+  </figure>
+  <p>What exactly is lost? We tested it with a throwaway cube on the lab pair. A TI process on PROD loaded values and attribute values, and added a new element with its own value, the way an hourly load does. Then a release replaced the dimension, adding one element and removing another. Afterwards:</p>
+  <ul>
+    <li><b>values and attribute values on every surviving element were still there,</b> including the element PROD’s load had created (once the refresh had carried it into the release);</li>
+    <li><b>only the removed element’s values were gone;</b></li>
+    <li><b>an attribute value DEV had changed did not reach PROD:</b> attribute values aren’t in Git, so a release never carries them unless that attribute is confirmed to travel (step 3).</li>
+  </ul>
+  <p>So a replacement removes what it names, not the cube. The danger is only ever the elements the release doesn’t have.</p>
+  <h3>The cases, one by one</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Case</th><th>Is the dimension in the change set?</th><th>What a plain pull would do</th></tr></thead>
+    <tbody>
+      <tr><td><b>Only PROD added elements</b>, DEV didn’t touch the dimension</td><td>No</td><td>We hoped the pull would skip a dimension the release doesn’t mention. Lab tests showed <b>it replaces it anyway</b> if PROD’s copy differs. The drift check (step 2) catches this first and stops the deploy.</td></tr>
+      <tr><td><b>Both added elements</b>: PROD loaded 4105, DEV added a new rollup</td><td>Yes</td><td>The release carries DEV’s copy, without 4105. PROD loses 4105 and its data.</td></tr>
+      <tr><td><b>DEV changed only an attribute value</b> (the running example)</td><td>Yes, the whole dimension</td><td>Same as above: the dimension is replaced, so 4105 goes.</td></tr>
+      <tr><td><b>DEV removed elements on purpose</b> (a closed cost centre)</td><td>Yes</td><td>This is wanted. Review (step 6) names every element and asks “Yes, remove these”.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Ideas we tried and dropped</h3>
+  <ul>
+    <li><b>Leave the dimension out of the release.</b> Doesn’t help: the pull still replaces a dimension whose live copy differs (first row above). And when DEV changed it, it has to be in.</li>
+    <li><b>Tell TM1 Git to ignore it.</b> The per-server ignore setting is accepted but the pull doesn’t use it. The project-wide ignore drops the hierarchy file but keeps the dimension file, so the repository has a broken link and no release can be built.</li>
+    <li><b>Build each release on PROD’s live copy, merged with DEV’s changes.</b> It worked on paper. Nobody could explain it in one sentence, and every edge case needed its own rule.</li>
+  </ul>
+  <h3>What we do instead: refresh DEV first</h3>
+  <p>Before the release is built, <b>PROD’s own changes are brought into DEV</b> (step 3), inside the open change set. The release then carries PROD’s work back to PROD, and the ordinary pull becomes safe. It is easy to explain, which turned out to be the best test of the design.</p>
+  <p>The subtle part is telling the cases apart. Comparing PROD with DEV only shows that they <i>differ</i>. An element on PROD and not on DEV could be one PROD just loaded, or one DEV deliberately removed. So the refresh compares <b>three</b> copies, using the last release as the reference:</p>
+  <figure class="fig"><svg viewBox="0 0 720 250" role="img" aria-label="Three copies are compared: the last release, PROD now and DEV now. GL code 4105 is on PROD but not in the last release: PROD added it, bring it into DEV. Cost centre CC-900 is in the last release and on PROD but not on DEV: DEV removed it on purpose, not offered back. Account 4200 moved under different parents on both sides: a conflict with no default.">
+<defs><marker id="w1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+<text x="20" y="22" class="svg-head">ELEMENT</text><text x="205" y="22" class="svg-head">LAST RELEASE</text><text x="335" y="22" class="svg-head">PROD NOW</text><text x="455" y="22" class="svg-head">DEV NOW</text><text x="575" y="22" class="svg-head">REFRESH SAYS</text>
+<rect x="10" y="34" width="700" height="58" rx="8" class="node-green"/>
+<text x="20" y="58" class="svg-small">GL 4105</text><text x="20" y="76" class="svg-tiny">new account, hourly load</text>
+<text x="240" y="68" text-anchor="middle" class="svg-small">–</text><text x="365" y="68" text-anchor="middle" class="svg-small">has it</text><text x="485" y="68" text-anchor="middle" class="svg-small">–</text>
+<text x="575" y="58" class="svg-green">PROD added it</text><text x="575" y="76" class="svg-tiny">offered, ticked</text>
+<rect x="10" y="102" width="700" height="58" rx="8" class="node-plain"/>
+<text x="20" y="126" class="svg-small">CC-900</text><text x="20" y="144" class="svg-tiny">closed cost centre</text>
+<text x="240" y="136" text-anchor="middle" class="svg-small">has it</text><text x="365" y="136" text-anchor="middle" class="svg-small">has it</text><text x="485" y="136" text-anchor="middle" class="svg-small">–</text>
+<text x="575" y="126" class="svg-small">DEV removed it</text><text x="575" y="144" class="svg-tiny">not offered back</text>
+<rect x="10" y="170" width="700" height="58" rx="8" class="node-amber"/>
+<text x="20" y="194" class="svg-small">GL 4200</text><text x="20" y="212" class="svg-tiny">moved on both sides</text>
+<text x="240" y="204" text-anchor="middle" class="svg-tiny">under Opex</text><text x="365" y="204" text-anchor="middle" class="svg-tiny">under IT</text><text x="485" y="204" text-anchor="middle" class="svg-tiny">under Admin</text>
+<text x="575" y="194" class="svg-small">Both changed it</text><text x="575" y="212" class="svg-tiny">conflict, no default</text>
+<text x="360" y="246" text-anchor="middle" class="svg-sub">the last release is what tells “PROD added” from “DEV removed”</text>
+</svg><figcaption>Two copies can only show a difference. <b>The third copy shows who made it.</b></figcaption></figure>
+  <div class="callout warn"><p><b>We learned this the hard way.</b> The first refresh compared only PROD and DEV. On the worked example (step 12) it offered to put back, ticked, the 4,798 people DEV had just removed. It was stopped only because two unanswered questions on the same screen greyed out the Refresh button. It now uses the last release, and the case is a permanent test.</p></div>
+
+</section>
+
+<!-- ======================================================== STEP 0 -->
+<section id="step-0">
+  <div class="sec-head"><span class="sec-num step">Step 0</span><h2 class="sec-title">Set up DEV and Git (once)</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps on" href="#step-0" title="Step 0: Set up DEV and Git (once)" aria-current="step">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 0 of 12</b> · Set up · <b>Set up DEV and Git (once)</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>DEV starts as a copy of PROD. Both are linked to one Git repository with their tags. DEV’s model becomes the first commit, and PROD takes it as its first pull, which changes nothing but records where PROD starts.</dd><dt>Why</dt><dd>Every later step compares against a commit. Without a recorded starting point on PROD, no release can be built at all.</dd><dt>Can stop here</dt><dd>A first pull overwrites a whole server. It runs only on a server never deployed to, shows what it would replace, and needs you to type a sentence.</dd></dl>
+  <figure class="fig"><svg viewBox="0 0 720 300" role="img" aria-label="Setting up. First DEV is made a copy of PROD, model and data, outside Git. Each server is linked to the same repository with its tag. DEV pushes its model as the first commit. PROD takes that commit as its first pull: since DEV is a copy, nothing changes, and PROD's starting point is recorded.">
+<defs><marker id="s0" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker>
+<marker id="s0a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--amber)"/></marker></defs>
+<rect x="10" y="20" width="190" height="210" rx="10" class="panel"/><text x="105" y="44" text-anchor="middle" class="svg-head">DEV SERVER</text>
+<rect x="265" y="20" width="190" height="210" rx="10" class="panel"/><text x="360" y="44" text-anchor="middle" class="svg-head">GIT REPOSITORY</text>
+<rect x="520" y="20" width="190" height="210" rx="10" class="panel"/><text x="615" y="44" text-anchor="middle" class="svg-head">PROD SERVER</text>
+<rect x="30" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="105.0" y="82.0" text-anchor="middle" class="svg-small">Copy of PROD</text><text x="105.0" y="98.0" text-anchor="middle" class="svg-tiny">tagged DEV</text><rect x="285" y="60" width="150" height="70" rx="7" class="node-indigo"/><text x="360.0" y="92.0" text-anchor="middle" class="svg-small">First commit</text><text x="360.0" y="108.0" text-anchor="middle" class="svg-tiny">DEV’s model = PROD’s</text><rect x="540" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="615.0" y="82.0" text-anchor="middle" class="svg-small">PROD model</text><text x="615.0" y="98.0" text-anchor="middle" class="svg-tiny">tagged PROD</text><rect x="540" y="160" width="150" height="50" rx="7" class="node-green"/><text x="615.0" y="182.0" text-anchor="middle" class="svg-small">Starting point</text><text x="615.0" y="198.0" text-anchor="middle" class="svg-tiny">recorded by the pull</text>
+<path d="M600 230 L600 262 L105 262 L105 112" class="edge-amber" fill="none" marker-end="url(#s0a)"/><circle cx="360" cy="262" r="9" class="num-dot"/><text x="360" y="266" text-anchor="middle" class="svg-num">a</text>
+<text x="380" y="252" class="svg-tiny">model and data, outside Git</text>
+<path d="M182 95 L283 95" class="edge" fill="none" marker-end="url(#s0)"/><circle cx="232" cy="95" r="9" class="num-dot"/><text x="232" y="99" text-anchor="middle" class="svg-num">b</text>
+<path d="M437 95 L538 95" class="edge" fill="none" marker-end="url(#s0)"/><circle cx="487" cy="95" r="9" class="num-dot"/><text x="487" y="99" text-anchor="middle" class="svg-num">c</text>
+<path d="M615 110 L615 158" class="edge" fill="none" marker-end="url(#s0)"/>
+<text x="360" y="292" text-anchor="middle" class="svg-sub">a copy PROD to a new DEV · b DEV pushes the first commit · c PROD’s first pull: nothing changes, start recorded</text>
+</svg><figcaption>DEV starts as a <b>copy of PROD</b>, so PROD’s first pull changes nothing and only records where it starts.</figcaption></figure>
+  <h3>The setup, in order</h3>
+  <ol class="steps">
+    <li><b>(a) Make DEV a copy of PROD,</b> model and data. This happens in TM1, outside Git and outside the IDE: restore PROD’s backup onto a new TM1 server.</li>
+    <li><b>Link each server</b> (Deploy → GitHub setup): the repository address and the tag, <code>DEV</code> for DEV, <code>PROD</code> for PROD. The Git token is kept by the IDE and passed on each call; TM1 doesn’t store it.</li>
+    <li><b>(b) DEV pushes the first commit:</b> its whole model, which is PROD’s model.</li>
+    <li><b>(c) PROD takes that commit as its first pull.</b> The screen first shows what the pull would replace and remove, and you type a sentence to go ahead. Because DEV is a copy, it should say nothing is removed. This pull is what records PROD’s starting point; without it, the first release refuses to build.</li>
+    <li><b>Mark PROD read-only</b> in the IDE’s server settings (<code>readOnlyServers</code>; there’s no screen for it). From then on, nothing writes to PROD except a deploy.</li>
+  </ol>
+  <div class="callout warn"><p><b>Read the sentence before you type it.</b> A first pull makes PROD match DEV, completely. If DEV isn’t a faithful copy, the sentence says so: <i>“… and removes 120 elements in 3 dimensions”</i>. Stop there and fix DEV first.</p></div>
+  <h3>One developer, or several</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Set-up</th><th>How it works</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td><b>One shared DEV, one shared IDE</b> on a server</td><td>Each person signs in as themselves and gets their own change set. If two open change sets touch the same object, the IDE warns at close and deploy.</td><td>Built. Suits a small team.</td></tr>
+      <tr><td><b>One shared DEV, an IDE each</b> on their laptops</td><td>Works, but open change sets are kept by each IDE, so the overlap warning can’t see the other person’s open work. Closed change sets and deploy records are in the model, so everyone sees those.</td><td>Works, with that gap.</td></tr>
+      <tr><td><b>A DEV server each</b></td><td>Each person builds their own DEV from the repository. The cleanest isolation; it needs a way to bring work together before PROD.</td><td>Designed, not built.</td></tr>
+    </tbody>
+  </table></div>
+  <p>One physical limit applies to any shared DEV: TM1 pushes the whole server. If two people edit the same object, they edit the same copy. Agree who owns shared objects.</p>
+  <h3>DEV, TEST, PROD</h3>
+  <p>The same process works with a TEST server in between, because TEST is just another target with its own tag and its own release branch.</p>
+  <ol>
+    <li><b>Make TEST a fresh copy of PROD,</b> model and data, the same way DEV was made above, and link it tagged <code>TEST</code>. Do this before each test cycle, or TEST drifts away from PROD and proves nothing.</li>
+    <li><b>Deploy the change set DEV → TEST</b>, steps 2 to 11. Because TEST started from PROD’s last release, its release holds the same change PROD’s will.</li>
+    <li><b>Test on TEST,</b> with real-shaped data.</li>
+    <li><b>Deploy the same change set DEV → PROD.</b> A new release and a new approval, built against PROD’s own last release.</li>
+  </ol>
+  <div class="callout note"><p>We have run the DEV → PROD loop end to end on a lab pair. The TEST loop uses the same pieces but hasn’t been run on the lab yet.</p></div>
+
+</section>
+
+<!-- ======================================================== STEP 1 -->
+<section id="step-1">
+  <div class="sec-head"><span class="sec-num step">Step 1</span><h2 class="sec-title">Work in a change set</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps on" href="#step-1" title="Step 1: Work in a change set" aria-current="step">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 1 of 12</b> · Develop · <b>Work in a change set</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>You build on DEV with a change set open. Every save is recorded in it.</dd><dt>Why</dt><dd>The change set is what the release, the approval and the record are all made from. Work saved outside one isn’t tracked, and won’t ship.</dd><dt>Can stop here</dt><dd>Nothing stops here. The checks come later.</dd></dl>
+  <figure class="fig"><svg viewBox="0 0 720 420" role="img" aria-label="The DEV, Git and PROD map with the moves for step 1 highlighted."><defs><marker id="mis1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker><marker id="mgs1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker><marker id="mas1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--amber)"/></marker></defs><rect x="10" y="20" width="190" height="300" rx="10" class="panel"/><text x="105" y="44" text-anchor="middle" class="svg-head">DEV SERVER</text><rect x="265" y="20" width="190" height="300" rx="10" class="panel"/><text x="360" y="44" text-anchor="middle" class="svg-head">GIT REPOSITORY</text><rect x="520" y="20" width="190" height="300" rx="10" class="panel"/><text x="615" y="44" text-anchor="middle" class="svg-head">PROD SERVER</text><rect x="30" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="105.0" y="82.0" text-anchor="middle" class="svg-small">DEV model</text><text x="105.0" y="98.0" text-anchor="middle" class="svg-tiny">rules, TI, dims, cubes</text><rect x="30" y="150" width="150" height="50" rx="7" class="node-amber"/><text x="105.0" y="172.0" text-anchor="middle" class="svg-small">Change set</text><text x="105.0" y="188.0" text-anchor="middle" class="svg-tiny">every save recorded</text><rect x="30" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="105.0" y="262.0" text-anchor="middle" class="svg-small">Tests</text><text x="105.0" y="278.0" text-anchor="middle" class="svg-tiny">kept in the model</text><rect x="285" y="60" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="82.0" text-anchor="middle" class="svg-small">dev</text><text x="360.0" y="98.0" text-anchor="middle" class="svg-tiny">DEV at each close</text><rect x="285" y="150" width="150" height="50" rx="7" class="node-indigo"/><text x="360.0" y="172.0" text-anchor="middle" class="svg-small">release-PROD</text><text x="360.0" y="188.0" text-anchor="middle" class="svg-tiny">last release + this set</text><rect x="285" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="262.0" text-anchor="middle" class="svg-small">prod-live</text><text x="360.0" y="278.0" text-anchor="middle" class="svg-tiny">PROD as it is now</text><rect x="540" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="615.0" y="82.0" text-anchor="middle" class="svg-small">PROD model</text><text x="615.0" y="98.0" text-anchor="middle" class="svg-tiny">+ cube data</text><rect x="540" y="240" width="150" height="50" rx="7" class="node-green"/><text x="615.0" y="262.0" text-anchor="middle" class="svg-small">Governance</text><text x="615.0" y="278.0" text-anchor="middle" class="svg-tiny">approvals · records</text><rect x="10" y="350" width="700" height="50" rx="7" class="node-indigo"/><text x="360.0" y="372.0" text-anchor="middle" class="svg-small">The IDE</text><text x="360.0" y="388.0" text-anchor="middle" class="svg-tiny">records · refreshes · builds · applies what Git can’t · verifies</text><path d="M105 110 L105 148" class="edge" fill="none" style="stroke-width:2.8" marker-end="url(#mis1)"/><path d="M180 85 L283 85" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis1)"/><path d="M360 110 L360 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis1)"/><path d="M180 175 L283 175" class="edge-dash" fill="none" style="opacity:.16"/><path d="M435 168 C 485 168 500 100 538 96" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs1)"/><path d="M560 110 L560 215 L470 215 L470 258 L437 258" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis1)"/><path d="M330 200 L330 238" class="edge-dash" fill="none" style="opacity:.16"/><path d="M600 110 L600 226 L500 226 L500 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas1)"/><path d="M285 190 L274 190 L274 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas1)"/><path d="M20 350 L20 85 L28 85" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas1)"/><path d="M702 350 L702 85 L692 85" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs1)"/><path d="M615 350 L615 292" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis1)"/><rect x="95.4" y="120" width="19.2" height="18" rx="9" class="pill-on"/><text x="105" y="133" text-anchor="middle" class="svg-num">1</text><rect x="221.4" y="76" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="89" text-anchor="middle" class="svg-num">4</text><rect x="350.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="360" y="133" text-anchor="middle" class="svg-num">5</text><rect x="221.4" y="166" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="179" text-anchor="middle" class="svg-num">5</text><rect x="477.8" y="125" width="26.4" height="18" rx="9" class="pill-off"/><text x="491" y="138" text-anchor="middle" class="svg-num">10</text><rect x="473.0" y="206" width="84.0" height="18" rx="9" class="pill-off"/><text x="515" y="219" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="288.0" y="210" width="84.0" height="18" rx="9" class="pill-off"/><text x="330" y="223" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="490.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="500" y="304" text-anchor="middle" class="svg-num">3</text><rect x="264.4" y="311" width="19.2" height="18" rx="9" class="pill-off"/><text x="274" y="324" text-anchor="middle" class="svg-num">3</text><rect x="10.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="20" y="304" text-anchor="middle" class="svg-num">3</text><rect x="688.8" y="291" width="26.4" height="18" rx="9" class="pill-off"/><text x="702" y="304" text-anchor="middle" class="svg-num">10</text><rect x="587.4" y="312" width="55.2" height="18" rx="9" class="pill-off"/><text x="615" y="325" text-anchor="middle" class="svg-num">7 · 11</text><rect x="170.4" y="231" width="19.2" height="18" rx="9" class="pill-off"/><text x="180" y="244" text-anchor="middle" class="svg-num">4</text><rect x="601.6" y="51" width="76.8" height="18" rx="9" class="pill-off"/><text x="640" y="64" text-anchor="middle" class="svg-num">2 · 8 · 9</text><rect x="425.4" y="141" width="19.2" height="18" rx="9" class="pill-off"/><text x="435" y="154" text-anchor="middle" class="svg-num">6</text></svg><figcaption>Step 1: saves on DEV are recorded in the change set.</figcaption></figure>
+  <p>Work as you normally would. A few habits make the later steps smooth:</p>
+  <ul>
+    <li><b>Keep a change set to one purpose.</b> “Variance rule and account groups” is fine. “Everything this month” makes Review hard to read and approval meaningless.</li>
+    <li><b>Write the test with the change.</b> A change set carries the tests that prove its change (see step 4).</li>
+    <li><b>Make changes through the IDE or MCP,</b> not through other tools on DEV. A change made elsewhere isn’t recorded, so it isn’t in the change set and isn’t ordered against other people’s work.</li>
+  </ul>
+  <div class="ex"><p>The developer opens change set <i>Finance variance</i>, adds the rule <code>[&#39;Variance&#39;] = N: [&#39;Actual&#39;] - [&#39;Budget&#39;];</code> with its feeder, and sets <code>Account Group</code> on twelve accounts. The change set now lists the Finance cube’s rules and the Account dimension.</p></div>
+
+</section>
+
+<!-- ======================================================== STEP 2 -->
+<section id="step-2">
+  <div class="sec-head"><span class="sec-num step">Step 2</span><h2 class="sec-title">Check PROD is idle</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps on" href="#step-2" title="Step 2: Check PROD is idle" aria-current="step">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 2 of 12</b> · Pre-deploy · <b>Check PROD is idle</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>The IDE checks PROD is quiet, and whether anyone changed PROD outside a deploy since the last one (drift).</dd><dt>Why</dt><dd>A pull replaces objects while TM1 is running. If a load is halfway through, it can fail or leave half-loaded data. And deploying on top of an unexplained PROD change would quietly overwrite it.</dd><dt>Can stop here</dt><dd>Something running: stops. A chore due within 30 minutes: asks Deploy anyway or Wait. Rules, TI, cube or chore steps changed on PROD: stops.</dd></dl>
+  <figure class="fig"><svg viewBox="0 0 720 420" role="img" aria-label="The DEV, Git and PROD map with the moves for step 2 highlighted."><defs><marker id="mis2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker><marker id="mgs2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker><marker id="mas2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--amber)"/></marker></defs><rect x="10" y="20" width="190" height="300" rx="10" class="panel"/><text x="105" y="44" text-anchor="middle" class="svg-head">DEV SERVER</text><rect x="265" y="20" width="190" height="300" rx="10" class="panel"/><text x="360" y="44" text-anchor="middle" class="svg-head">GIT REPOSITORY</text><rect x="520" y="20" width="190" height="300" rx="10" class="panel"/><text x="615" y="44" text-anchor="middle" class="svg-head">PROD SERVER</text><rect x="30" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="105.0" y="82.0" text-anchor="middle" class="svg-small">DEV model</text><text x="105.0" y="98.0" text-anchor="middle" class="svg-tiny">rules, TI, dims, cubes</text><rect x="30" y="150" width="150" height="50" rx="7" class="node-amber"/><text x="105.0" y="172.0" text-anchor="middle" class="svg-small">Change set</text><text x="105.0" y="188.0" text-anchor="middle" class="svg-tiny">every save recorded</text><rect x="30" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="105.0" y="262.0" text-anchor="middle" class="svg-small">Tests</text><text x="105.0" y="278.0" text-anchor="middle" class="svg-tiny">kept in the model</text><rect x="285" y="60" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="82.0" text-anchor="middle" class="svg-small">dev</text><text x="360.0" y="98.0" text-anchor="middle" class="svg-tiny">DEV at each close</text><rect x="285" y="150" width="150" height="50" rx="7" class="node-indigo"/><text x="360.0" y="172.0" text-anchor="middle" class="svg-small">release-PROD</text><text x="360.0" y="188.0" text-anchor="middle" class="svg-tiny">last release + this set</text><rect x="285" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="262.0" text-anchor="middle" class="svg-small">prod-live</text><text x="360.0" y="278.0" text-anchor="middle" class="svg-tiny">PROD as it is now</text><rect x="540" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="615.0" y="82.0" text-anchor="middle" class="svg-small">PROD model</text><text x="615.0" y="98.0" text-anchor="middle" class="svg-tiny">+ cube data</text><rect x="540" y="240" width="150" height="50" rx="7" class="node-green"/><text x="615.0" y="262.0" text-anchor="middle" class="svg-small">Governance</text><text x="615.0" y="278.0" text-anchor="middle" class="svg-tiny">approvals · records</text><rect x="10" y="350" width="700" height="50" rx="7" class="node-indigo"/><text x="360.0" y="372.0" text-anchor="middle" class="svg-small">The IDE</text><text x="360.0" y="388.0" text-anchor="middle" class="svg-tiny">records · refreshes · builds · applies what Git can’t · verifies</text><path d="M105 110 L105 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis2)"/><path d="M180 85 L283 85" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis2)"/><path d="M360 110 L360 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis2)"/><path d="M180 175 L283 175" class="edge-dash" fill="none" style="opacity:.16"/><path d="M435 168 C 485 168 500 100 538 96" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs2)"/><path d="M560 110 L560 215 L470 215 L470 258 L437 258" class="edge" fill="none" style="stroke-width:2.8" marker-end="url(#mis2)"/><path d="M330 200 L330 238" class="edge-dash" fill="none" style="stroke-width:2.8"/><path d="M600 110 L600 226 L500 226 L500 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas2)"/><path d="M285 190 L274 190 L274 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas2)"/><path d="M20 350 L20 85 L28 85" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas2)"/><path d="M702 350 L702 85 L692 85" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs2)"/><path d="M615 350 L615 292" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis2)"/><rect x="95.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="105" y="133" text-anchor="middle" class="svg-num">1</text><rect x="221.4" y="76" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="89" text-anchor="middle" class="svg-num">4</text><rect x="350.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="360" y="133" text-anchor="middle" class="svg-num">5</text><rect x="221.4" y="166" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="179" text-anchor="middle" class="svg-num">5</text><rect x="477.8" y="125" width="26.4" height="18" rx="9" class="pill-off"/><text x="491" y="138" text-anchor="middle" class="svg-num">10</text><rect x="473.0" y="206" width="84.0" height="18" rx="9" class="pill-on"/><text x="515" y="219" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="288.0" y="210" width="84.0" height="18" rx="9" class="pill-on"/><text x="330" y="223" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="490.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="500" y="304" text-anchor="middle" class="svg-num">3</text><rect x="264.4" y="311" width="19.2" height="18" rx="9" class="pill-off"/><text x="274" y="324" text-anchor="middle" class="svg-num">3</text><rect x="10.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="20" y="304" text-anchor="middle" class="svg-num">3</text><rect x="688.8" y="291" width="26.4" height="18" rx="9" class="pill-off"/><text x="702" y="304" text-anchor="middle" class="svg-num">10</text><rect x="587.4" y="312" width="55.2" height="18" rx="9" class="pill-off"/><text x="615" y="325" text-anchor="middle" class="svg-num">7 · 11</text><rect x="170.4" y="231" width="19.2" height="18" rx="9" class="pill-off"/><text x="180" y="244" text-anchor="middle" class="svg-num">4</text><rect x="601.6" y="51" width="76.8" height="18" rx="9" class="pill-on"/><text x="640" y="64" text-anchor="middle" class="svg-num">2 · 8 · 9</text><rect x="425.4" y="141" width="19.2" height="18" rx="9" class="pill-off"/><text x="435" y="154" text-anchor="middle" class="svg-num">6</text></svg><figcaption>Step 2: PROD pushes a snapshot of itself to <code>prod-live</code>, compared with what it last received.</figcaption></figure>
+  <p>Open the deploy from <b>Deploy → Ready to ship</b>, choose the change set and the target, and start.</p>
+  <figure class="shot"><img src="images/deploy-00-ready-to-ship.png" alt="Ready to ship: the change sets that can be deployed, and the dialog to choose a target" loading="lazy"><figcaption>Ready to ship: one change set, one target.</figcaption></figure>
+  <h3>Is it idle?</h3>
+  <p>“Idle” means no process or chore is running on PROD now, and none is about to start.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Finds</th><th>Then</th></tr></thead>
+    <tbody>
+      <tr><td>A process or chore <b>running now</b></td><td><b>Stops</b>, naming what’s running and for how long</td></tr>
+      <tr><td>A chore <b>due within 30 minutes</b></td><td><b>Asks</b>: Deploy anyway, or Wait. You can’t continue until you choose.</td></tr>
+      <tr><td><b>Other people</b> signed in</td><td><b>Lists them</b> and asks you to confirm. The deploy’s own connection isn’t counted.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="ex"><p>It is 10:52. <i>Load Actuals</i> runs on the hour, so the check says it is due in 8 minutes. If the deploy replaced the Account dimension at 11:00 while the load was inserting new accounts into it, the load could fail or write half its data. Choose <b>Wait</b>, and start again at 11:05 when the load has finished.</p></div>
+  <figure class="shot"><img src="images/deploy-01-check-prod-idle.png" alt="Check PROD: idle, with a chore due inside the deploy window" loading="lazy"><figcaption>Idle, but a chore is due inside the deploy window.</figcaption></figure>
+  <h3>Drift: has PROD changed outside a deploy?</h3>
+  <p>Git holds two copies of PROD: <code>release-PROD</code>, what PROD last received, and <code>prod-live</code>, a snapshot PROD pushes of itself right now. The difference between them is <b>drift</b>.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 240" role="img" aria-label="The last deployed release and the prod-live snapshot are compared. Same: deploys go ahead. A rule, process, cube or chore steps differ, or an object is missing on PROD: deploys pause. A view or subset differs: reported and handled by the refresh. A dimension PROD added to that the release carries back: carried, doesn't block.">
+      <defs><marker id="f1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <rect x="10" y="30"  width="160" height="56" rx="7" class="node-indigo"/><text x="90" y="54" text-anchor="middle" class="svg-small">Last deployed</text><text x="90" y="71" text-anchor="middle" class="svg-tiny">release-PROD</text>
+      <rect x="10" y="150" width="160" height="56" rx="7" class="node-plain"/><text x="90" y="174" text-anchor="middle" class="svg-small">PROD right now</text><text x="90" y="191" text-anchor="middle" class="svg-tiny">prod-live</text>
+      <rect x="220" y="88" width="110" height="60" rx="30" class="node-amber"/><text x="275" y="123" text-anchor="middle" class="svg-small">Compare</text>
+      <path d="M170 58 L230 98" class="edge" marker-end="url(#f1)"/><path d="M170 178 L230 140" class="edge" marker-end="url(#f1)"/>
+      <rect x="390" y="10"  width="320" height="46" rx="7" class="node-green"/><text x="550" y="30" text-anchor="middle" class="svg-small">Same</text><text x="550" y="46" text-anchor="middle" class="svg-green">deploys go ahead</text>
+      <rect x="390" y="66"  width="320" height="50" rx="7" class="node-red"/><text x="550" y="86" text-anchor="middle" class="svg-small">Rules, TI, cube or chore changed</text><text x="550" y="104" text-anchor="middle" class="svg-red">or an object missing: blocks</text>
+      <rect x="390" y="126" width="320" height="46" rx="7" class="node-amber"/><text x="550" y="146" text-anchor="middle" class="svg-small">View or subset differs</text><text x="550" y="162" text-anchor="middle" class="svg-tiny">reported; the refresh handles it</text>
+      <rect x="390" y="182" width="320" height="50" rx="7" class="node-steel"/><text x="550" y="202" text-anchor="middle" class="svg-small">PROD’s additions carried back</text><text x="550" y="220" text-anchor="middle" class="svg-tiny">carried: doesn’t block</text>
+      <path d="M330 110 L388 33" class="edge" marker-end="url(#f1)"/><path d="M330 115 L388 91" class="edge" marker-end="url(#f1)"/>
+      <path d="M330 122 L388 149" class="edge" marker-end="url(#f1)"/><path d="M330 128 L388 207" class="edge" marker-end="url(#f1)"/>
+    </svg>
+    <figcaption>Drift is measured against <b>what PROD last received</b>, never against DEV.</figcaption>
+  </figure>
+  <ul>
+    <li><b>Rules, processes, cube structure, chore steps changed, or an object missing:</b> deploys pause. Make the same change on DEV in a change set, or put PROD back. Nothing is reverted automatically: every automatic revert we tried opened a new way to lose work.</li>
+    <li><b>Views and subsets that differ:</b> reported, not blocking. Step 3 deals with them.</li>
+    <li><b>A dimension PROD added to</b> (the loaded GL code): allowed through <b>only if the release carries it back</b>, which is what step 3 arranges.</li>
+  </ul>
+  <div class="callout note"><p><b>What drift can’t see.</b> Attribute values aren’t in Git, so drift never sees them. Step 3 reads them live instead.</p></div>
+
+</section>
+
+<!-- ======================================================== STEP 3 -->
+<section id="step-3">
+  <div class="sec-head"><span class="sec-num step">Step 3</span><h2 class="sec-title">Refresh DEV from PROD</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps on" href="#step-3" title="Step 3: Refresh DEV from PROD" aria-current="step">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 3 of 12</b> · Pre-deploy · <b>Refresh DEV from PROD</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>The IDE compares the last release, PROD now and DEV now, lists what PROD changed by itself, and writes your choices into DEV, recorded in this change set.</dd><dt>Why</dt><dd>The release will replace PROD’s copy of every object in it. If DEV doesn’t already hold PROD’s own work, the deploy wipes it (background E).</dd><dt>Can stop here</dt><dd>Anything that can’t be read safely is refused with a reason, never guessed. With no last release to compare against, nothing is preselected and applying is refused.</dd></dl>
+  <figure class="fig"><svg viewBox="0 0 720 420" role="img" aria-label="The DEV, Git and PROD map with the moves for step 3 highlighted."><defs><marker id="mis3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker><marker id="mgs3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker><marker id="mas3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--amber)"/></marker></defs><rect x="10" y="20" width="190" height="300" rx="10" class="panel"/><text x="105" y="44" text-anchor="middle" class="svg-head">DEV SERVER</text><rect x="265" y="20" width="190" height="300" rx="10" class="panel"/><text x="360" y="44" text-anchor="middle" class="svg-head">GIT REPOSITORY</text><rect x="520" y="20" width="190" height="300" rx="10" class="panel"/><text x="615" y="44" text-anchor="middle" class="svg-head">PROD SERVER</text><rect x="30" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="105.0" y="82.0" text-anchor="middle" class="svg-small">DEV model</text><text x="105.0" y="98.0" text-anchor="middle" class="svg-tiny">rules, TI, dims, cubes</text><rect x="30" y="150" width="150" height="50" rx="7" class="node-amber"/><text x="105.0" y="172.0" text-anchor="middle" class="svg-small">Change set</text><text x="105.0" y="188.0" text-anchor="middle" class="svg-tiny">every save recorded</text><rect x="30" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="105.0" y="262.0" text-anchor="middle" class="svg-small">Tests</text><text x="105.0" y="278.0" text-anchor="middle" class="svg-tiny">kept in the model</text><rect x="285" y="60" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="82.0" text-anchor="middle" class="svg-small">dev</text><text x="360.0" y="98.0" text-anchor="middle" class="svg-tiny">DEV at each close</text><rect x="285" y="150" width="150" height="50" rx="7" class="node-indigo"/><text x="360.0" y="172.0" text-anchor="middle" class="svg-small">release-PROD</text><text x="360.0" y="188.0" text-anchor="middle" class="svg-tiny">last release + this set</text><rect x="285" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="262.0" text-anchor="middle" class="svg-small">prod-live</text><text x="360.0" y="278.0" text-anchor="middle" class="svg-tiny">PROD as it is now</text><rect x="540" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="615.0" y="82.0" text-anchor="middle" class="svg-small">PROD model</text><text x="615.0" y="98.0" text-anchor="middle" class="svg-tiny">+ cube data</text><rect x="540" y="240" width="150" height="50" rx="7" class="node-green"/><text x="615.0" y="262.0" text-anchor="middle" class="svg-small">Governance</text><text x="615.0" y="278.0" text-anchor="middle" class="svg-tiny">approvals · records</text><rect x="10" y="350" width="700" height="50" rx="7" class="node-indigo"/><text x="360.0" y="372.0" text-anchor="middle" class="svg-small">The IDE</text><text x="360.0" y="388.0" text-anchor="middle" class="svg-tiny">records · refreshes · builds · applies what Git can’t · verifies</text><path d="M105 110 L105 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis3)"/><path d="M180 85 L283 85" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis3)"/><path d="M360 110 L360 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis3)"/><path d="M180 175 L283 175" class="edge-dash" fill="none" style="opacity:.16"/><path d="M435 168 C 485 168 500 100 538 96" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs3)"/><path d="M560 110 L560 215 L470 215 L470 258 L437 258" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis3)"/><path d="M330 200 L330 238" class="edge-dash" fill="none" style="opacity:.16"/><path d="M600 110 L600 226 L500 226 L500 346" class="edge-amber" fill="none" style="stroke-width:2.8" marker-end="url(#mas3)"/><path d="M285 190 L274 190 L274 346" class="edge-amber" fill="none" style="stroke-width:2.8" marker-end="url(#mas3)"/><path d="M20 350 L20 85 L28 85" class="edge-amber" fill="none" style="stroke-width:2.8" marker-end="url(#mas3)"/><path d="M702 350 L702 85 L692 85" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs3)"/><path d="M615 350 L615 292" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis3)"/><rect x="95.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="105" y="133" text-anchor="middle" class="svg-num">1</text><rect x="221.4" y="76" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="89" text-anchor="middle" class="svg-num">4</text><rect x="350.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="360" y="133" text-anchor="middle" class="svg-num">5</text><rect x="221.4" y="166" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="179" text-anchor="middle" class="svg-num">5</text><rect x="477.8" y="125" width="26.4" height="18" rx="9" class="pill-off"/><text x="491" y="138" text-anchor="middle" class="svg-num">10</text><rect x="473.0" y="206" width="84.0" height="18" rx="9" class="pill-off"/><text x="515" y="219" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="288.0" y="210" width="84.0" height="18" rx="9" class="pill-off"/><text x="330" y="223" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="490.4" y="291" width="19.2" height="18" rx="9" class="pill-on"/><text x="500" y="304" text-anchor="middle" class="svg-num">3</text><rect x="264.4" y="311" width="19.2" height="18" rx="9" class="pill-on"/><text x="274" y="324" text-anchor="middle" class="svg-num">3</text><rect x="10.4" y="291" width="19.2" height="18" rx="9" class="pill-on"/><text x="20" y="304" text-anchor="middle" class="svg-num">3</text><rect x="688.8" y="291" width="26.4" height="18" rx="9" class="pill-off"/><text x="702" y="304" text-anchor="middle" class="svg-num">10</text><rect x="587.4" y="312" width="55.2" height="18" rx="9" class="pill-off"/><text x="615" y="325" text-anchor="middle" class="svg-num">7 · 11</text><rect x="170.4" y="231" width="19.2" height="18" rx="9" class="pill-off"/><text x="180" y="244" text-anchor="middle" class="svg-num">4</text><rect x="601.6" y="51" width="76.8" height="18" rx="9" class="pill-off"/><text x="640" y="64" text-anchor="middle" class="svg-num">2 · 8 · 9</text><rect x="425.4" y="141" width="19.2" height="18" rx="9" class="pill-off"/><text x="435" y="154" text-anchor="middle" class="svg-num">6</text></svg><figcaption>Step 3: the IDE reads PROD and the last release, and writes only to DEV.</figcaption></figure>
+  <p>This must happen <b>before</b> tests and close: a closed change set can’t record anything.</p>
+  <h3>The rule</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Last release</th><th>PROD now</th><th>DEV now</th><th>Meaning</th><th>Refresh</th></tr></thead>
+    <tbody>
+      <tr><td>–</td><td>has it</td><td>–</td><td><b>PROD added it</b></td><td>offered, <b>ticked</b></td></tr>
+      <tr><td>has it</td><td>–</td><td>has it</td><td><b>PROD removed it</b></td><td>offered, <b>unticked</b>: “delete on DEV too?”</td></tr>
+      <tr><td>has it</td><td>has it</td><td>–</td><td><b>DEV removed it</b></td><td><b>not offered.</b> One grey line; Review reports the removal</td></tr>
+      <tr><td>–</td><td>–</td><td>has it</td><td>DEV added it</td><td>not a refresh question: the deploy carries it</td></tr>
+      <tr><td>same</td><td>changed</td><td>same</td><td>PROD changed it</td><td>offered, ticked</td></tr>
+      <tr><td>same</td><td>same</td><td>changed</td><td>DEV changed it</td><td>not offered: DEV’s version ships</td></tr>
+      <tr><td>same</td><td>changed</td><td>changed differently</td><td><b>both changed it</b></td><td>conflict, <b>no default</b></td></tr>
+      <tr><td>–</td><td>has it</td><td>has it</td><td>both have it already</td><td>nothing to do</td></tr>
+    </tbody>
+  </table></div>
+  <h3>What it covers</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Object</th><th>Compared</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Dimensions</td><td>elements, element types, parent–child links and weights, moves</td><td>A move is judged on PROD’s parent against the last release’s. A type change stays a decision with its warning: it clears stored values.</td></tr>
+      <tr><td>Alternate hierarchies</td><td>members, links, weights; a hierarchy PROD created</td><td>Same rule.</td></tr>
+      <tr><td>Views and subsets</td><td>content at each of the three</td><td>Both changed: <b>Take PROD’s</b> or <b>Keep DEV’s</b>, no default. A view or subset PROD deleted since the last release: offered, unticked.</td></tr>
+      <tr><td>Chores</td><td>schedule</td><td>The schedule can come from PROD. The on/off switch is never copied: DEV’s chores stay off (see step 10).</td></tr>
+      <tr><td>Attributes</td><td>definitions and values, read live</td><td>Attributes aren’t in Git, so there’s no last release to compare with. They’re <b>listed, never preselected</b>; an admin can tick one by hand. Values travel only for attributes confirmed under <b>Deploy → Protection</b>.</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Not refreshed:</b> rules, processes and cube structure. These belong to DEV (background E). A PROD edit to one is drift and stops at step 2.</p>
+  <div class="ex"><p>The refresh lists <b>Account: GL 4105, added by PROD</b>, ticked. You keep the tick and apply. 4105 is created on DEV under the same parent, and recorded in <i>Finance variance</i>. Your twelve <code>Account Group</code> values are DEV’s own change, so they aren’t listed. PROD’s 3,200 against 4105 stays where it is: the refresh writes only to DEV.</p></div>
+  <div class="draft"><p>Screenshots of this step to be retaken: the ones here were taken before the three-way compare.</p></div>
+  <figure class="shot"><img src="images/deploy-02-refresh-what-prod-changed.png" alt="Refresh from PROD: what PROD has that DEV does not" loading="lazy"><figcaption>To retake.</figcaption></figure>
+
+</section>
+
+<!-- ======================================================== STEP 4 -->
+<section id="step-4">
+  <div class="sec-head"><span class="sec-num step">Step 4</span><h2 class="sec-title">Tests and close</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps on" href="#step-4" title="Step 4: Tests and close" aria-current="step">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 4 of 12</b> · Pre-deploy · <b>Tests and close</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>The model’s tests run on DEV. If they pass, the change set closes and DEV is pushed to the <code>dev</code> branch.</dd><dt>Why</dt><dd>A deploy should only carry work that has proved itself. Closing fixes the change set, so what is approved is exactly what was tested.</dd><dt>Can stop here</dt><dd>A failing test of severity <b>block</b> stops here, and the change set stays open. A failing <b>warn</b> test is recorded but doesn’t stop.</dd></dl>
+  <figure class="fig"><svg viewBox="0 0 720 420" role="img" aria-label="The DEV, Git and PROD map with the moves for step 4 highlighted."><defs><marker id="mis4" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker><marker id="mgs4" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker><marker id="mas4" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--amber)"/></marker></defs><rect x="10" y="20" width="190" height="300" rx="10" class="panel"/><text x="105" y="44" text-anchor="middle" class="svg-head">DEV SERVER</text><rect x="265" y="20" width="190" height="300" rx="10" class="panel"/><text x="360" y="44" text-anchor="middle" class="svg-head">GIT REPOSITORY</text><rect x="520" y="20" width="190" height="300" rx="10" class="panel"/><text x="615" y="44" text-anchor="middle" class="svg-head">PROD SERVER</text><rect x="30" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="105.0" y="82.0" text-anchor="middle" class="svg-small">DEV model</text><text x="105.0" y="98.0" text-anchor="middle" class="svg-tiny">rules, TI, dims, cubes</text><rect x="30" y="150" width="150" height="50" rx="7" class="node-amber"/><text x="105.0" y="172.0" text-anchor="middle" class="svg-small">Change set</text><text x="105.0" y="188.0" text-anchor="middle" class="svg-tiny">every save recorded</text><rect x="30" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="105.0" y="262.0" text-anchor="middle" class="svg-small">Tests</text><text x="105.0" y="278.0" text-anchor="middle" class="svg-tiny">kept in the model</text><rect x="285" y="60" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="82.0" text-anchor="middle" class="svg-small">dev</text><text x="360.0" y="98.0" text-anchor="middle" class="svg-tiny">DEV at each close</text><rect x="285" y="150" width="150" height="50" rx="7" class="node-indigo"/><text x="360.0" y="172.0" text-anchor="middle" class="svg-small">release-PROD</text><text x="360.0" y="188.0" text-anchor="middle" class="svg-tiny">last release + this set</text><rect x="285" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="262.0" text-anchor="middle" class="svg-small">prod-live</text><text x="360.0" y="278.0" text-anchor="middle" class="svg-tiny">PROD as it is now</text><rect x="540" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="615.0" y="82.0" text-anchor="middle" class="svg-small">PROD model</text><text x="615.0" y="98.0" text-anchor="middle" class="svg-tiny">+ cube data</text><rect x="540" y="240" width="150" height="50" rx="7" class="node-green"/><text x="615.0" y="262.0" text-anchor="middle" class="svg-small">Governance</text><text x="615.0" y="278.0" text-anchor="middle" class="svg-tiny">approvals · records</text><rect x="10" y="350" width="700" height="50" rx="7" class="node-indigo"/><text x="360.0" y="372.0" text-anchor="middle" class="svg-small">The IDE</text><text x="360.0" y="388.0" text-anchor="middle" class="svg-tiny">records · refreshes · builds · applies what Git can’t · verifies</text><path d="M105 110 L105 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis4)"/><path d="M180 85 L283 85" class="edge" fill="none" style="stroke-width:2.8" marker-end="url(#mis4)"/><path d="M360 110 L360 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis4)"/><path d="M180 175 L283 175" class="edge-dash" fill="none" style="opacity:.16"/><path d="M435 168 C 485 168 500 100 538 96" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs4)"/><path d="M560 110 L560 215 L470 215 L470 258 L437 258" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis4)"/><path d="M330 200 L330 238" class="edge-dash" fill="none" style="opacity:.16"/><path d="M600 110 L600 226 L500 226 L500 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas4)"/><path d="M285 190 L274 190 L274 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas4)"/><path d="M20 350 L20 85 L28 85" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas4)"/><path d="M702 350 L702 85 L692 85" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs4)"/><path d="M615 350 L615 292" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis4)"/><rect x="95.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="105" y="133" text-anchor="middle" class="svg-num">1</text><rect x="221.4" y="76" width="19.2" height="18" rx="9" class="pill-on"/><text x="231" y="89" text-anchor="middle" class="svg-num">4</text><rect x="350.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="360" y="133" text-anchor="middle" class="svg-num">5</text><rect x="221.4" y="166" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="179" text-anchor="middle" class="svg-num">5</text><rect x="477.8" y="125" width="26.4" height="18" rx="9" class="pill-off"/><text x="491" y="138" text-anchor="middle" class="svg-num">10</text><rect x="473.0" y="206" width="84.0" height="18" rx="9" class="pill-off"/><text x="515" y="219" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="288.0" y="210" width="84.0" height="18" rx="9" class="pill-off"/><text x="330" y="223" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="490.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="500" y="304" text-anchor="middle" class="svg-num">3</text><rect x="264.4" y="311" width="19.2" height="18" rx="9" class="pill-off"/><text x="274" y="324" text-anchor="middle" class="svg-num">3</text><rect x="10.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="20" y="304" text-anchor="middle" class="svg-num">3</text><rect x="688.8" y="291" width="26.4" height="18" rx="9" class="pill-off"/><text x="702" y="304" text-anchor="middle" class="svg-num">10</text><rect x="587.4" y="312" width="55.2" height="18" rx="9" class="pill-off"/><text x="615" y="325" text-anchor="middle" class="svg-num">7 · 11</text><rect x="170.4" y="231" width="19.2" height="18" rx="9" class="pill-on"/><text x="180" y="244" text-anchor="middle" class="svg-num">4</text><rect x="601.6" y="51" width="76.8" height="18" rx="9" class="pill-off"/><text x="640" y="64" text-anchor="middle" class="svg-num">2 · 8 · 9</text><rect x="425.4" y="141" width="19.2" height="18" rx="9" class="pill-off"/><text x="435" y="154" text-anchor="middle" class="svg-num">6</text></svg><figcaption>Step 4: tests run on DEV; DEV is pushed to the <code>dev</code> branch.</figcaption></figure>
+  <h3>Tests that stay true</h3>
+  <p>This part changed the most while building the deploy, and it is worth explaining.</p>
+  <p><b>The problem.</b> The workforce model in our lab had 60 tests, all of the form “this query returns this exact number”, all reading the shared DEV data. When the data changed (a rebuild, a reseed, cutting the model down), 25 went red at once. Nobody could tell <i>the model is wrong</i> from <i>the data changed</i>: both look identical. The only quick fix was to overwrite the expected numbers, which quietly turns a test into one that always passes.</p>
+  <p><b>The fix is not better numbers. It is three kinds of check, each with its own contract:</b></p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Kind</th><th>Input</th><th>Expected</th><th>Runs</th><th>Blocks?</th></tr></thead>
+    <tbody>
+      <tr><td><b>Structure</b></td><td>any data</td><td>a relationship: a total minus the sum of its children is 0; every cube has a Default view</td><td>at close, and on PROD after every deploy (step 11)</td><td><b>yes</b></td></tr>
+      <tr><td><b>Calculation</b></td><td>data the test writes itself</td><td>an exact number, worked out by hand</td><td>at close, on DEV</td><td><b>yes</b></td></tr>
+      <tr><td><b>Quality</b></td><td>whatever is in the model</td><td>a threshold or range</td><td>on a schedule, in Model health</td><td>no, it warns the data owner</td></tr>
+    </tbody>
+  </table></div>
+  <p>The rule that keeps them apart: <b>if you can’t state it without a number that depends on today’s data, it isn’t a gate.</b></p>
+  <ul>
+    <li><b>A calculation check brings its own data.</b> Before it runs, a small TI process writes a known input into a reserved <code>Test</code> version, hidden from users and never in reports. One employee: salary, grade, pension rate. The check then asks for one answer, worked out by hand. It rewrites its inputs every run, so there’s nothing to clean up.</li>
+    <li><b>Structure checks run anywhere,</b> because they never depend on what the data is. That’s why they’re the ones run on PROD after a deploy.</li>
+    <li><b>The data has an identity.</b> The test data is recorded with the tests. Changing it is a deliberate, recorded event, so a red test is always either “the model changed” or “the data changed”, and the record says which.</li>
+    <li><b>The tests live in the model,</b> so every tool, and every copy of the IDE, sees the same ones.</li>
+  </ul>
+  <div class="callout note"><p><b>Where the lab model is now.</b> Its 60 tests are being re-sorted into these kinds. On DEV, 36 pass and 24 fail as warnings: three are known calculation bugs; 21 are group totals written for the old dataset. On PROD, which has the structure but not DEV’s workforce data, 18 pass, which is exactly why calculation checks don’t run there.</p></div>
+  <div class="ex"><p>The change set carries one calculation check: put Actual 100 and Budget 80 on a test account in the <code>Test</code> version, expect Variance 20. Plus a structure check: Variance at Total Accounts equals the sum of its children. Both pass; the change set closes; DEV is pushed to <code>dev</code>.</p></div>
+  <figure class="shot"><img src="images/deploy-03-tests-and-close.png" alt="Tests and close" loading="lazy"></figure>
+
+</section>
+
+<!-- ======================================================== STEP 5 -->
+<section id="step-5">
+  <div class="sec-head"><span class="sec-num step">Step 5</span><h2 class="sec-title">Build the release</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps on" href="#step-5" title="Step 5: Build the release" aria-current="step">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 5 of 12</b> · Pre-deploy · <b>Build the release</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>The IDE builds the release on the <code>release-PROD</code> branch: PROD’s last release, plus only the files of objects this change set touched, taken from DEV’s commit.</dd><dt>Why</dt><dd>This is what makes “one change set per deploy” true. Anything else that happens to be on DEV, such as another person’s half-finished work, stays behind.</dd><dt>Can stop here</dt><dd>An older change set touched the same object and isn’t deployed yet. A newer change to the same object is already on PROD. A file carried along has changes nobody recorded.</dd></dl>
+  <figure class="fig"><svg viewBox="0 0 720 420" role="img" aria-label="The DEV, Git and PROD map with the moves for step 5 highlighted."><defs><marker id="mis5" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker><marker id="mgs5" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker><marker id="mas5" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--amber)"/></marker></defs><rect x="10" y="20" width="190" height="300" rx="10" class="panel"/><text x="105" y="44" text-anchor="middle" class="svg-head">DEV SERVER</text><rect x="265" y="20" width="190" height="300" rx="10" class="panel"/><text x="360" y="44" text-anchor="middle" class="svg-head">GIT REPOSITORY</text><rect x="520" y="20" width="190" height="300" rx="10" class="panel"/><text x="615" y="44" text-anchor="middle" class="svg-head">PROD SERVER</text><rect x="30" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="105.0" y="82.0" text-anchor="middle" class="svg-small">DEV model</text><text x="105.0" y="98.0" text-anchor="middle" class="svg-tiny">rules, TI, dims, cubes</text><rect x="30" y="150" width="150" height="50" rx="7" class="node-amber"/><text x="105.0" y="172.0" text-anchor="middle" class="svg-small">Change set</text><text x="105.0" y="188.0" text-anchor="middle" class="svg-tiny">every save recorded</text><rect x="30" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="105.0" y="262.0" text-anchor="middle" class="svg-small">Tests</text><text x="105.0" y="278.0" text-anchor="middle" class="svg-tiny">kept in the model</text><rect x="285" y="60" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="82.0" text-anchor="middle" class="svg-small">dev</text><text x="360.0" y="98.0" text-anchor="middle" class="svg-tiny">DEV at each close</text><rect x="285" y="150" width="150" height="50" rx="7" class="node-indigo"/><text x="360.0" y="172.0" text-anchor="middle" class="svg-small">release-PROD</text><text x="360.0" y="188.0" text-anchor="middle" class="svg-tiny">last release + this set</text><rect x="285" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="262.0" text-anchor="middle" class="svg-small">prod-live</text><text x="360.0" y="278.0" text-anchor="middle" class="svg-tiny">PROD as it is now</text><rect x="540" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="615.0" y="82.0" text-anchor="middle" class="svg-small">PROD model</text><text x="615.0" y="98.0" text-anchor="middle" class="svg-tiny">+ cube data</text><rect x="540" y="240" width="150" height="50" rx="7" class="node-green"/><text x="615.0" y="262.0" text-anchor="middle" class="svg-small">Governance</text><text x="615.0" y="278.0" text-anchor="middle" class="svg-tiny">approvals · records</text><rect x="10" y="350" width="700" height="50" rx="7" class="node-indigo"/><text x="360.0" y="372.0" text-anchor="middle" class="svg-small">The IDE</text><text x="360.0" y="388.0" text-anchor="middle" class="svg-tiny">records · refreshes · builds · applies what Git can’t · verifies</text><path d="M105 110 L105 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis5)"/><path d="M180 85 L283 85" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis5)"/><path d="M360 110 L360 148" class="edge" fill="none" style="stroke-width:2.8" marker-end="url(#mis5)"/><path d="M180 175 L283 175" class="edge-dash" fill="none" style="stroke-width:2.8"/><path d="M435 168 C 485 168 500 100 538 96" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs5)"/><path d="M560 110 L560 215 L470 215 L470 258 L437 258" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis5)"/><path d="M330 200 L330 238" class="edge-dash" fill="none" style="opacity:.16"/><path d="M600 110 L600 226 L500 226 L500 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas5)"/><path d="M285 190 L274 190 L274 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas5)"/><path d="M20 350 L20 85 L28 85" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas5)"/><path d="M702 350 L702 85 L692 85" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs5)"/><path d="M615 350 L615 292" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis5)"/><rect x="95.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="105" y="133" text-anchor="middle" class="svg-num">1</text><rect x="221.4" y="76" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="89" text-anchor="middle" class="svg-num">4</text><rect x="350.4" y="120" width="19.2" height="18" rx="9" class="pill-on"/><text x="360" y="133" text-anchor="middle" class="svg-num">5</text><rect x="221.4" y="166" width="19.2" height="18" rx="9" class="pill-on"/><text x="231" y="179" text-anchor="middle" class="svg-num">5</text><rect x="477.8" y="125" width="26.4" height="18" rx="9" class="pill-off"/><text x="491" y="138" text-anchor="middle" class="svg-num">10</text><rect x="473.0" y="206" width="84.0" height="18" rx="9" class="pill-off"/><text x="515" y="219" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="288.0" y="210" width="84.0" height="18" rx="9" class="pill-off"/><text x="330" y="223" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="490.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="500" y="304" text-anchor="middle" class="svg-num">3</text><rect x="264.4" y="311" width="19.2" height="18" rx="9" class="pill-off"/><text x="274" y="324" text-anchor="middle" class="svg-num">3</text><rect x="10.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="20" y="304" text-anchor="middle" class="svg-num">3</text><rect x="688.8" y="291" width="26.4" height="18" rx="9" class="pill-off"/><text x="702" y="304" text-anchor="middle" class="svg-num">10</text><rect x="587.4" y="312" width="55.2" height="18" rx="9" class="pill-off"/><text x="615" y="325" text-anchor="middle" class="svg-num">7 · 11</text><rect x="170.4" y="231" width="19.2" height="18" rx="9" class="pill-off"/><text x="180" y="244" text-anchor="middle" class="svg-num">4</text><rect x="601.6" y="51" width="76.8" height="18" rx="9" class="pill-off"/><text x="640" y="64" text-anchor="middle" class="svg-num">2 · 8 · 9</text><rect x="425.4" y="141" width="19.2" height="18" rx="9" class="pill-off"/><text x="435" y="154" text-anchor="middle" class="svg-num">6</text></svg><figcaption>Step 5: the release is the last release plus this change set’s files from <code>dev</code>.</figcaption></figure>
+  <p>A release also carries what an object can’t work without: a subset carries its dimension’s hierarchy file, a view its cube’s file, an MDX view its query text.</p>
+  <h3>Order across change sets</h3>
+  <p>Two change sets can touch the same object. Deployed in the wrong order, the older one would bring back something the newer one changed or removed. So shared objects deploy in the order the changes were made.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 230" role="img" aria-label="Change set 1001 changes subset Regions at 10:00, change set 1002 changes it again at 11:00. Deploying 1002 first is refused: deploy 1001 first. Deploying 1001 after 1002 is already on PROD is refused: it would undo a newer change.">
+      <defs><marker id="t1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <path d="M30 60 L690 60" class="edge" marker-end="url(#t1)"/><text x="690" y="50" text-anchor="end" class="svg-tiny">time of the change</text>
+      <circle cx="200" cy="60" r="7" class="node-steel"/><text x="200" y="40" text-anchor="middle" class="svg-small">10:00 · set 1001</text><text x="200" y="88" text-anchor="middle" class="svg-tiny">changes subset Regions</text>
+      <circle cx="480" cy="60" r="7" class="node-indigo"/><text x="480" y="40" text-anchor="middle" class="svg-small">11:00 · set 1002</text><text x="480" y="88" text-anchor="middle" class="svg-tiny">changes Regions again</text>
+      <rect x="20"  y="120" width="330" height="90" rx="8" class="node-red"/>
+      <text x="185" y="146" text-anchor="middle" class="svg-small">Deploy 1002 while 1001 is waiting</text>
+      <text x="185" y="172" text-anchor="middle" class="svg-red">refused: deploy 1001 first</text>
+      <text x="185" y="192" text-anchor="middle" class="svg-tiny">its older change would be skipped</text>
+      <rect x="370" y="120" width="330" height="90" rx="8" class="node-red"/>
+      <text x="535" y="146" text-anchor="middle" class="svg-small">Deploy 1001 after 1002 is on PROD</text>
+      <text x="535" y="172" text-anchor="middle" class="svg-red">refused: would undo a newer change</text>
+      <text x="535" y="192" text-anchor="middle" class="svg-tiny">fold it into a new change set instead</text>
+    </svg>
+    <figcaption>Order comes from <b>when each change was made</b>, not the set’s number or close date.</figcaption>
+  </figure>
+  <p>The order comes from the change log: for each object, when each change set last changed it. Close dates aren’t used, because a set can be closed long after the edit that matters. A change set that turns out to change nothing is recorded “nothing to deploy, done”, so it doesn’t hold up the sets behind it.</p>
+  <p>Anything DEV changed that this release won’t carry is listed by name, with an option to include it.</p>
+  <div class="ex"><p>The release holds two objects: the Finance cube’s rule file and the Account dimension. DEV’s Account dimension now includes GL 4105, because step 3 put it there. Another developer’s open work on a Sales process is listed as “left on DEV” and doesn’t ship.</p></div>
+  <figure class="shot"><img src="images/deploy-04-build-release.png" alt="Build release" loading="lazy"></figure>
+
+</section>
+
+<!-- ======================================================== STEP 6 -->
+<section id="step-6">
+  <div class="sec-head"><span class="sec-num step">Step 6</span><h2 class="sec-title">Review</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps on" href="#step-6" title="Step 6: Review" aria-current="step">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 6 of 12</b> · Pre-deploy · <b>Review</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>Review says in words what will happen on PROD, and compares the release with PROD as it is now.</dd><dt>Why</dt><dd>This is the last look before anything is sent. Where the deploy would destroy something, it stops and waits for an explicit yes.</dd><dt>Can stop here</dt><dd>Elements removed: “Yes, remove these”. A leaf element becoming a consolidation: “Yes, change these”. A view or subset changed on both sides: choose whose. Say no, and nothing is deployed.</dd></dl>
+  <figure class="fig"><svg viewBox="0 0 720 420" role="img" aria-label="The DEV, Git and PROD map with the moves for step 6 highlighted."><defs><marker id="mis6" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker><marker id="mgs6" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker><marker id="mas6" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--amber)"/></marker></defs><rect x="10" y="20" width="190" height="300" rx="10" class="panel"/><text x="105" y="44" text-anchor="middle" class="svg-head">DEV SERVER</text><rect x="265" y="20" width="190" height="300" rx="10" class="panel"/><text x="360" y="44" text-anchor="middle" class="svg-head">GIT REPOSITORY</text><rect x="520" y="20" width="190" height="300" rx="10" class="panel"/><text x="615" y="44" text-anchor="middle" class="svg-head">PROD SERVER</text><rect x="30" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="105.0" y="82.0" text-anchor="middle" class="svg-small">DEV model</text><text x="105.0" y="98.0" text-anchor="middle" class="svg-tiny">rules, TI, dims, cubes</text><rect x="30" y="150" width="150" height="50" rx="7" class="node-amber"/><text x="105.0" y="172.0" text-anchor="middle" class="svg-small">Change set</text><text x="105.0" y="188.0" text-anchor="middle" class="svg-tiny">every save recorded</text><rect x="30" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="105.0" y="262.0" text-anchor="middle" class="svg-small">Tests</text><text x="105.0" y="278.0" text-anchor="middle" class="svg-tiny">kept in the model</text><rect x="285" y="60" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="82.0" text-anchor="middle" class="svg-small">dev</text><text x="360.0" y="98.0" text-anchor="middle" class="svg-tiny">DEV at each close</text><rect x="285" y="150" width="150" height="50" rx="7" class="node-indigo"/><text x="360.0" y="172.0" text-anchor="middle" class="svg-small">release-PROD</text><text x="360.0" y="188.0" text-anchor="middle" class="svg-tiny">last release + this set</text><rect x="285" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="262.0" text-anchor="middle" class="svg-small">prod-live</text><text x="360.0" y="278.0" text-anchor="middle" class="svg-tiny">PROD as it is now</text><rect x="540" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="615.0" y="82.0" text-anchor="middle" class="svg-small">PROD model</text><text x="615.0" y="98.0" text-anchor="middle" class="svg-tiny">+ cube data</text><rect x="540" y="240" width="150" height="50" rx="7" class="node-green"/><text x="615.0" y="262.0" text-anchor="middle" class="svg-small">Governance</text><text x="615.0" y="278.0" text-anchor="middle" class="svg-tiny">approvals · records</text><rect x="10" y="350" width="700" height="50" rx="7" class="node-indigo"/><text x="360.0" y="372.0" text-anchor="middle" class="svg-small">The IDE</text><text x="360.0" y="388.0" text-anchor="middle" class="svg-tiny">records · refreshes · builds · applies what Git can’t · verifies</text><path d="M105 110 L105 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis6)"/><path d="M180 85 L283 85" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis6)"/><path d="M360 110 L360 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis6)"/><path d="M180 175 L283 175" class="edge-dash" fill="none" style="opacity:.16"/><path d="M435 168 C 485 168 500 100 538 96" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs6)"/><path d="M560 110 L560 215 L470 215 L470 258 L437 258" class="edge" fill="none" style="stroke-width:2.8" marker-end="url(#mis6)"/><path d="M330 200 L330 238" class="edge-dash" fill="none" style="stroke-width:2.8"/><path d="M600 110 L600 226 L500 226 L500 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas6)"/><path d="M285 190 L274 190 L274 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas6)"/><path d="M20 350 L20 85 L28 85" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas6)"/><path d="M702 350 L702 85 L692 85" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs6)"/><path d="M615 350 L615 292" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis6)"/><rect x="95.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="105" y="133" text-anchor="middle" class="svg-num">1</text><rect x="221.4" y="76" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="89" text-anchor="middle" class="svg-num">4</text><rect x="350.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="360" y="133" text-anchor="middle" class="svg-num">5</text><rect x="221.4" y="166" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="179" text-anchor="middle" class="svg-num">5</text><rect x="477.8" y="125" width="26.4" height="18" rx="9" class="pill-off"/><text x="491" y="138" text-anchor="middle" class="svg-num">10</text><rect x="473.0" y="206" width="84.0" height="18" rx="9" class="pill-on"/><text x="515" y="219" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="288.0" y="210" width="84.0" height="18" rx="9" class="pill-on"/><text x="330" y="223" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="490.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="500" y="304" text-anchor="middle" class="svg-num">3</text><rect x="264.4" y="311" width="19.2" height="18" rx="9" class="pill-off"/><text x="274" y="324" text-anchor="middle" class="svg-num">3</text><rect x="10.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="20" y="304" text-anchor="middle" class="svg-num">3</text><rect x="688.8" y="291" width="26.4" height="18" rx="9" class="pill-off"/><text x="702" y="304" text-anchor="middle" class="svg-num">10</text><rect x="587.4" y="312" width="55.2" height="18" rx="9" class="pill-off"/><text x="615" y="325" text-anchor="middle" class="svg-num">7 · 11</text><rect x="170.4" y="231" width="19.2" height="18" rx="9" class="pill-off"/><text x="180" y="244" text-anchor="middle" class="svg-num">4</text><rect x="601.6" y="51" width="76.8" height="18" rx="9" class="pill-off"/><text x="640" y="64" text-anchor="middle" class="svg-num">2 · 8 · 9</text><rect x="425.4" y="141" width="19.2" height="18" rx="9" class="pill-on"/><text x="435" y="154" text-anchor="middle" class="svg-num">6</text></svg><figcaption>Step 6: the release is compared with PROD now; drift is checked again.</figcaption></figure>
+  <p>Review lists each object: <i>replace dimension Account</i>, <i>change rules Finance</i>, <i>add subset Default</i>, <i>delete process …</i>, with how many objects are already identical. It also lists any dimension that differs between DEV and PROD but isn’t in this deploy, with both element counts.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 720 230" role="img" aria-label="Review checks three things. Elements on PROD that the release doesn't have: stop, yes remove these. A leaf element that becomes a consolidation: stop, yes change these. A view or subset changed on both sides: choose whose. If none apply, continue to deploy.">
+      <defs><marker id="s1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker>
+        <marker id="s1r" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--red)"/></marker></defs>
+      <rect x="10" y="85" width="120" height="60" rx="8" class="node-indigo"/><text x="70" y="112" text-anchor="middle" class="svg-small">Release vs</text><text x="70" y="129" text-anchor="middle" class="svg-small">PROD now</text>
+      <rect x="190" y="15"  width="230" height="56" rx="7" class="node-plain"/><text x="305" y="39" text-anchor="middle" class="svg-small">Elements PROD has,</text><text x="305" y="56" text-anchor="middle" class="svg-small">the release doesn’t?</text>
+      <rect x="190" y="87"  width="230" height="56" rx="7" class="node-plain"/><text x="305" y="111" text-anchor="middle" class="svg-small">A leaf (N) that becomes</text><text x="305" y="128" text-anchor="middle" class="svg-small">a consolidation (C)?</text>
+      <rect x="190" y="159" width="230" height="56" rx="7" class="node-plain"/><text x="305" y="183" text-anchor="middle" class="svg-small">A view or subset changed</text><text x="305" y="200" text-anchor="middle" class="svg-small">on both sides?</text>
+      <path d="M130 105 L188 45" class="edge" marker-end="url(#s1)"/><path d="M130 115 L188 115" class="edge" marker-end="url(#s1)"/><path d="M130 125 L188 185" class="edge" marker-end="url(#s1)"/>
+      <rect x="480" y="15"  width="230" height="56" rx="7" class="node-red"/><text x="595" y="39" text-anchor="middle" class="svg-red">STOP · “Yes, remove these”</text><text x="595" y="56" text-anchor="middle" class="svg-tiny">elements + their data in every cube</text>
+      <rect x="480" y="87"  width="230" height="56" rx="7" class="node-red"/><text x="595" y="111" text-anchor="middle" class="svg-red">STOP · “Yes, change these”</text><text x="595" y="128" text-anchor="middle" class="svg-tiny">its stored values are cleared</text>
+      <rect x="480" y="159" width="230" height="56" rx="7" class="node-amber"/><text x="595" y="183" text-anchor="middle" class="svg-small">Choose: PROD’s or</text><text x="595" y="200" text-anchor="middle" class="svg-small">the release’s</text>
+      <path d="M420 43 L478 43" class="edge-red" marker-end="url(#s1r)"/><path d="M420 115 L478 115" class="edge-red" marker-end="url(#s1r)"/><path d="M420 187 L478 187" class="edge" marker-end="url(#s1)"/>
+    </svg>
+    <figcaption>If you say no, <b>nothing is deployed</b>.</figcaption>
+  </figure>
+  <p><b>The quiet one:</b> giving a leaf element children. TM1 turns it into a consolidation and clears every value stored against it, with no warning of its own. Review makes that warning.</p>
+  <div class="callout key"><p><b>Belt and braces.</b> A removal is decided twice: at the refresh (never preselected) and again here, against PROD as it is at this moment.</p></div>
+  <div class="ex"><p>Review: <i>replace dimension Account</i> (it includes PROD’s 4105, carried back), <i>change rules Finance</i>. No elements removed, no type changes, so there is nothing to confirm.</p></div>
+  <figure class="shot"><img src="images/deploy-05-review-removes-elements.png" alt="Review: this deploy removes 4,798 elements in 2 dimensions" loading="lazy"><figcaption>From the worked example (step 12): every element named and counted before anything is sent.</figcaption></figure>
+
+</section>
+
+<!-- ======================================================== STEP 7 -->
+<section id="step-7">
+  <div class="sec-head"><span class="sec-num step">Step 7</span><h2 class="sec-title">Approve</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps on" href="#step-7" title="Step 7: Approve" aria-current="step">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 7 of 12</b> · Deploy · <b>Approve</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>You approve this exact release, and state the backup.</dd><dt>Why</dt><dd>Approval has to mean something: the approver sees what ships, and only that ships. If anything changes after approval, it no longer matches.</dd><dt>Can stop here</dt><dd>If DEV or the release changes after you approve, the deploy refuses and asks for a new approval.</dd></dl>
+  <figure class="fig"><svg viewBox="0 0 720 420" role="img" aria-label="The DEV, Git and PROD map with the moves for step 7 highlighted."><defs><marker id="mis7" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker><marker id="mgs7" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker><marker id="mas7" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--amber)"/></marker></defs><rect x="10" y="20" width="190" height="300" rx="10" class="panel"/><text x="105" y="44" text-anchor="middle" class="svg-head">DEV SERVER</text><rect x="265" y="20" width="190" height="300" rx="10" class="panel"/><text x="360" y="44" text-anchor="middle" class="svg-head">GIT REPOSITORY</text><rect x="520" y="20" width="190" height="300" rx="10" class="panel"/><text x="615" y="44" text-anchor="middle" class="svg-head">PROD SERVER</text><rect x="30" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="105.0" y="82.0" text-anchor="middle" class="svg-small">DEV model</text><text x="105.0" y="98.0" text-anchor="middle" class="svg-tiny">rules, TI, dims, cubes</text><rect x="30" y="150" width="150" height="50" rx="7" class="node-amber"/><text x="105.0" y="172.0" text-anchor="middle" class="svg-small">Change set</text><text x="105.0" y="188.0" text-anchor="middle" class="svg-tiny">every save recorded</text><rect x="30" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="105.0" y="262.0" text-anchor="middle" class="svg-small">Tests</text><text x="105.0" y="278.0" text-anchor="middle" class="svg-tiny">kept in the model</text><rect x="285" y="60" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="82.0" text-anchor="middle" class="svg-small">dev</text><text x="360.0" y="98.0" text-anchor="middle" class="svg-tiny">DEV at each close</text><rect x="285" y="150" width="150" height="50" rx="7" class="node-indigo"/><text x="360.0" y="172.0" text-anchor="middle" class="svg-small">release-PROD</text><text x="360.0" y="188.0" text-anchor="middle" class="svg-tiny">last release + this set</text><rect x="285" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="262.0" text-anchor="middle" class="svg-small">prod-live</text><text x="360.0" y="278.0" text-anchor="middle" class="svg-tiny">PROD as it is now</text><rect x="540" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="615.0" y="82.0" text-anchor="middle" class="svg-small">PROD model</text><text x="615.0" y="98.0" text-anchor="middle" class="svg-tiny">+ cube data</text><rect x="540" y="240" width="150" height="50" rx="7" class="node-green"/><text x="615.0" y="262.0" text-anchor="middle" class="svg-small">Governance</text><text x="615.0" y="278.0" text-anchor="middle" class="svg-tiny">approvals · records</text><rect x="10" y="350" width="700" height="50" rx="7" class="node-indigo"/><text x="360.0" y="372.0" text-anchor="middle" class="svg-small">The IDE</text><text x="360.0" y="388.0" text-anchor="middle" class="svg-tiny">records · refreshes · builds · applies what Git can’t · verifies</text><path d="M105 110 L105 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis7)"/><path d="M180 85 L283 85" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis7)"/><path d="M360 110 L360 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis7)"/><path d="M180 175 L283 175" class="edge-dash" fill="none" style="opacity:.16"/><path d="M435 168 C 485 168 500 100 538 96" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs7)"/><path d="M560 110 L560 215 L470 215 L470 258 L437 258" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis7)"/><path d="M330 200 L330 238" class="edge-dash" fill="none" style="opacity:.16"/><path d="M600 110 L600 226 L500 226 L500 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas7)"/><path d="M285 190 L274 190 L274 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas7)"/><path d="M20 350 L20 85 L28 85" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas7)"/><path d="M702 350 L702 85 L692 85" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs7)"/><path d="M615 350 L615 292" class="edge" fill="none" style="stroke-width:2.8" marker-end="url(#mis7)"/><rect x="95.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="105" y="133" text-anchor="middle" class="svg-num">1</text><rect x="221.4" y="76" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="89" text-anchor="middle" class="svg-num">4</text><rect x="350.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="360" y="133" text-anchor="middle" class="svg-num">5</text><rect x="221.4" y="166" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="179" text-anchor="middle" class="svg-num">5</text><rect x="477.8" y="125" width="26.4" height="18" rx="9" class="pill-off"/><text x="491" y="138" text-anchor="middle" class="svg-num">10</text><rect x="473.0" y="206" width="84.0" height="18" rx="9" class="pill-off"/><text x="515" y="219" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="288.0" y="210" width="84.0" height="18" rx="9" class="pill-off"/><text x="330" y="223" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="490.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="500" y="304" text-anchor="middle" class="svg-num">3</text><rect x="264.4" y="311" width="19.2" height="18" rx="9" class="pill-off"/><text x="274" y="324" text-anchor="middle" class="svg-num">3</text><rect x="10.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="20" y="304" text-anchor="middle" class="svg-num">3</text><rect x="688.8" y="291" width="26.4" height="18" rx="9" class="pill-off"/><text x="702" y="304" text-anchor="middle" class="svg-num">10</text><rect x="587.4" y="312" width="55.2" height="18" rx="9" class="pill-on"/><text x="615" y="325" text-anchor="middle" class="svg-num">7 · 11</text><rect x="170.4" y="231" width="19.2" height="18" rx="9" class="pill-off"/><text x="180" y="244" text-anchor="middle" class="svg-num">4</text><rect x="601.6" y="51" width="76.8" height="18" rx="9" class="pill-off"/><text x="640" y="64" text-anchor="middle" class="svg-num">2 · 8 · 9</text><rect x="425.4" y="141" width="19.2" height="18" rx="9" class="pill-off"/><text x="435" y="154" text-anchor="middle" class="svg-num">6</text></svg><figcaption>Step 7: the approval is recorded in PROD’s own model.</figcaption></figure>
+  <ul>
+    <li><b>The approval is bound to the release.</b> It names the release’s commit. A different commit needs a new approval.</li>
+    <li><b>The backup.</b> If a backup process is set for PROD (<b>Deploy → Protection</b>), it will run in step 9 and a failure stops everything. If not, you enter when PROD was last backed up, and that time is recorded.</li>
+    <li><b>What “Return to last release” can undo</b> is shown here: model objects, not data (step 12).</li>
+  </ul>
+  <figure class="shot"><img src="images/deploy-06-send-approve-backup.png" alt="Deploy: approve sending the change set and record when PROD was last backed up" loading="lazy"></figure>
+
+</section>
+
+<!-- ======================================================== STEP 8 -->
+<section id="step-8">
+  <div class="sec-head"><span class="sec-num step">Step 8</span><h2 class="sec-title">Idle check again</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps on" href="#step-8" title="Step 8: Idle check again" aria-current="step">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 8 of 12</b> · Deploy · <b>Idle check again</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>The idle check from step 2 runs again, just before anything is sent.</dd><dt>Why</dt><dd>Pre-deploy can take a while: reading Review, getting an approval. A load can start in the meantime.</dd><dt>Can stop here</dt><dd>Something running now: stops. Nothing has been sent.</dd></dl>
+  <div class="ex"><p>By the time the approval comes through it’s 11:58. <i>Load Actuals</i> is due at 12:00, so the check asks again. Wait for it, then press Deploy.</p></div>
+  <p>The idle check is a snapshot. Something can still start in the few seconds between this check and the pull. The window is small, not zero.</p>
+
+</section>
+
+<!-- ======================================================== STEP 9 -->
+<section id="step-9">
+  <div class="sec-head"><span class="sec-num step">Step 9</span><h2 class="sec-title">Save Data and backup</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps on" href="#step-9" title="Step 9: Save Data and backup" aria-current="step">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 9 of 12</b> · Deploy · <b>Save Data and backup</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>PROD writes its data to disk (Save Data), then the backup process runs, or the stated backup time is recorded.</dd><dt>Why</dt><dd>A deploy carries objects, not data. If data is ever lost, only a backup brings it back. So the backup is taken before the pull, never after.</dd><dt>Can stop here</dt><dd>Save Data fails: stops. The backup process fails: stops. Nothing has been sent.</dd></dl>
+  <figure class="fig">
+    <svg viewBox="0 0 720 300" role="img" aria-label="Deploy sequence: take the deploy lock, check idle again, Save Data, backup, record PROD's chore flags, TM1 Git pull, restore chore flags, apply subsets then views, attribute values and deletes, verify, record. Stops: something running, Save Data fails, backup fails. A refused delete or an object that didn't land marks the deploy failed.">
+      <defs><marker id="q1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker>
+        <marker id="q1r" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--red)"/></marker></defs>
+      <text x="10" y="18" class="svg-head">BEFORE THE PULL</text>
+      <rect x="10"  y="28" width="125" height="56" rx="7" class="node-plain"/><text x="72"  y="52" text-anchor="middle" class="svg-small">Deploy lock</text><text x="72"  y="69" text-anchor="middle" class="svg-tiny">one at a time</text>
+      <rect x="155" y="28" width="125" height="56" rx="7" class="node-plain"/><text x="217" y="52" text-anchor="middle" class="svg-small">Idle again?</text><text x="217" y="69" text-anchor="middle" class="svg-tiny">second check</text>
+      <rect x="300" y="28" width="125" height="56" rx="7" class="node-plain"/><text x="362" y="52" text-anchor="middle" class="svg-small">Save Data</text><text x="362" y="69" text-anchor="middle" class="svg-tiny">on PROD</text>
+      <rect x="445" y="28" width="125" height="56" rx="7" class="node-plain"/><text x="507" y="52" text-anchor="middle" class="svg-small">Backup</text><text x="507" y="69" text-anchor="middle" class="svg-tiny">process or time</text>
+      <rect x="590" y="28" width="120" height="56" rx="7" class="node-plain"/><text x="650" y="52" text-anchor="middle" class="svg-small">Note chore</text><text x="650" y="69" text-anchor="middle" class="svg-tiny">on/off flags</text>
+      <path d="M135 56 L153 56" class="edge" marker-end="url(#q1)"/><path d="M280 56 L298 56" class="edge" marker-end="url(#q1)"/><path d="M425 56 L443 56" class="edge" marker-end="url(#q1)"/><path d="M570 56 L588 56" class="edge" marker-end="url(#q1)"/>
+      <path d="M217 84 L217 102" class="edge-red" marker-end="url(#q1r)"/><path d="M362 84 L362 102" class="edge-red" marker-end="url(#q1r)"/><path d="M507 84 L507 102" class="edge-red" marker-end="url(#q1r)"/>
+      <rect x="155" y="105" width="415" height="28" rx="6" class="node-red"/><text x="362" y="123" text-anchor="middle" class="svg-red">running · Save Data or backup fails → stop</text>
+      <path d="M650 84 L650 160 L72 160 L72 186" class="edge" marker-end="url(#q1)"/>
+      <text x="10" y="178" class="svg-head">THE PULL AND AFTER</text>
+      <rect x="10"  y="190" width="125" height="56" rx="7" class="node-indigo"/><text x="72"  y="214" text-anchor="middle" class="svg-small">TM1 Git pull</text><text x="72"  y="231" text-anchor="middle" class="svg-tiny">release lands</text>
+      <rect x="155" y="190" width="125" height="56" rx="7" class="node-plain"/><text x="217" y="214" text-anchor="middle" class="svg-small">Chore flags</text><text x="217" y="231" text-anchor="middle" class="svg-tiny">as PROD had</text>
+      <rect x="300" y="190" width="125" height="56" rx="7" class="node-plain"/><text x="362" y="214" text-anchor="middle" class="svg-small">Apply</text><text x="362" y="231" text-anchor="middle" class="svg-tiny">subsets · views</text>
+      <rect x="445" y="190" width="125" height="56" rx="7" class="node-plain"/><text x="507" y="214" text-anchor="middle" class="svg-small">Deletes</text><text x="507" y="231" text-anchor="middle" class="svg-tiny">in safe order</text>
+      <rect x="590" y="190" width="120" height="56" rx="7" class="node-green"/><text x="650" y="214" text-anchor="middle" class="svg-small">Verify + record</text><text x="650" y="231" text-anchor="middle" class="svg-tiny">landed · drift</text>
+      <path d="M135 218 L153 218" class="edge" marker-end="url(#q1)"/><path d="M280 218 L298 218" class="edge" marker-end="url(#q1)"/><path d="M425 218 L443 218" class="edge" marker-end="url(#q1)"/><path d="M570 218 L588 218" class="edge" marker-end="url(#q1)"/>
+      <path d="M507 246 L507 262" class="edge-red" marker-end="url(#q1r)"/><path d="M650 246 L650 262" class="edge-red" marker-end="url(#q1r)"/>
+      <rect x="445" y="265" width="265" height="28" rx="6" class="node-red"/><text x="577" y="283" text-anchor="middle" class="svg-red">refused delete · object missing → failed</text>
+    </svg>
+    <figcaption>Save Data and the backup come <b>before</b> the pull, because only a backup brings data back.</figcaption>
+  </figure>
+  <p>Save Data matters on its own too: TM1 holds recent changes in memory and the transaction log. Writing them to disk first means a restart, or a restore, starts from the latest data.</p>
+
+</section>
+
+<!-- ======================================================== STEP 10 -->
+<section id="step-10">
+  <div class="sec-head"><span class="sec-num step">Step 10</span><h2 class="sec-title">Send</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps on" href="#step-10" title="Step 10: Send" aria-current="step">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 10 of 12</b> · Deploy · <b>Send</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>TM1 Git pulls the release onto PROD, all or nothing. Then the IDE applies what Git doesn’t carry.</dd><dt>Why</dt><dd>The pull moves model objects in IBM’s own format. Subsets, views, deletes and attribute values have to be applied separately (background D).</dd><dt>Can stop here</dt><dd>If the pull fails, TM1 rolls the whole pull back and PROD is unchanged. A refused delete, or an object that didn’t land, marks the deploy failed.</dd></dl>
+  <figure class="fig"><svg viewBox="0 0 720 420" role="img" aria-label="The DEV, Git and PROD map with the moves for step 10 highlighted."><defs><marker id="mis10" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker><marker id="mgs10" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker><marker id="mas10" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--amber)"/></marker></defs><rect x="10" y="20" width="190" height="300" rx="10" class="panel"/><text x="105" y="44" text-anchor="middle" class="svg-head">DEV SERVER</text><rect x="265" y="20" width="190" height="300" rx="10" class="panel"/><text x="360" y="44" text-anchor="middle" class="svg-head">GIT REPOSITORY</text><rect x="520" y="20" width="190" height="300" rx="10" class="panel"/><text x="615" y="44" text-anchor="middle" class="svg-head">PROD SERVER</text><rect x="30" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="105.0" y="82.0" text-anchor="middle" class="svg-small">DEV model</text><text x="105.0" y="98.0" text-anchor="middle" class="svg-tiny">rules, TI, dims, cubes</text><rect x="30" y="150" width="150" height="50" rx="7" class="node-amber"/><text x="105.0" y="172.0" text-anchor="middle" class="svg-small">Change set</text><text x="105.0" y="188.0" text-anchor="middle" class="svg-tiny">every save recorded</text><rect x="30" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="105.0" y="262.0" text-anchor="middle" class="svg-small">Tests</text><text x="105.0" y="278.0" text-anchor="middle" class="svg-tiny">kept in the model</text><rect x="285" y="60" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="82.0" text-anchor="middle" class="svg-small">dev</text><text x="360.0" y="98.0" text-anchor="middle" class="svg-tiny">DEV at each close</text><rect x="285" y="150" width="150" height="50" rx="7" class="node-indigo"/><text x="360.0" y="172.0" text-anchor="middle" class="svg-small">release-PROD</text><text x="360.0" y="188.0" text-anchor="middle" class="svg-tiny">last release + this set</text><rect x="285" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="262.0" text-anchor="middle" class="svg-small">prod-live</text><text x="360.0" y="278.0" text-anchor="middle" class="svg-tiny">PROD as it is now</text><rect x="540" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="615.0" y="82.0" text-anchor="middle" class="svg-small">PROD model</text><text x="615.0" y="98.0" text-anchor="middle" class="svg-tiny">+ cube data</text><rect x="540" y="240" width="150" height="50" rx="7" class="node-green"/><text x="615.0" y="262.0" text-anchor="middle" class="svg-small">Governance</text><text x="615.0" y="278.0" text-anchor="middle" class="svg-tiny">approvals · records</text><rect x="10" y="350" width="700" height="50" rx="7" class="node-indigo"/><text x="360.0" y="372.0" text-anchor="middle" class="svg-small">The IDE</text><text x="360.0" y="388.0" text-anchor="middle" class="svg-tiny">records · refreshes · builds · applies what Git can’t · verifies</text><path d="M105 110 L105 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis10)"/><path d="M180 85 L283 85" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis10)"/><path d="M360 110 L360 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis10)"/><path d="M180 175 L283 175" class="edge-dash" fill="none" style="opacity:.16"/><path d="M435 168 C 485 168 500 100 538 96" class="edge-green" fill="none" style="stroke-width:2.8" marker-end="url(#mgs10)"/><path d="M560 110 L560 215 L470 215 L470 258 L437 258" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis10)"/><path d="M330 200 L330 238" class="edge-dash" fill="none" style="opacity:.16"/><path d="M600 110 L600 226 L500 226 L500 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas10)"/><path d="M285 190 L274 190 L274 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas10)"/><path d="M20 350 L20 85 L28 85" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas10)"/><path d="M702 350 L702 85 L692 85" class="edge-green" fill="none" style="stroke-width:2.8" marker-end="url(#mgs10)"/><path d="M615 350 L615 292" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis10)"/><rect x="95.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="105" y="133" text-anchor="middle" class="svg-num">1</text><rect x="221.4" y="76" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="89" text-anchor="middle" class="svg-num">4</text><rect x="350.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="360" y="133" text-anchor="middle" class="svg-num">5</text><rect x="221.4" y="166" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="179" text-anchor="middle" class="svg-num">5</text><rect x="477.8" y="125" width="26.4" height="18" rx="9" class="pill-on"/><text x="491" y="138" text-anchor="middle" class="svg-num">10</text><rect x="473.0" y="206" width="84.0" height="18" rx="9" class="pill-off"/><text x="515" y="219" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="288.0" y="210" width="84.0" height="18" rx="9" class="pill-off"/><text x="330" y="223" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="490.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="500" y="304" text-anchor="middle" class="svg-num">3</text><rect x="264.4" y="311" width="19.2" height="18" rx="9" class="pill-off"/><text x="274" y="324" text-anchor="middle" class="svg-num">3</text><rect x="10.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="20" y="304" text-anchor="middle" class="svg-num">3</text><rect x="688.8" y="291" width="26.4" height="18" rx="9" class="pill-on"/><text x="702" y="304" text-anchor="middle" class="svg-num">10</text><rect x="587.4" y="312" width="55.2" height="18" rx="9" class="pill-off"/><text x="615" y="325" text-anchor="middle" class="svg-num">7 · 11</text><rect x="170.4" y="231" width="19.2" height="18" rx="9" class="pill-off"/><text x="180" y="244" text-anchor="middle" class="svg-num">4</text><rect x="601.6" y="51" width="76.8" height="18" rx="9" class="pill-off"/><text x="640" y="64" text-anchor="middle" class="svg-num">2 · 8 · 9</text><rect x="425.4" y="141" width="19.2" height="18" rx="9" class="pill-off"/><text x="435" y="154" text-anchor="middle" class="svg-num">6</text></svg><figcaption>Step 10: the pull, then the IDE applies what Git can’t carry.</figcaption></figure>
+  <h3>In order</h3>
+  <ol class="steps">
+    <li><b>Note PROD’s chore switches.</b> Which chores are on and off, before anything changes.</li>
+    <li><b>The pull.</b> Every object in the release is made identical to the release’s copy.</li>
+    <li><b>Put the chore switches back</b> as PROD had them. DEV’s chores are kept off so they never run on DEV; the switch on PROD is PROD’s decision, not the release’s.</li>
+    <li><b>Subsets, then views,</b> from the release’s files.</li>
+    <li><b>Attribute values,</b> only for attributes confirmed under Deploy → Protection.</li>
+    <li><b>Deletes,</b> in a safe order: views, subsets, chores, processes, cubes, then dimensions. A chore goes before the process it runs. A delete TM1 refuses is a <b>failure</b>, never a quiet skip; an object already gone counts as done.</li>
+  </ol>
+  <div class="ex"><p>The pull replaces the Finance rules and the Account dimension. Account arrives with 4105, because the release carried it. The twelve <code>Account Group</code> values are written. <i>Load Actuals</i> is switched back on, as PROD had it.</p></div>
+
+</section>
+
+<!-- ======================================================== STEP 11 -->
+<section id="step-11">
+  <div class="sec-head"><span class="sec-num step">Step 11</span><h2 class="sec-title">Verify and record</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps on" href="#step-11" title="Step 11: Verify and record" aria-current="step">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps" href="#step-12" title="Step 12: If it goes wrong">12</a></span></div><p class="pbar-here">You are here: <b>step 11 of 12</b> · Deploy · <b>Verify and record</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>The IDE checks each object landed, that PROD now matches what it was given, and runs PROD’s structure checks. The deploy record is written into PROD’s model.</dd><dt>Why</dt><dd>A deploy that “finished” isn’t the same as one that worked. And the record is what audit, the next drift check and Return to last release all rely on.</dd><dt>Can stop here</dt><dd>An object missing, or a structure check failing, is reported: “deployed, but the model no longer computes correctly”.</dd></dl>
+  <figure class="fig"><svg viewBox="0 0 720 420" role="img" aria-label="The DEV, Git and PROD map with the moves for step 11 highlighted."><defs><marker id="mis11" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker><marker id="mgs11" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--green)"/></marker><marker id="mas11" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--amber)"/></marker></defs><rect x="10" y="20" width="190" height="300" rx="10" class="panel"/><text x="105" y="44" text-anchor="middle" class="svg-head">DEV SERVER</text><rect x="265" y="20" width="190" height="300" rx="10" class="panel"/><text x="360" y="44" text-anchor="middle" class="svg-head">GIT REPOSITORY</text><rect x="520" y="20" width="190" height="300" rx="10" class="panel"/><text x="615" y="44" text-anchor="middle" class="svg-head">PROD SERVER</text><rect x="30" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="105.0" y="82.0" text-anchor="middle" class="svg-small">DEV model</text><text x="105.0" y="98.0" text-anchor="middle" class="svg-tiny">rules, TI, dims, cubes</text><rect x="30" y="150" width="150" height="50" rx="7" class="node-amber"/><text x="105.0" y="172.0" text-anchor="middle" class="svg-small">Change set</text><text x="105.0" y="188.0" text-anchor="middle" class="svg-tiny">every save recorded</text><rect x="30" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="105.0" y="262.0" text-anchor="middle" class="svg-small">Tests</text><text x="105.0" y="278.0" text-anchor="middle" class="svg-tiny">kept in the model</text><rect x="285" y="60" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="82.0" text-anchor="middle" class="svg-small">dev</text><text x="360.0" y="98.0" text-anchor="middle" class="svg-tiny">DEV at each close</text><rect x="285" y="150" width="150" height="50" rx="7" class="node-indigo"/><text x="360.0" y="172.0" text-anchor="middle" class="svg-small">release-PROD</text><text x="360.0" y="188.0" text-anchor="middle" class="svg-tiny">last release + this set</text><rect x="285" y="240" width="150" height="50" rx="7" class="node-plain"/><text x="360.0" y="262.0" text-anchor="middle" class="svg-small">prod-live</text><text x="360.0" y="278.0" text-anchor="middle" class="svg-tiny">PROD as it is now</text><rect x="540" y="60" width="150" height="50" rx="7" class="node-steel"/><text x="615.0" y="82.0" text-anchor="middle" class="svg-small">PROD model</text><text x="615.0" y="98.0" text-anchor="middle" class="svg-tiny">+ cube data</text><rect x="540" y="240" width="150" height="50" rx="7" class="node-green"/><text x="615.0" y="262.0" text-anchor="middle" class="svg-small">Governance</text><text x="615.0" y="278.0" text-anchor="middle" class="svg-tiny">approvals · records</text><rect x="10" y="350" width="700" height="50" rx="7" class="node-indigo"/><text x="360.0" y="372.0" text-anchor="middle" class="svg-small">The IDE</text><text x="360.0" y="388.0" text-anchor="middle" class="svg-tiny">records · refreshes · builds · applies what Git can’t · verifies</text><path d="M105 110 L105 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis11)"/><path d="M180 85 L283 85" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis11)"/><path d="M360 110 L360 148" class="edge" fill="none" style="opacity:.16" marker-end="url(#mis11)"/><path d="M180 175 L283 175" class="edge-dash" fill="none" style="opacity:.16"/><path d="M435 168 C 485 168 500 100 538 96" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs11)"/><path d="M560 110 L560 215 L470 215 L470 258 L437 258" class="edge" fill="none" style="stroke-width:2.8" marker-end="url(#mis11)"/><path d="M330 200 L330 238" class="edge-dash" fill="none" style="stroke-width:2.8"/><path d="M600 110 L600 226 L500 226 L500 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas11)"/><path d="M285 190 L274 190 L274 346" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas11)"/><path d="M20 350 L20 85 L28 85" class="edge-amber" fill="none" style="opacity:.16" marker-end="url(#mas11)"/><path d="M702 350 L702 85 L692 85" class="edge-green" fill="none" style="opacity:.16" marker-end="url(#mgs11)"/><path d="M615 350 L615 292" class="edge" fill="none" style="stroke-width:2.8" marker-end="url(#mis11)"/><rect x="95.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="105" y="133" text-anchor="middle" class="svg-num">1</text><rect x="221.4" y="76" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="89" text-anchor="middle" class="svg-num">4</text><rect x="350.4" y="120" width="19.2" height="18" rx="9" class="pill-off"/><text x="360" y="133" text-anchor="middle" class="svg-num">5</text><rect x="221.4" y="166" width="19.2" height="18" rx="9" class="pill-off"/><text x="231" y="179" text-anchor="middle" class="svg-num">5</text><rect x="477.8" y="125" width="26.4" height="18" rx="9" class="pill-off"/><text x="491" y="138" text-anchor="middle" class="svg-num">10</text><rect x="473.0" y="206" width="84.0" height="18" rx="9" class="pill-on"/><text x="515" y="219" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="288.0" y="210" width="84.0" height="18" rx="9" class="pill-on"/><text x="330" y="223" text-anchor="middle" class="svg-num">2 · 6 · 11</text><rect x="490.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="500" y="304" text-anchor="middle" class="svg-num">3</text><rect x="264.4" y="311" width="19.2" height="18" rx="9" class="pill-off"/><text x="274" y="324" text-anchor="middle" class="svg-num">3</text><rect x="10.4" y="291" width="19.2" height="18" rx="9" class="pill-off"/><text x="20" y="304" text-anchor="middle" class="svg-num">3</text><rect x="688.8" y="291" width="26.4" height="18" rx="9" class="pill-off"/><text x="702" y="304" text-anchor="middle" class="svg-num">10</text><rect x="587.4" y="312" width="55.2" height="18" rx="9" class="pill-on"/><text x="615" y="325" text-anchor="middle" class="svg-num">7 · 11</text><rect x="170.4" y="231" width="19.2" height="18" rx="9" class="pill-off"/><text x="180" y="244" text-anchor="middle" class="svg-num">4</text><rect x="601.6" y="51" width="76.8" height="18" rx="9" class="pill-off"/><text x="640" y="64" text-anchor="middle" class="svg-num">2 · 8 · 9</text><rect x="425.4" y="141" width="19.2" height="18" rx="9" class="pill-off"/><text x="435" y="154" text-anchor="middle" class="svg-num">6</text></svg><figcaption>Step 11: PROD pushes a fresh snapshot, compared with the release; the record is written to PROD’s model.</figcaption></figure>
+  <figure class="shot"><img src="images/deploy-07-done.png" alt="Done: PROD is up to date, checks passed, data saved, backup time, no drift" loading="lazy"></figure>
+  <p><b>Details</b> opens the deploy report: who approved it, what shipped, the checks, drift, and every element removed. The same record is kept in PROD’s model under <code>Applications/Governance</code>, so any copy of the IDE pointed at PROD sees the same history.</p>
+  <figure class="shot"><img src="images/deploy-08-report.png" alt="Deploy report: approved by, change set, commits, what shipped, checks, drift and elements removed" loading="lazy"></figure>
+  <div class="ex"><p>Checks pass; drift is clear. On PROD, 4105 is still there with its 3,200, Variance calculates, and the next hourly load runs as normal.</p></div>
+
+</section>
+
+<!-- ======================================================== STEP 12 -->
+<section id="step-12">
+  <div class="sec-head"><span class="sec-num step">Step 12</span><h2 class="sec-title">If it goes wrong</h2></div>
+  <nav class="pbar" aria-label="Where you are in the deploy process"><div class="pbar-row"><span class="pg"><span class="pg-l">Set up</span><a class="ps" href="#step-0" title="Step 0: Set up DEV and Git (once)">0</a></span><span class="pg"><span class="pg-l">Develop</span><a class="ps" href="#step-1" title="Step 1: Work in a change set">1</a></span><span class="pg"><span class="pg-l">Pre-deploy</span><a class="ps" href="#step-2" title="Step 2: Check PROD is idle">2</a><a class="ps" href="#step-3" title="Step 3: Refresh DEV from PROD">3</a><a class="ps" href="#step-4" title="Step 4: Tests and close">4</a><a class="ps" href="#step-5" title="Step 5: Build the release">5</a><a class="ps" href="#step-6" title="Step 6: Review">6</a></span><span class="pg"><span class="pg-l">Deploy</span><a class="ps" href="#step-7" title="Step 7: Approve">7</a><a class="ps" href="#step-8" title="Step 8: Idle check again">8</a><a class="ps" href="#step-9" title="Step 9: Save Data and backup">9</a><a class="ps" href="#step-10" title="Step 10: Send">10</a><a class="ps" href="#step-11" title="Step 11: Verify and record">11</a></span><span class="pg"><span class="pg-l">After</span><a class="ps on" href="#step-12" title="Step 12: If it goes wrong" aria-current="step">12</a></span></div><p class="pbar-here">You are here: <b>step 12 of 12</b> · After · <b>If it goes wrong</b></p></nav>
+
+  <dl class="glance"><dt>What happens</dt><dd>Put things right: PROD’s design, PROD’s data, or DEV.</dd><dt>Why</dt><dd>Different things come back different ways. Knowing which before you start saves the wrong fix.</dd><dt>Can stop here</dt><dd>—</dd></dl>
+  <figure class="fig">
+    <svg viewBox="0 0 720 150" role="img" aria-label="Recovery: model objects come back with Return to last release, a forward release that is approved and recorded. Data comes back only from the backup taken before the deploy.">
+      <defs><marker id="b1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:var(--ink-soft)"/></marker></defs>
+      <rect x="10" y="45" width="170" height="60" rx="8" class="node-red"/><text x="95" y="72" text-anchor="middle" class="svg-small">A bad deploy</text><text x="95" y="90" text-anchor="middle" class="svg-tiny">on PROD</text>
+      <rect x="260" y="10" width="200" height="56" rx="7" class="node-indigo"/><text x="360" y="34" text-anchor="middle" class="svg-small">Model objects</text><text x="360" y="51" text-anchor="middle" class="svg-tiny">Return to last release</text>
+      <rect x="260" y="84" width="200" height="56" rx="7" class="node-amber"/><text x="360" y="108" text-anchor="middle" class="svg-small">Cube data</text><text x="360" y="125" text-anchor="middle" class="svg-tiny">the pre-deploy backup</text>
+      <rect x="540" y="10" width="170" height="56" rx="7" class="node-green"/><text x="625" y="34" text-anchor="middle" class="svg-small">A new release</text><text x="625" y="51" text-anchor="middle" class="svg-tiny">approved and recorded</text>
+      <rect x="540" y="84" width="170" height="56" rx="7" class="node-green"/><text x="625" y="108" text-anchor="middle" class="svg-small">Restore</text><text x="625" y="125" text-anchor="middle" class="svg-tiny">outside the deploy</text>
+      <path d="M180 65 L258 40" class="edge" marker-end="url(#b1)"/><path d="M180 85 L258 110" class="edge" marker-end="url(#b1)"/>
+      <path d="M460 38 L538 38" class="edge" marker-end="url(#b1)"/><path d="M460 112 L538 112" class="edge" marker-end="url(#b1)"/>
+    </svg>
+    <figcaption>Two kinds of undo: <b>objects</b> by release, <b>data</b> by backup.</figcaption>
+  </figure>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Situation</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>The deploy stopped before sending</td><td>Nothing reached PROD. Read the reason, fix it, and start again from step 2.</td></tr>
+      <tr><td>A delete failed</td><td>The report lists it. Fix the cause; an admin re-runs <b>only that release’s recorded deletes</b>, and the re-run is logged. (No button for this yet.)</td></tr>
+      <tr><td>PROD’s design is wrong after a deploy</td><td><b>Return to last release</b> (Deploy → Drift, admin only): a new release that puts PROD’s model objects back as they were, approved and recorded, with a warning if it would remove elements.</td></tr>
+      <tr><td>Data was lost</td><td>Return to last release doesn’t restore data. Values cleared by a removal or a type change come back only from the <b>backup taken in step 9</b>.</td></tr>
+      <tr><td>DEV is in a mess</td><td>Inside an open change set, the change log keeps a before-and-after copy of each save, so a changed object can be put back. For a whole DEV, rebuild a DEV server from the repository (step 0) and restore its data. Putting an existing DEV back to, say, last Tuesday isn’t a single button yet.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>A worked example: PROD cut to 500 people</h3>
+  <p>The lab’s workforce model on DEV had been trimmed to about 500 employees and positions. PROD still had 2,785 employees and 3,040 positions, all test data. The goal: bring PROD down to match.</p>
+  <ol class="steps">
+    <li><b>First attempt.</b> DEV had been cut earlier, outside this change set, so the set didn’t own the two dimensions. So the release carried a chore and subsets, but not the dimensions. One try failed inside the pull with a subset error, and TM1 rolled the whole pull back: PROD was untouched. Review now lists this case: <i>“not in this deploy: WFP Employee (DEV 489, PROD 2,782 elements)”</i>, with an option to include it.</li>
+    <li><b>Second attempt, step 2:</b> idle; a chore due inside the window was noted.</li>
+    <li><b>Step 3:</b> the refresh at that time compared only PROD with DEV, so it listed the 4,798 removed people as things PROD had, <b>ticked to bring back</b>. They weren’t brought back only because two unanswered subset questions greyed out the Refresh button, and Continue was pressed instead. With the three-way compare, the same screen now shows <i>“WFP Employee: 2,295 removed on DEV, not offered”</i>.</li>
+    <li><b>Step 4:</b> 36 of 60 tests passed; the 24 failures were warnings (the test kinds are explained in step 4).</li>
+    <li><b>Step 5:</b> the two dimensions and their Default subsets, included this time.</li>
+    <li><b>Step 6:</b> stopped at <i>“This deploy removes 4,798 elements in 2 dimensions”</i>. Confirmed.</li>
+    <li><b>Steps 7–11:</b> approved, idle, Save Data, backup time recorded, pull, subsets applied, verified. All checks passed, drift clean, about 19 seconds.</li>
+  </ol>
+  <figure class="shot"><img src="images/deploy-05-review-chore-only.png" alt="Review on the first attempt: only a chore in the release" loading="lazy"><figcaption>The first attempt: the dimensions weren’t in the change set.</figcaption></figure>
+
+</section>
+
+<!-- ======================================================== F -->
+<section id="findings">
+  <div class="sec-head"><span class="sec-num">F</span><h2 class="sec-title">What we found, in the order we found it</h2></div>
+
+  <p>Each of these was found by testing on live servers, most of them by walking through the deploy step by step and asking “what happens to PROD’s work here?”. They apply to anyone deploying TM1 with Git, whatever tool sits on top.</p>
+
+  <div class="find"><h3>A pull ships the whole branch, not a change set</h3><dl><dt>Example</dt><dd>Developer A deploys one process; developer B’s half-finished rules on the same DEV go too.</dd><dt>Found by</dt><dd>Reading the lab evaluation again after a week of building on it.</dd><dt>Now</dt><dd>Each release is built by hand: the last release plus one change set’s files (step 5).</dd></dl></div>
+  <div class="find"><h3>Some objects don’t travel through Git at all</h3><dl><dt>Example</dt><dd>Attribute values, deletes, and on a pull, subsets and views.</dd><dt>Found by</dt><dd>Lab evaluation: a value change produced an empty commit; a deleted process stayed on PROD.</dd><dt>Now</dt><dd>The IDE applies them after the pull (step 10).</dd></dl></div>
+  <div class="find"><h3>A pull replaces every object whose live copy differs</h3><dl><dt>Example</dt><dd>A GL code loaded on PROD overnight is gone after the next deploy, with its data.</dd><dt>Found by</dt><dd>A lab test with a dimension the release didn’t even mention.</dd><dt>Now</dt><dd>Drift stops it (step 2); the refresh carries PROD’s work back (step 3).</dd></dl></div>
+  <div class="find"><h3>Git’s ignore settings can’t protect an object</h3><dl><dt>Example</dt><dd>Per-server ignore is accepted and does nothing; project ignore breaks the repository.</dd><dt>Found by</dt><dd>Lab tests of both.</dd><dt>Now</dt><dd>Dropped (background E).</dd></dl></div>
+  <div class="find"><h3>Giving a leaf children clears its data</h3><dl><dt>Example</dt><dd>An account that becomes a rollup loses every value stored on it.</dd><dt>Found by</dt><dd>Walking through what a dimension change does to stored cells.</dd><dt>Now</dt><dd>Review stops and asks (step 6).</dd></dl></div>
+  <div class="find"><h3>Order matters across change sets</h3><dl><dt>Example</dt><dd>An older set deployed last brings back a subset a newer set changed.</dd><dt>Found by</dt><dd>Two lab change sets on the same subset.</dd><dt>Now</dt><dd>Order check by change time (step 5).</dd></dl></div>
+  <div class="find"><h3>A refused delete could look like success</h3><dl><dt>Example</dt><dd>A process TM1 refused to delete, because a chore still used it, showed as “skipped”.</dd><dt>Found by</dt><dd>Cleaning up the lab through the pipeline.</dd><dt>Now</dt><dd>Deletes run in dependency order; a refusal is a failure (step 10).</dd></dl></div>
+  <div class="find"><h3>A change set with nothing to ship blocked the queue</h3><dl><dt>Example</dt><dd>A set whose changes already matched PROD could never deploy, and the sets behind it waited forever.</dd><dt>Found by</dt><dd>Ordering several lab sets.</dd><dt>Now</dt><dd>Recorded “nothing to deploy, done” (step 5).</dd></dl></div>
+  <div class="find"><h3>Comparing two copies can’t tell who made a change</h3><dl><dt>Example</dt><dd>The refresh offered to put back 4,798 people DEV had deliberately removed.</dd><dt>Found by</dt><dd>Asking why a screen had needed only Continue.</dd><dt>Now</dt><dd>Three-way compare against the last release (step 3).</dd></dl></div>
+  <div class="find"><h3>“What PROD last received” can go stale</h3><dl><dt>Example</dt><dd>Building a release moves the release branch before the deploy; another copy of the IDE may have deployed since.</dd><dt>Found by</dt><dd>The three-way refresh refusing every plan after a build.</dd><dt>Now</dt><dd>Cross-checked against the branch; a disagreement is refused, never guessed. A dedicated “deployed” marker in Git is next.</dd></dl></div>
+  <div class="find"><h3>A pull that fails rolls back cleanly</h3><dl><dt>Example</dt><dd>The first attempt of the worked example failed partway; PROD was untouched.</dd><dt>Found by</dt><dd>The worked example (step 12).</dd><dt>Now</dt><dd>Relied on: a failed pull needs no clean-up.</dd></dl></div>
+  <div class="find"><h3>A first pull overwrites a whole server</h3><dl><dt>Example</dt><dd>Pointing an existing PROD at the repository and pulling makes it match whatever DEV pushed, completely.</dd><dt>Found by</dt><dd>Lab evaluation.</dd><dt>Now</dt><dd>First pull only on a never-deployed server, after DEV was made a copy of PROD, with a typed sentence that names anything it would remove (step 0).</dd></dl></div>
+  <div class="find"><h3>Tests that read today’s data can’t tell a broken model from new data</h3><dl><dt>Example</dt><dd>25 tests went red when the lab data was rebuilt.</dd><dt>Found by</dt><dd>Rebuilding the lab model.</dd><dt>Now</dt><dd>Three kinds of check (step 4).</dd></dl></div>
+  <div class="find"><h3>Replacing a dimension keeps the data of elements that survive</h3><dl><dt>Example</dt><dd>Values and attribute values on surviving elements, including one PROD’s own load created, were unchanged after a release replaced the dimension.</dd><dt>Found by</dt><dd>A throwaway cube loaded by a TI on PROD, then a release that added one element and removed another.</dd><dt>Now</dt><dd>Relied on: the danger is only the elements a release doesn’t have, which Review names (step 6).</dd></dl></div>
+  <div class="find"><h3>A new element can’t take data in the same TI section that creates it</h3><dl><dt>Example</dt><dd>A test load added an element and wrote to it in one section; the write failed with “Invalid key”.</dd><dt>Found by</dt><dd>The data-survival test for this guide.</dd><dt>Now</dt><dd>Add elements in Prolog or Metadata, write in Data or Epilog: as a real load does.</dd></dl></div>
+</section>
+
+<!-- ======================================================== G -->
+<section id="limits">
+  <div class="sec-head"><span class="sec-num">G</span><h2 class="sec-title">Limits, stated plainly</h2></div>
+
+  <ul>
+    <li><b>Changes made outside the change log aren’t ordered.</b> An edit in another tool, or by a TI process on DEV, shows up later as a difference, not as an order conflict.</li>
+    <li><b>The idle check is a snapshot</b> (step 8).</li>
+    <li><b>The backup is only as good as the backup process.</b> Without one, the deploy records the time you enter; it can’t check the backup exists.</li>
+    <li><b>Attributes have no last release to compare with,</b> because they aren’t in Git. The refresh lists them but never preselects them.</li>
+    <li><b>Cube data doesn’t move.</b> A deploy carries model objects and the attribute values you’ve confirmed, nothing else.</li>
+    <li><b>It depends on how IBM’s Git behaves.</b> A TM1 update could change it; the permanent tests are what would catch that.</li>
+    <li><b>Some things deploy on their own path:</b> Lens screens have their own governed deploy, and an admin-only catch-up brings a whole server level with DEV in one release.</li>
+  </ul>
+  <div class="callout note"><p><b>How we tested this.</b> On a TM1 v11 DEV + PROD lab pair, with throwaway objects for every probe and full deploys of a lab model. The ideas don’t depend on a particular tool: anything that keeps a change log and talks to the TM1 REST API can apply them. The working version is in the open-source <a href="https://github.com/falconbi/tm1_ide">TM1 IDE</a>.</p></div>
+  <div class="callout key"><p><b>Related:</b> <a href="../governed-tm1-deploys/">Governed TM1 deploys</a> (why releases ship one change set) · <a href="../deploy-drift-recovery/">When PROD drifts</a> · <a href="../deploying-lenses/">Deploying Lenses</a></p></div>
+
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-mark">falcon<b>bi</b></div>
+      <p>How a TM1 deploy works: refresh first, then ship.</p>
+      <span class="license">CC BY 4.0 — attribution required</span>
+    </div>
+    <div class="foot-meta">
+      Deployment · TM1 Git · IBM Planning Analytics<br>
+      © 2026 falconbi
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
