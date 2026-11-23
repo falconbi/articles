@@ -365,7 +365,7 @@
   <div class="wrap">
     <p class="eyebrow">Deployment &nbsp;·&nbsp; Operating guide</p>
     <h1 class="title">How a TM1 deploy works:<br><span class="accent">refresh first</span>, then ship</h1>
-    <p class="standfirst">PROD is never static. Nightly loads add GL codes and employees, users save views, operators switch chores off. A deploy must carry that work, not wipe it. This guide walks through the whole process as thirteen numbered steps, from setting up DEV to putting things right: what moves where, why each step is needed, and where the deploy stops to ask before anything is lost. With what we found along the way.</p>
+    <p class="standfirst">This guide explains, step by step, how a change made on a DEV server gets to a PROD server in TM1. It covers the whole process: setting up DEV and Git once, building a piece of work, checking and approving it, sending it to PROD, and putting things right if something goes wrong.</p>
     <div class="meta-row">
       <span><b>Tested on</b> TM1 v11 · DEV + PROD lab pair</span>
       <span><b>Related</b> <a href="../governed-tm1-deploys/">Governed TM1 deploys</a></span>
@@ -404,6 +404,26 @@
 
 <main>
 <div class="wrap">
+
+<!-- ======================================================== Intro -->
+<section id="intro">
+  <div class="sec-head"><h2 class="sec-title">About this guide</h2></div>
+
+  <h3>How it fits with the IDE</h3>
+  <p>This process is built into the TM1 IDE, in its Deploy section. Each step in this guide is a step on that screen. If you use a different tool, or none, you can still use this guide to learn the approach and build your own deploy process: the steps, the checks and the lessons work with any tool that talks to TM1.</p>
+
+  <h3>Why it matters</h3>
+  <p>PROD changes on its own every day. Load processes add new GL codes and employees, users save views, and operators switch chores off. A deploy that simply replaces PROD’s objects with DEV’s copies removes that work, and the data that goes with it. This guide shows how to deploy without losing it.</p>
+
+  <h3>How we did it</h3>
+  <p>We use TM1’s built-in Git to move the model from DEV to PROD. It moves objects in IBM’s own format, and if a deploy fails partway, it undoes the whole deploy. But it doesn’t do everything a deploy needs:</p>
+  <ul>
+    <li>it can’t send one piece of work on its own;</li>
+    <li>it doesn’t carry attribute values or deletions;</li>
+    <li>it replaces anything on PROD that is different from the release.</li>
+  </ul>
+  <p>The IDE fills those gaps. The guide explains each one and how it’s handled.</p>
+</section>
 
 <!-- ======================================================== A -->
 <section id="bg-a">
